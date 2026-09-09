@@ -57,7 +57,7 @@ namespace TrainSudoku.Game
             AddPanel<TrainRunPanel>(canvas.transform, "Train Run");
             AddPanel<WinPanel>(canvas.transform, "Win");
 
-            var board = StubBoardView.Create(_playPanel.BoardArea);
+            var board = BoardView.Create(transform, Camera.main);
             board.Interacted += OnBoardInteracted;
             board.Completed += OnBoardCompleted;
             Board = board;
@@ -115,6 +115,13 @@ namespace TrainSudoku.Game
             if (Flow.State != GameState.Play) return;
             AudioCuePlayer.Play(AudioCue.Win);
             Flow.CompleteLevel();
+        }
+
+        /// <summary>Editor-only: declares the current level solved so the win flow can be exercised before M7.</summary>
+        public void DebugCompleteLevel()
+        {
+            if (!Application.isEditor || Flow.State != GameState.Play) return;
+            (Board as BoardView)?.ForceComplete();
         }
 
         public void Quit()
