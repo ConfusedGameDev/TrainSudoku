@@ -5,16 +5,13 @@ using UnityEngine.UI;
 namespace TrainSudoku.Game
 {
     /// <summary>
-    /// Overlay for the train animation (PRD section 8). Until M8 supplies the real run it simply waits a few seconds;
-    /// a tap anywhere skips to the win screen either way.
+    /// Overlay while the train runs (PRD section 8). The animation itself is driven by <see cref="TrainRunner"/>;
+    /// this panel shows the caption and lets a tap anywhere skip to the win screen.
     /// </summary>
     public sealed class TrainRunPanel : PanelBase
     {
-        [SerializeField] private float stubDuration = 3f;
         [SerializeField] private Button skipButton;
         [SerializeField] private Text message;
-
-        private float _remaining;
 
         public override bool IsVisibleIn(GameState state) => state == GameState.TrainRun;
 
@@ -40,16 +37,8 @@ namespace TrainSudoku.Game
 
         public override void Refresh(GameState state)
         {
-            _remaining = stubDuration;
             message.text = "The train is running...";
             AudioCuePlayer.Play(AudioCue.TrainStart);
-        }
-
-        private void Update()
-        {
-            if (Game == null || Flow.State != GameState.TrainRun) return;
-            _remaining -= Time.deltaTime;
-            if (_remaining <= 0f) Flow.FinishTrainRun();
         }
 
         private void Skip()

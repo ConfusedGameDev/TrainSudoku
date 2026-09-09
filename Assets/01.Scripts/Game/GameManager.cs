@@ -20,6 +20,7 @@ namespace TrainSudoku.Game
         [SerializeField] private InputActionAsset inputActions = null;
         [SerializeField] private AudioCueLibrary audioCues = null;
         [SerializeField] private TrackAssets trackAssets = null;
+        [SerializeField] private TrainAssets trainAssets = null;
 
         [Tooltip("Editor only: every level counts as unlocked in Level Select (PRD section 5).")]
         [SerializeField] private bool unlockAllLevelsInEditor = false;
@@ -30,6 +31,7 @@ namespace TrainSudoku.Game
         [SerializeField] private AudioCuePlayer audioPlayer = null;
         [SerializeField] private BoardCamera boardCamera = null;
         [SerializeField] private BoardView boardView = null;
+        [SerializeField] private TrainRunner trainRunner = null;
         [SerializeField] private List<PanelBase> panels = new List<PanelBase>();
 
         private PlayPanel _playPanel;
@@ -47,6 +49,7 @@ namespace TrainSudoku.Game
             get
             {
                 if (canvas == null || audioPlayer == null || boardCamera == null || boardView == null || !boardView.IsGenerated) return false;
+                if (trainRunner == null) return false;
                 if (panels == null || panels.Count != 6) return false;
                 foreach (var panel in panels)
                     if (panel == null || !panel.IsBuilt) return false;
@@ -80,6 +83,7 @@ namespace TrainSudoku.Game
             AddPanel<WinPanel>("Win");
 
             boardView = BoardView.Create(transform, boardCamera, trackAssets);
+            trainRunner = TrainRunner.Create(transform, trainAssets);
         }
 
         /// <summary>Removes everything <see cref="Generate"/> created. The camera keeps its BoardCamera.</summary>
@@ -89,11 +93,13 @@ namespace TrainSudoku.Game
             if (canvas != null) UiBuilder.Destroy(canvas.gameObject);
             if (audioPlayer != null) UiBuilder.Destroy(audioPlayer.gameObject);
             if (boardView != null) UiBuilder.Destroy(boardView.gameObject);
+            if (trainRunner != null) UiBuilder.Destroy(trainRunner.gameObject);
             // Only remove the event system if it is ours; the scene may have had one already.
             if (eventSystem != null && eventSystem.transform.parent == transform) UiBuilder.Destroy(eventSystem.gameObject);
             canvas = null;
             audioPlayer = null;
             boardView = null;
+            trainRunner = null;
             eventSystem = null;
             panels.Clear();
         }
@@ -141,6 +147,11 @@ namespace TrainSudoku.Game
             boardView.Interacted += OnBoardInteracted;
             boardView.Completed += OnBoardCompleted;
 
+            // Scenes baked before the train existed get the runner at runtime; Regenerate bakes it.
+            if (trainRunner == null) trainRunner = TrainRunner.Create(transform, trainAssets);
+            trainRunner.Configure(trainAssets);
+            trainRunner.Finished += OnTrainFinished;
+
             Flow.StateChanged += OnStateChanged;
             Flow.LevelStarted += OnLevelStarted;
             ApplyState(Flow.State);
@@ -157,6 +168,7 @@ namespace TrainSudoku.Game
             if (Flow == null) return;
             Flow.StateChanged -= OnStateChanged;
             Flow.LevelStarted -= OnLevelStarted;
+            if (trainRunner != null) trainRunner.Finished -= OnTrainFinished;
         }
 
         private void OnStateChanged(GameState previous, GameState current) => ApplyState(current);
@@ -171,6 +183,14 @@ namespace TrainSudoku.Game
             }
 
             boardView.SetInteractable(state == GameState.Play);
+
+            if (state == GameState.TrainRun) trainRunner.Run(boardView.Board);
+            else if (trainRunner.IsRunning) trainRunner.Stop();
+        }
+
+        private void OnTrainFinished()
+        {
+            if (Flow.State == GameState.TrainRun) Flow.FinishTrainRun();
         }
 
         private void OnLevelStarted(int index) => boardView.Load(index >= 0 && index < levels.Count ? levels[index] : null);
