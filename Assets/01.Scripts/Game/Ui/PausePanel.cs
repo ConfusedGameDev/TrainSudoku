@@ -31,7 +31,7 @@ namespace TrainSudoku.Game
             UiBuilder.Wire(retryButton, AudioCue.UiClick, () => Flow.Retry());
             UiBuilder.Wire(exitButton, AudioCue.UiBack, () => Flow.ShowLevelSelect());
             UiBuilder.Wire(debugWinButton, AudioCue.UiConfirm, () => Game.DebugCompleteLevel());
-            // Editor-only shortcut to the win flow until M7 wires the validator.
+            // Editor-only shortcut to the win flow for testing the screens.
             debugWinButton.gameObject.SetActive(Application.isEditor);
         }
     }

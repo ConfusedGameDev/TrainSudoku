@@ -55,12 +55,15 @@ namespace TrainSudoku.Game
         /// <summary>Cell hit by the most recent tap, or null when the tap missed the grid.</summary>
         public (int X, int Y)? LastTappedCell { get; private set; }
 
+        /// <summary>Validator output for the current board, refreshed after every change (PRD section 3.4).</summary>
+        public WinResult LastResult { get; private set; }
+
         public bool IsGenerated => tiles != null && pieces != null && tunnels != null && clues != null && markers != null;
 
         public event Action Interacted;
         public event Action Completed;
 
-        /// <summary>A piece was placed or erased. M7 runs the validator from here.</summary>
+        /// <summary>A piece was placed or erased. Raised before the validator runs.</summary>
         public event Action BoardChanged;
 
         /// <summary>Creates the empty board root under <paramref name="parent"/>. Works in the Editor and at runtime.</summary>
@@ -114,6 +117,9 @@ namespace TrainSudoku.Game
             BuildClues();
 
             if (boardCamera != null) boardCamera.SetTarget(BoardLayout.HalfWidth(Level.Width), BoardLayout.HalfDepth(Level.Height));
+
+            // Colour the clues for the fixed pieces, but never win a level the player has not touched.
+            Validate(false);
         }
 
         public void SetInteractable(bool interactable)
@@ -127,8 +133,40 @@ namespace TrainSudoku.Game
             }
         }
 
-        /// <summary>Raises <see cref="Completed"/>. Used by the editor-only debug button until M7 wires the validator.</summary>
+        /// <summary>Raises <see cref="Completed"/> without checking the board. Editor-only shortcut behind the pause menu debug button.</summary>
         public void ForceComplete() => Completed?.Invoke();
+
+        // ------------------------------------------------------------------ validation
+
+        private static readonly Color ClueExceeded = new Color(0.95f, 0.40f, 0.35f);
+
+        /// <summary>Runs the Core validator, colours the clues and, after a player action, fires the win.</summary>
+        private void Validate(bool announceWin)
+        {
+            if (Board == null) return;
+            LastResult = WinChecker.Evaluate(Board);
+            ApplyClueColors(LastResult);
+            if (announceWin && LastResult.IsWin) Completed?.Invoke();
+        }
+
+        private void OnBoardChanged()
+        {
+            BoardChanged?.Invoke();
+            Validate(true);
+        }
+
+        /// <summary>Satisfied lines turn green, lines holding more pieces than their clue turn red.</summary>
+        private void ApplyClueColors(WinResult result)
+        {
+            if (_columnClues == null || result == null) return;
+            for (var x = 0; x < _columnClues.Length; x++)
+                _columnClues[x].color = ClueColor(result.ColumnSatisfied[x], Board.ColumnCount(x) > Level.ColumnClues[x]);
+            for (var y = 0; y < _rowClues.Length; y++)
+                _rowClues[y].color = ClueColor(result.RowSatisfied[y], Board.RowCount(y) > Level.RowClues[y]);
+        }
+
+        private static Color ClueColor(bool satisfied, bool exceeded) =>
+            satisfied ? UiBuilder.Success : exceeded ? ClueExceeded : UiBuilder.TextColor;
 
         // ------------------------------------------------------------------ building
 
@@ -246,16 +284,6 @@ namespace TrainSudoku.Game
                 _rowClues[y].transform.localPosition = new Vector3((float)wx, 0.05f, (float)wz);
                 _rowClues[y].name = $"Row clue {y}";
             }
-        }
-
-        /// <summary>Recolours the clue labels; M7 calls this when the validator reports a line satisfied.</summary>
-        public void SetClueColors(bool[] columnsSatisfied, bool[] rowsSatisfied)
-        {
-            if (_columnClues == null) return;
-            for (var x = 0; x < _columnClues.Length; x++)
-                _columnClues[x].color = columnsSatisfied != null && columnsSatisfied[x] ? UiBuilder.Success : UiBuilder.TextColor;
-            for (var y = 0; y < _rowClues.Length; y++)
-                _rowClues[y].color = rowsSatisfied != null && rowsSatisfied[y] ? UiBuilder.Success : UiBuilder.TextColor;
         }
 
         private static GameObject Primitive(PrimitiveType type, Transform parent, Material material, string name, bool keepCollider)
@@ -422,7 +450,7 @@ namespace TrainSudoku.Game
                 _session.Cancel();
                 RefreshSelection();
                 AudioCuePlayer.Play(AudioCue.Erase);
-                BoardChanged?.Invoke();
+                OnBoardChanged();
             }
         }
 
@@ -475,7 +503,7 @@ namespace TrainSudoku.Game
             if (_session.LastPlaced.HasValue) SpawnPiece(x, y, _session.LastPlaced.Value, false, true);
             RefreshSelection();
             AudioCuePlayer.Play(AudioCue.Place);
-            BoardChanged?.Invoke();
+            OnBoardChanged();
         }
 
         private void EndPress()

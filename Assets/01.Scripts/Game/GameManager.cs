@@ -187,7 +187,7 @@ namespace TrainSudoku.Game
             Flow.CompleteLevel();
         }
 
-        /// <summary>Editor-only: resumes if paused and declares the level solved, so the win flow can be exercised before M7.</summary>
+        /// <summary>Editor-only: resumes if paused and declares the level solved, to test the win screens without solving.</summary>
         public void DebugCompleteLevel()
         {
             if (!Application.isEditor) return;
