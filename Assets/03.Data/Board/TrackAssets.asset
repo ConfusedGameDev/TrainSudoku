@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.TrackAssets
   segmentMesh: {fileID: -2487569502045341451, guid: 336ed1350dd1a4044bb51b91a997d0f4, type: 3}
   sleeperMesh: {fileID: 4971150158610780899, guid: 06b8789730625834f9a6560cd33340b2, type: 3}
-  sleepersPerCell: 6
+  sleepersPerCell: 2
   evenSleeperSpacing: 1
   curveSlices: 16
   widthScale: 1
