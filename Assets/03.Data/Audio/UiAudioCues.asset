@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 99377074f45f02c986e6071ae3e451a8, type: 3}
+  m_Name: UiAudioCues
+  m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.AudioCueLibrary
+  entries:
+  - cue: 0
+    clip: {fileID: 8300000, guid: 31d676f1481b356408a4596ff7c48a50, type: 3}
+    volume: 1
+  - cue: 1
+    clip: {fileID: 8300000, guid: 11bfe1bd8d891c44586c0070a48eed30, type: 3}
+    volume: 1
+  - cue: 2
+    clip: {fileID: 8300000, guid: 4bdb0b687d94c364b9b6ac99b38e962a, type: 3}
+    volume: 1
+  - cue: 3
+    clip: {fileID: 8300000, guid: 50e3da448704f3149af9e858035e88c4, type: 3}
+    volume: 1
+  - cue: 4
+    clip: {fileID: 8300000, guid: b8069a131803617439690b4c37879470, type: 3}
+    volume: 1
+  - cue: 5
+    clip: {fileID: 8300000, guid: ee7460474246904468c9b7ae3d5c51ea, type: 3}
+    volume: 1
+  - cue: 6
+    clip: {fileID: 8300000, guid: 2efb51b8706abd14089393ab2a169020, type: 3}
+    volume: 1
+  - cue: 7
+    clip: {fileID: 8300000, guid: 44a0ff6f0b2f1ec48b6241e28fc069ab, type: 3}
+    volume: 1

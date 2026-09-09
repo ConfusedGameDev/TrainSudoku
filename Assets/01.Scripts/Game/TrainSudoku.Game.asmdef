@@ -2,7 +2,9 @@
     "name": "TrainSudoku.Game",
     "rootNamespace": "TrainSudoku.Game",
     "references": [
-        "TrainSudoku.Core"
+        "TrainSudoku.Core",
+        "Unity.InputSystem",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
