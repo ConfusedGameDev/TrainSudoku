@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-TrainSudoku: a portrait mobile puzzle game (mouse-compatible) built in Unity `6000.7.0a3` with URP and the new Input System. The full design spec and milestone list (M1–M10) is in `Plan.md`; read it before touching gameplay. No game scripts, tests, or assemblies exist yet; the only scene is `Assets/Scenes/SampleScene.unity`.
+TrainSudoku: a portrait mobile puzzle game (mouse-compatible) built in Unity `6000.7.0a3` with URP and the new Input System. The agreed spec is `Docs/PRD.md` (rules, screens, data format, architecture, milestones M0–M10); read it before touching gameplay. `Plan.md` is the original brief and is superseded where they differ. No game scripts, tests, or assemblies exist yet; the only scene is `Assets/Scenes/SampleScene.unity`.
 
 ## Asset layout
 
@@ -24,7 +24,7 @@ Numbered top-level folders under `Assets/`; put new files in the matching one:
 
 Empty folders hold a `.gitkeep` so git tracks them.
 
-## Domain vocabulary (from Plan.md)
+## Domain vocabulary (full rules in Docs/PRD.md section 3)
 
 - **Board**: 6x6 grid. Each row and column carries a clue number 0–6 = how many track pieces it must contain.
 - **Piece**: one per cell, exactly two connections. Track keys: `NS`, `EW`, `NW`, `NE`, `SW`, `SE`.
