@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using TrainSudoku.Core;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -36,7 +37,11 @@ namespace TrainSudoku.Game
 
         private PlayPanel _playPanel;
 
+        /// <summary>The JSON save file (PRD section 6).</summary>
+        public static string SaveFilePath => Path.Combine(Application.persistentDataPath, "save.json");
+
         public GameFlow Flow { get; private set; }
+        public ISaveStore SaveStore { get; private set; }
         public LevelCollection Levels => levels;
         public IBoardView Board => boardView;
 
@@ -131,8 +136,8 @@ namespace TrainSudoku.Game
             var ids = new List<string>(levels.Count);
             foreach (var level in levels.Levels) ids.Add(level != null ? level.Id : "");
 
-            // M9 replaces the in-memory store with the JSON file under persistentDataPath.
-            Flow = new GameFlow(ids, new InMemorySaveStore());
+            SaveStore = new FileSaveStore(SaveFilePath, message => Debug.LogWarning($"Save: {message}", this));
+            Flow = new GameFlow(ids, SaveStore);
 #if UNITY_EDITOR
             Flow.UnlockAll = unlockAllLevelsInEditor;
 #endif

@@ -42,8 +42,29 @@ namespace TrainSudoku.Editor
             UpdateStatus();
             root.schedule.Execute(UpdateStatus).Every(500);
 
+            var progress = new VisualElement();
+            progress.style.flexDirection = FlexDirection.Row;
+            progress.style.marginBottom = 8;
+            progress.Add(new Button(DeleteSaveFile) { text = "Delete save file", tooltip = GameManager.SaveFilePath });
+            progress.Add(new Button(() => EditorUtility.RevealInFinder(GameManager.SaveFilePath)) { text = "Show save file" });
+            root.Add(progress);
+
             InspectorElement.FillDefaultInspector(root, serializedObject, this);
             return root;
+        }
+
+        private static void DeleteSaveFile()
+        {
+            var path = GameManager.SaveFilePath;
+            if (!System.IO.File.Exists(path))
+            {
+                Debug.Log($"No save file at {path}.");
+                return;
+            }
+
+            if (!EditorUtility.DisplayDialog("Delete save file", $"Delete all best times and unlocks?\n\n{path}", "Delete", "Cancel")) return;
+            System.IO.File.Delete(path);
+            Debug.Log($"Deleted {path}. Restart Play mode to see the effect.");
         }
 
         private static void Run(GameManager manager, System.Action action)
