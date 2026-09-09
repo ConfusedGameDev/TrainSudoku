@@ -16,8 +16,14 @@ namespace TrainSudoku.Core
         /// <summary>Distance from a perimeter cell centre to the clue label beyond the tunnel ring.</summary>
         public const double ClueOffset = 1.85;
 
-        /// <summary>Extra half-extent past the board edge that the camera must keep in view: tunnels and clues.</summary>
-        public const double Padding = 1.9;
+        /// <summary>
+        /// Extra half-extent past the board edge the camera must always keep in view: the tunnel ring, where the train
+        /// hides. Labels and tunnel mouths add their own rendered bounds on top of this minimum.
+        /// </summary>
+        public const double Padding = 1.0;
+
+        /// <summary>Tallest thing above the ground plane the camera must always keep in view: the tunnel letters and the train.</summary>
+        public const double Height = 1.5;
 
         public static (double X, double Z) CellCenter(int x, int y, int width, int height) =>
             (x - (width - 1) / 2.0, (height - 1) / 2.0 - y);
@@ -49,10 +55,10 @@ namespace TrainSudoku.Core
         public static (double X, double Z) RowClueAnchor(int y, int width, int height) =>
             Offset(CellCenter(width - 1, y, width, height), Direction.East, ClueOffset);
 
-        /// <summary>Half of the width the camera must show, centred on the origin.</summary>
+        /// <summary>Half of the width the camera must show at the least, centred on the origin.</summary>
         public static double HalfWidth(int width) => width * CellSize / 2.0 + Padding;
 
-        /// <summary>Half of the depth the camera must show, centred on the origin.</summary>
+        /// <summary>Half of the depth the camera must show at the least, centred on the origin.</summary>
         public static double HalfDepth(int height) => height * CellSize / 2.0 + Padding;
 
         private static (double X, double Z) Offset((double X, double Z) origin, Direction side, double distance)

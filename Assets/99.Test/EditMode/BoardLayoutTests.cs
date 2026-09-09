@@ -80,8 +80,8 @@ namespace TrainSudoku.Tests
             Assert.AreEqual(-1.5, rz, Eps);
             Assert.Greater(rx, 2.5 + BoardLayout.TunnelOffset + 0.25);
 
-            Assert.LessOrEqual(cz, BoardLayout.HalfDepth(6), "Clues stay inside the camera extents");
-            Assert.LessOrEqual(rx, BoardLayout.HalfWidth(6));
+            Assert.Greater(cz, BoardLayout.HalfDepth(6), "Clues lie outside the minimum camera box; their rendered bounds grow it");
+            Assert.Greater(rx, BoardLayout.HalfWidth(6));
         }
 
         [Test]

@@ -13,6 +13,12 @@ MonoBehaviour:
   m_Name: LevelCollection
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LevelCollection
   levels:
+  - {fileID: 11400000, guid: 3fabb0fc0cc66d34394645c8bde3243b, type: 2}
+  - {fileID: 11400000, guid: 1058d571561ebad4980aea34cf6fa63b, type: 2}
   - {fileID: 11400000, guid: 0ee0d91580490b443b11531c5cace1e4, type: 2}
   - {fileID: 11400000, guid: 820479d25f258bb88a447b39946509bf, type: 2}
-  - {fileID: 11400000, guid: 3fabb0fc0cc66d34394645c8bde3243b, type: 2}
+  - {fileID: 11400000, guid: 665488f8ef7ec744a8c117c3e352e75d, type: 2}
+  - {fileID: 11400000, guid: 74adf78264a82384a83251998ea76d98, type: 2}
+  - {fileID: 11400000, guid: 709a183fad7e6ce4bac5a137184d0b75, type: 2}
+  - {fileID: 11400000, guid: 3fe6dd0092076694794804ece338e917, type: 2}
+  - {fileID: 11400000, guid: 8025acf84a723f74585bf99efe339427, type: 2}

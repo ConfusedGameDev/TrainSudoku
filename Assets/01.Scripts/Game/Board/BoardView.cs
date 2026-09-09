@@ -117,10 +117,26 @@ namespace TrainSudoku.Game
             BuildTunnels();
             BuildClues();
 
-            if (boardCamera != null) boardCamera.SetTarget(BoardLayout.HalfWidth(Level.Width), BoardLayout.HalfDepth(Level.Height));
+            if (boardCamera != null) boardCamera.SetTarget(ContentBounds());
 
             // Colour the clues for the fixed pieces, but never win a level the player has not touched.
             Validate(false);
+        }
+
+        /// <summary>
+        /// What the camera has to frame: the grid plus the tunnel ring and the train's height as a minimum, grown by
+        /// everything actually built (tunnel mouths, letters, clue labels), so the view centres on the visible content.
+        /// </summary>
+        private Bounds ContentBounds()
+        {
+            var height = (float)BoardLayout.Height;
+            var bounds = new Bounds(
+                new Vector3(0f, height / 2f, 0f),
+                new Vector3(2f * (float)BoardLayout.HalfWidth(Level.Width), height, 2f * (float)BoardLayout.HalfDepth(Level.Height)));
+            foreach (var group in new[] { tiles, pieces, tunnels, clues })
+                foreach (var renderer in group.GetComponentsInChildren<Renderer>())
+                    bounds.Encapsulate(renderer.bounds);
+            return bounds;
         }
 
         /// <summary>Puts a saved attempt back on the board (auto-save, PRD section 6) and shows its pieces without animation.</summary>
@@ -303,7 +319,11 @@ namespace TrainSudoku.Game
             go.transform.SetParent(parent, false);
             go.GetComponent<MeshRenderer>().sharedMaterial = material;
             // Only cell tiles and markers need colliders; everything else must not block the tap raycast.
-            if (!keepCollider && go.TryGetComponent<Collider>(out var collider)) Destroy(collider);
+            if (!keepCollider && go.TryGetComponent<Collider>(out var collider))
+            {
+                if (Application.isPlaying) Destroy(collider);
+                else DestroyImmediate(collider);
+            }
             return go;
         }
 
