@@ -3,23 +3,42 @@ using UnityEngine;
 
 namespace TrainSudoku.Game
 {
-    /// <summary>One uGUI screen. The <see cref="GameManager"/> shows the panels whose <see cref="IsVisibleIn"/> matches the flow state.</summary>
+    /// <summary>
+    /// One uGUI screen. <see cref="Build"/> creates the widgets (in the Editor, saved with the scene, or at runtime as
+    /// a fallback) and stores them in serialized fields; <see cref="Bind"/> attaches the runtime handlers. The
+    /// <see cref="GameManager"/> shows the panels whose <see cref="IsVisibleIn"/> matches the flow state.
+    /// </summary>
     public abstract class PanelBase : MonoBehaviour
     {
+        [SerializeField, HideInInspector] private bool built;
+
         protected GameManager Game { get; private set; }
         protected GameFlow Flow => Game.Flow;
-        protected RectTransform Root { get; private set; }
+        protected RectTransform Root => (RectTransform)transform;
 
-        public void Initialize(GameManager game)
+        public bool IsBuilt => built;
+
+        /// <summary>Creates the widgets, replacing any earlier ones, and leaves the panel hidden.</summary>
+        public void Build()
         {
-            Game = game;
-            Root = (RectTransform)transform;
-            Build();
+            UiBuilder.Clear(transform);
+            BuildWidgets();
+            built = true;
             gameObject.SetActive(false);
         }
 
-        /// <summary>Creates the panel's widgets once.</summary>
-        protected abstract void Build();
+        /// <summary>Runtime setup: builds if the scene was never generated, then wires the handlers.</summary>
+        public void Bind(GameManager game)
+        {
+            Game = game;
+            if (!built) Build();
+            Wire();
+        }
+
+        protected abstract void BuildWidgets();
+
+        /// <summary>Attach click handlers and apply anything that depends on the runtime platform.</summary>
+        protected abstract void Wire();
 
         public abstract bool IsVisibleIn(GameState state);
 

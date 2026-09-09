@@ -5,65 +5,49 @@ using UnityEngine.UI;
 namespace TrainSudoku.Game
 {
     /// <summary>
-    /// HUD over the 3D board (PRD section 5): level name, timer and pause button in a top bar. The rest of the screen is
-    /// transparent so the camera view shows through. Stays visible under the pause, train run and win overlays.
+    /// HUD over the 3D board (PRD section 5): a small pause button in the top-left corner, the level name at the top
+    /// centre and the clock top-right. Everything else is transparent so the board is the main thing on screen. Stays
+    /// visible under the pause, train run and win overlays.
     /// </summary>
     public sealed class PlayPanel : PanelBase
     {
-        private Text _levelName;
-        private Text _clock;
-        private Button _pauseButton;
-        private Button _debugWinButton;
+        private const float Margin = 36f;
+        private const float BarHeight = 96f;
+
+        [SerializeField] private Text levelName;
+        [SerializeField] private Text clock;
+        [SerializeField] private Button pauseButton;
 
         public override bool IsVisibleIn(GameState state) =>
             state == GameState.Play || state == GameState.Pause || state == GameState.TrainRun || state == GameState.Win;
 
-        protected override void Build()
+        protected override void BuildWidgets()
         {
-            var column = UiBuilder.Column(Root, "Content", 0, new RectOffset(0, 0, 0, 0), TextAnchor.UpperCenter);
-            UiBuilder.Stretch(column);
+            pauseButton = UiBuilder.Button(Root, "||", BarHeight, false, 44);
+            UiBuilder.Anchor((RectTransform)pauseButton.transform, new Vector2(0f, 1f), new Vector2(BarHeight, BarHeight), new Vector2(Margin, -Margin));
+            pauseButton.name = "Pause";
 
-            var bar = UiBuilder.Row(column, "Top Bar", 24, new RectOffset(36, 36, 48, 16), 180);
-            bar.gameObject.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.55f);
+            levelName = UiBuilder.Label(Root, "Level", "", 40, UiBuilder.TextColor, TextAnchor.MiddleCenter, BarHeight);
+            UiBuilder.Anchor((RectTransform)levelName.transform, new Vector2(0.5f, 1f), new Vector2(560f, BarHeight), new Vector2(0f, -Margin));
 
-            _pauseButton = UiBuilder.Button(bar, "Pause", () => Flow.PauseGame(), AudioCue.UiClick, 100, false);
-            var pauseElement = _pauseButton.GetComponent<LayoutElement>();
-            pauseElement.preferredWidth = 220;
-            pauseElement.flexibleWidth = 0;
+            clock = UiBuilder.Label(Root, "Clock", "0:00.0", 48, UiBuilder.Accent, TextAnchor.MiddleRight, BarHeight);
+            UiBuilder.Anchor((RectTransform)clock.transform, new Vector2(1f, 1f), new Vector2(240f, BarHeight), new Vector2(-Margin, -Margin));
+            clock.fontStyle = FontStyle.Bold;
+        }
 
-            _levelName = UiBuilder.Label(bar, "Level", "", 44, UiBuilder.TextColor, TextAnchor.MiddleCenter, 100);
-            _levelName.GetComponent<LayoutElement>().flexibleWidth = 1;
-
-            _clock = UiBuilder.Label(bar, "Clock", "0:00.0", 52, UiBuilder.Accent, TextAnchor.MiddleRight, 100);
-            var clockElement = _clock.GetComponent<LayoutElement>();
-            clockElement.preferredWidth = 220;
-            clockElement.flexibleWidth = 0;
-            _clock.fontStyle = FontStyle.Bold;
-
-            // Empty flexible area: the board is rendered by the camera behind the canvas.
-            UiBuilder.Spacer(column);
-
-            if (Application.isEditor)
-            {
-                // Editor-only shortcut to reach the win flow before M7 hooks up the validator.
-                var debugRow = UiBuilder.Row(column, "Debug", 0, new RectOffset(36, 36, 0, 36), 90);
-                UiBuilder.Spacer(debugRow, 0f, 1f);
-                _debugWinButton = UiBuilder.Button(debugRow, "Debug: win", () => Game.DebugCompleteLevel(), AudioCue.UiConfirm, 70, false);
-                var element = _debugWinButton.GetComponent<LayoutElement>();
-                element.preferredWidth = 260;
-                element.flexibleWidth = 0;
-            }
+        protected override void Wire()
+        {
+            UiBuilder.Wire(pauseButton, AudioCue.UiClick, () => Flow.PauseGame());
         }
 
         public override void Refresh(GameState state)
         {
             var level = Game.CurrentLevel;
-            _levelName.text = level == null ? "" : string.IsNullOrEmpty(level.DisplayName) ? level.name : level.DisplayName;
-            _pauseButton.interactable = state == GameState.Play;
-            if (_debugWinButton != null) _debugWinButton.gameObject.SetActive(state == GameState.Play);
+            levelName.text = level == null ? "" : string.IsNullOrEmpty(level.DisplayName) ? level.name : level.DisplayName;
+            pauseButton.interactable = state == GameState.Play;
             UpdateClock(Flow.Timer.Elapsed);
         }
 
-        public void UpdateClock(double seconds) => _clock.text = ProgressTracker.FormatTime(seconds);
+        public void UpdateClock(double seconds) => clock.text = ProgressTracker.FormatTime(seconds);
     }
 }

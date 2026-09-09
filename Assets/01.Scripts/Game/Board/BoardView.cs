@@ -7,9 +7,10 @@ using UnityEngine.InputSystem;
 namespace TrainSudoku.Game
 {
     /// <summary>
-    /// The 3D board (PRD section 7, milestone M3): one tile with a collider per cell, tunnel mouths outside the
-    /// perimeter, clue labels beyond the tunnels, and placeholder geometry for the fixed pieces. Everything is
-    /// primitives built at load time; M4 replaces the piece placeholders with bent track meshes.
+    /// The 3D board (PRD section 7, milestone M3). The root and its groups are generated once with the scene; the
+    /// per-level content (one tile with a collider per cell, tunnel mouths outside the perimeter, clue labels beyond
+    /// the tunnels, placeholder geometry for the fixed pieces) is built from primitives each time a level loads.
+    /// M4 replaces the piece placeholders with bent track meshes.
     /// </summary>
     public sealed class BoardView : MonoBehaviour, IBoardView
     {
@@ -17,12 +18,12 @@ namespace TrainSudoku.Game
         private const float TileInset = 0.04f;
         private const float RayLength = 200f;
 
-        private Transform _tiles;
-        private Transform _pieces;
-        private Transform _tunnels;
-        private Transform _clues;
-        private BoardCamera _camera;
-        private Camera _unityCamera;
+        [SerializeField] private Transform tiles;
+        [SerializeField] private Transform pieces;
+        [SerializeField] private Transform tunnels;
+        [SerializeField] private Transform clues;
+        [SerializeField] private BoardCamera boardCamera;
+
         private BoardCell[,] _cells;
         private TextMesh[] _columnClues;
         private TextMesh[] _rowClues;
@@ -36,33 +37,23 @@ namespace TrainSudoku.Game
         /// <summary>Cell hit by the most recent tap, or null when the tap missed the grid.</summary>
         public (int X, int Y)? LastTappedCell { get; private set; }
 
+        public bool IsGenerated => tiles != null && pieces != null && tunnels != null && clues != null;
+
         public event Action Interacted;
         public event Action Completed;
 
-        public static BoardView Create(Transform parent, Camera camera)
+        /// <summary>Creates the empty board root under <paramref name="parent"/>. Works in the Editor and at runtime.</summary>
+        public static BoardView Create(Transform parent, BoardCamera camera)
         {
             var go = new GameObject("Board");
             go.transform.SetParent(parent, false);
             var view = go.AddComponent<BoardView>();
-            view.Initialize(camera);
+            view.tiles = view.Group("Tiles");
+            view.pieces = view.Group("Pieces");
+            view.tunnels = view.Group("Tunnels");
+            view.clues = view.Group("Clues");
+            view.boardCamera = camera;
             return view;
-        }
-
-        private void Initialize(Camera camera)
-        {
-            _tiles = Group("Tiles");
-            _pieces = Group("Pieces");
-            _tunnels = Group("Tunnels");
-            _clues = Group("Clues");
-
-            _unityCamera = camera;
-            if (camera != null)
-            {
-                _camera = camera.GetComponent<BoardCamera>();
-                if (_camera == null) _camera = camera.gameObject.AddComponent<BoardCamera>();
-                camera.clearFlags = CameraClearFlags.SolidColor;
-                camera.backgroundColor = UiBuilder.Background;
-            }
         }
 
         private Transform Group(string name)
@@ -71,6 +62,8 @@ namespace TrainSudoku.Game
             go.transform.SetParent(transform, false);
             return go.transform;
         }
+
+        private Camera UnityCamera => boardCamera != null ? boardCamera.Camera : Camera.main;
 
         // ------------------------------------------------------------------ IBoardView
 
@@ -88,7 +81,7 @@ namespace TrainSudoku.Game
             BuildTunnels();
             BuildClues();
 
-            if (_camera != null) _camera.SetTarget(BoardLayout.HalfWidth(Level.Width), BoardLayout.HalfDepth(Level.Height));
+            if (boardCamera != null) boardCamera.SetTarget(BoardLayout.HalfWidth(Level.Width), BoardLayout.HalfDepth(Level.Height));
         }
 
         public void SetInteractable(bool interactable) => _interactable = interactable;
@@ -100,9 +93,8 @@ namespace TrainSudoku.Game
 
         private void Clear()
         {
-            foreach (var group in new[] { _tiles, _pieces, _tunnels, _clues })
-                for (var i = group.childCount - 1; i >= 0; i--)
-                    Destroy(group.GetChild(i).gameObject);
+            foreach (var group in new[] { tiles, pieces, tunnels, clues })
+                if (group != null) UiBuilder.Clear(group);
             _cells = null;
             _columnClues = null;
             _rowClues = null;
@@ -118,7 +110,7 @@ namespace TrainSudoku.Game
             {
                 var tile = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 tile.name = $"Cell ({x},{y})";
-                tile.transform.SetParent(_tiles, false);
+                tile.transform.SetParent(tiles, false);
                 var (wx, wz) = BoardLayout.CellCenter(x, y, Level.Width, Level.Height);
                 tile.transform.localPosition = new Vector3((float)wx, -TileHeight / 2f, (float)wz);
                 var size = (float)BoardLayout.CellSize - TileInset;
@@ -136,7 +128,7 @@ namespace TrainSudoku.Game
             foreach (var piece in Level.FixedPieces)
             {
                 var holder = new GameObject($"Fixed {piece.Key} ({piece.X},{piece.Y})");
-                holder.transform.SetParent(_pieces, false);
+                holder.transform.SetParent(pieces, false);
                 var (wx, wz) = BoardLayout.CellCenter(piece.X, piece.Y, Level.Width, Level.Height);
                 holder.transform.localPosition = new Vector3((float)wx, 0f, (float)wz);
 
@@ -171,7 +163,7 @@ namespace TrainSudoku.Game
             if (!tunnel.IsOnPerimeter(Level.Width, Level.Height)) return;
 
             var holder = new GameObject(name);
-            holder.transform.SetParent(_tunnels, false);
+            holder.transform.SetParent(tunnels, false);
             var (wx, wz) = BoardLayout.TunnelCenter(tunnel, Level.Width, Level.Height);
             holder.transform.localPosition = new Vector3((float)wx, 0f, (float)wz);
             // Face the board: +Z of the tunnel points opposite to the side it sits on.
@@ -195,7 +187,7 @@ namespace TrainSudoku.Game
             for (var x = 0; x < Level.Width; x++)
             {
                 var (wx, wz) = BoardLayout.ColumnClueAnchor(x, Level.Width, Level.Height);
-                _columnClues[x] = Label(_clues, Level.ColumnClues[x].ToString(), 0.7f, UiBuilder.TextColor);
+                _columnClues[x] = Label(clues, Level.ColumnClues[x].ToString(), 0.7f, UiBuilder.TextColor);
                 _columnClues[x].transform.localPosition = new Vector3((float)wx, 0.05f, (float)wz);
                 _columnClues[x].name = $"Column clue {x}";
             }
@@ -204,13 +196,13 @@ namespace TrainSudoku.Game
             for (var y = 0; y < Level.Height; y++)
             {
                 var (wx, wz) = BoardLayout.RowClueAnchor(y, Level.Width, Level.Height);
-                _rowClues[y] = Label(_clues, Level.RowClues[y].ToString(), 0.7f, UiBuilder.TextColor);
+                _rowClues[y] = Label(clues, Level.RowClues[y].ToString(), 0.7f, UiBuilder.TextColor);
                 _rowClues[y].transform.localPosition = new Vector3((float)wx, 0.05f, (float)wz);
                 _rowClues[y].name = $"Row clue {y}";
             }
         }
 
-        /// <summary>Recolours a clue label; M7 calls this when the validator reports a line satisfied.</summary>
+        /// <summary>Recolours the clue labels; M7 calls this when the validator reports a line satisfied.</summary>
         public void SetClueColors(bool[] columnsSatisfied, bool[] rowsSatisfied)
         {
             if (_columnClues == null) return;
@@ -227,8 +219,7 @@ namespace TrainSudoku.Game
             go.transform.SetParent(parent, false);
             go.GetComponent<MeshRenderer>().sharedMaterial = material;
             // Only the cell tiles need colliders; everything else must not block the tap raycast.
-            var collider = go.GetComponent<Collider>();
-            if (collider != null) Destroy(collider);
+            if (go.TryGetComponent<Collider>(out var collider)) Destroy(collider);
             return go;
         }
 
@@ -246,7 +237,7 @@ namespace TrainSudoku.Game
             mesh.alignment = TextAlignment.Center;
             mesh.color = color;
             go.GetComponent<MeshRenderer>().sharedMaterial = UiBuilder.Font.material;
-            var pitch = _camera != null ? _camera.PitchDegrees : 60f;
+            var pitch = boardCamera != null ? boardCamera.PitchDegrees : 60f;
             go.transform.rotation = Quaternion.Euler(pitch, 0f, 0f);
             return mesh;
         }
@@ -255,12 +246,14 @@ namespace TrainSudoku.Game
 
         private void Update()
         {
-            if (!_interactable || _cells == null || _unityCamera == null) return;
+            if (!_interactable || _cells == null) return;
+            var camera = UnityCamera;
+            if (camera == null) return;
             if (!TryGetPress(out var position, out var touchId)) return;
             if (IsOverUi(touchId)) return;
 
             LastTappedCell = null;
-            var ray = _unityCamera.ScreenPointToRay(position);
+            var ray = camera.ScreenPointToRay(position);
             if (Physics.Raycast(ray, out var hit, RayLength) && hit.collider.TryGetComponent<BoardCell>(out var cell))
                 LastTappedCell = (cell.X, cell.Y);
 

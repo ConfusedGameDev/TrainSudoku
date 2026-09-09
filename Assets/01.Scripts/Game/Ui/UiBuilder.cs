@@ -8,8 +8,10 @@ using UnityEngine.UI;
 namespace TrainSudoku.Game
 {
     /// <summary>
-    /// Builds the uGUI hierarchy in code so the screens need no scene or prefab authoring. Portrait reference layout
-    /// of 1080x1920; the canvas scaler keeps it readable on PC windows of any shape.
+    /// Builds the uGUI hierarchy in code. The <see cref="GameManager"/> runs it once in the Editor ("Generate Scene
+    /// Objects") and the result is saved in the scene; at runtime it only runs when the scene has not been generated.
+    /// Widgets are created here and referenced by serialized fields; click handlers are attached later by each panel's
+    /// <c>Wire</c> step, because lambdas do not survive serialization. Portrait reference layout of 1080x1920.
     /// </summary>
     public static class UiBuilder
     {
@@ -17,7 +19,6 @@ namespace TrainSudoku.Game
         public static readonly Color Card = new Color(0.16f, 0.19f, 0.25f, 0.98f);
         public static readonly Color Dim = new Color(0f, 0f, 0f, 0.65f);
         public static readonly Color Accent = new Color(0.95f, 0.58f, 0.18f);
-        public static readonly Color AccentPressed = new Color(0.80f, 0.45f, 0.10f);
         public static readonly Color Secondary = new Color(0.30f, 0.36f, 0.46f);
         public static readonly Color TextColor = new Color(0.96f, 0.96f, 0.97f);
         public static readonly Color Muted = new Color(0.66f, 0.69f, 0.75f);
@@ -37,10 +38,11 @@ namespace TrainSudoku.Game
             }
         }
 
-        /// <summary>Screen-space overlay canvas plus an EventSystem driven by the Input System.</summary>
-        public static Canvas CreateCanvas(string name, InputActionAsset actions)
+        /// <summary>Screen-space overlay canvas scaled from the portrait reference resolution.</summary>
+        public static Canvas CreateCanvas(string name, Transform parent)
         {
             var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
             var canvas = go.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 10;
@@ -50,15 +52,20 @@ namespace TrainSudoku.Game
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 0.5f;
             go.AddComponent<GraphicRaycaster>();
-
-            if (EventSystem.current == null)
-            {
-                var eventSystem = new GameObject("EventSystem", typeof(EventSystem));
-                var module = eventSystem.AddComponent<InputSystemUIInputModule>();
-                if (actions != null) module.actionsAsset = actions;
-            }
-
             return canvas;
+        }
+
+        /// <summary>The scene's EventSystem driven by the Input System, created under <paramref name="parent"/> if none exists.</summary>
+        public static EventSystem EnsureEventSystem(InputActionAsset actions, Transform parent)
+        {
+            var existing = Object.FindAnyObjectByType<EventSystem>(FindObjectsInactive.Include);
+            if (existing != null) return existing;
+
+            var go = new GameObject("EventSystem", typeof(EventSystem));
+            go.transform.SetParent(parent, false);
+            var module = go.AddComponent<InputSystemUIInputModule>();
+            if (actions != null) module.actionsAsset = actions;
+            return go.GetComponent<EventSystem>();
         }
 
         public static RectTransform Stretch(RectTransform rect)
@@ -67,6 +74,17 @@ namespace TrainSudoku.Game
             rect.anchorMax = Vector2.one;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
+            return rect;
+        }
+
+        /// <summary>Fixed-size element pinned to one anchor point; <paramref name="offset"/> moves it inwards from that corner or edge.</summary>
+        public static RectTransform Anchor(RectTransform rect, Vector2 anchor, Vector2 size, Vector2 offset)
+        {
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = anchor;
+            rect.sizeDelta = size;
+            rect.anchoredPosition = offset;
             return rect;
         }
 
@@ -105,6 +123,7 @@ namespace TrainSudoku.Game
             return rect;
         }
 
+        /// <summary>Fixed-height horizontal strip. It reports no flexible height so a parent column cannot stretch it.</summary>
         public static RectTransform Row(Transform parent, string name, float spacing, RectOffset padding, float height)
         {
             var rect = Rect(parent, name);
@@ -119,6 +138,7 @@ namespace TrainSudoku.Game
             var element = rect.gameObject.AddComponent<LayoutElement>();
             element.preferredHeight = height;
             element.minHeight = height;
+            element.flexibleHeight = 0f;
             return rect;
         }
 
@@ -151,6 +171,7 @@ namespace TrainSudoku.Game
             var element = rect.gameObject.AddComponent<LayoutElement>();
             element.preferredHeight = preferredHeight;
             element.minHeight = preferredHeight;
+            element.flexibleHeight = 0f;
             return label;
         }
 
@@ -163,7 +184,8 @@ namespace TrainSudoku.Game
             return element;
         }
 
-        public static Button Button(Transform parent, string label, UnityAction onClick, AudioCue cue = AudioCue.UiClick, float height = 120f, bool primary = true)
+        /// <summary>A button with a centred label. Attach its handler later with <see cref="Wire"/>.</summary>
+        public static Button Button(Transform parent, string label, float height = 120f, bool primary = true, int fontSize = 0)
         {
             var rect = Rect(parent, label);
             var image = rect.gameObject.AddComponent<Image>();
@@ -177,21 +199,29 @@ namespace TrainSudoku.Game
             colors.pressedColor = new Color(0.8f, 0.8f, 0.8f);
             colors.disabledColor = new Color(0.55f, 0.55f, 0.55f, 0.6f);
             button.colors = colors;
-            button.onClick.AddListener(() =>
-            {
-                AudioCuePlayer.Play(cue);
-                onClick?.Invoke();
-            });
 
             var element = rect.gameObject.AddComponent<LayoutElement>();
             element.preferredHeight = height;
             element.minHeight = height;
+            element.flexibleHeight = 0f;
 
-            var text = Label(rect, "Label", label, Mathf.RoundToInt(height * 0.36f), TextColor, TextAnchor.MiddleCenter, height);
+            if (fontSize <= 0) fontSize = Mathf.RoundToInt(height * 0.36f);
+            var text = Label(rect, "Label", label, fontSize, TextColor, TextAnchor.MiddleCenter, height);
             Stretch((RectTransform)text.transform);
             text.fontStyle = FontStyle.Bold;
 
             return button;
+        }
+
+        /// <summary>Runtime click handler: plays the cue, then runs the action.</summary>
+        public static void Wire(Button button, AudioCue cue, UnityAction action)
+        {
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(() =>
+            {
+                AudioCuePlayer.Play(cue);
+                action?.Invoke();
+            });
         }
 
         /// <summary>Vertical scroll list. Returns the content rectangle to add rows to.</summary>
@@ -225,10 +255,18 @@ namespace TrainSudoku.Game
             return content;
         }
 
+        /// <summary>Destroys a GameObject in play mode or edit mode.</summary>
+        public static void Destroy(GameObject go)
+        {
+            if (go == null) return;
+            if (Application.isPlaying) Object.Destroy(go);
+            else Object.DestroyImmediate(go);
+        }
+
         public static void Clear(Transform parent)
         {
             for (var i = parent.childCount - 1; i >= 0; i--)
-                Object.Destroy(parent.GetChild(i).gameObject);
+                Destroy(parent.GetChild(i).gameObject);
         }
     }
 }

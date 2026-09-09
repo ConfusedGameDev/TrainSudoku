@@ -9,8 +9,8 @@ namespace TrainSudoku.Game
     {
         [Range(30f, 90f)] [SerializeField] private float pitchDegrees = 60f;
 
-        [Tooltip("Share of the viewport the board may fill, leaving room for the HUD at the top and bottom.")]
-        [Range(0.5f, 1f)] [SerializeField] private float verticalFraction = 0.8f;
+        [Tooltip("Share of the viewport height the board may fill, leaving room for the HUD at the top.")]
+        [Range(0.5f, 1f)] [SerializeField] private float verticalFraction = 0.86f;
 
         [Range(0.5f, 1f)] [SerializeField] private float horizontalFraction = 0.96f;
 
@@ -21,10 +21,17 @@ namespace TrainSudoku.Game
         private bool _hasTarget;
 
         public float PitchDegrees => pitchDegrees;
+        public Camera Camera => _camera != null ? _camera : _camera = GetComponent<Camera>();
 
-        private void Awake()
+        /// <summary>Adds the component to a camera if it is missing and gives the camera the board's solid backdrop.</summary>
+        public static BoardCamera Attach(Camera camera)
         {
-            _camera = GetComponent<Camera>();
+            if (camera == null) return null;
+            if (!camera.TryGetComponent<BoardCamera>(out var rig)) rig = camera.gameObject.AddComponent<BoardCamera>();
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = UiBuilder.Background;
+            rig.transform.SetPositionAndRotation(new Vector3(0f, 10f, -5f), Quaternion.Euler(rig.pitchDegrees, 0f, 0f));
+            return rig;
         }
 
         public void SetTarget(double halfWidth, double halfDepth)
@@ -37,14 +44,13 @@ namespace TrainSudoku.Game
 
         private void LateUpdate()
         {
-            if (_hasTarget && !Mathf.Approximately(_camera.aspect, _lastAspect)) Fit();
+            if (_hasTarget && !Mathf.Approximately(Camera.aspect, _lastAspect)) Fit();
         }
 
         private void Fit()
         {
-            if (_camera == null) _camera = GetComponent<Camera>();
-            _lastAspect = _camera.aspect;
-            var placement = CameraFit.Solve(_halfWidth, _halfDepth, pitchDegrees, _camera.fieldOfView, _camera.aspect, horizontalFraction, verticalFraction);
+            _lastAspect = Camera.aspect;
+            var placement = CameraFit.Solve(_halfWidth, _halfDepth, pitchDegrees, Camera.fieldOfView, Camera.aspect, horizontalFraction, verticalFraction);
             transform.SetPositionAndRotation(
                 new Vector3(0f, (float)placement.Height, -(float)placement.Back),
                 Quaternion.Euler(pitchDegrees, 0f, 0f));

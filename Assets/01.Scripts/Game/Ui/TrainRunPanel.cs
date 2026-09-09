@@ -11,42 +11,43 @@ namespace TrainSudoku.Game
     public sealed class TrainRunPanel : PanelBase
     {
         [SerializeField] private float stubDuration = 3f;
+        [SerializeField] private Button skipButton;
+        [SerializeField] private Text message;
 
-        private Text _message;
         private float _remaining;
 
         public override bool IsVisibleIn(GameState state) => state == GameState.TrainRun;
 
-        protected override void Build()
+        protected override void BuildWidgets()
         {
             // An almost invisible full-screen button catches the skip tap.
             var skipRect = UiBuilder.FullScreen(Root, "Skip", new Color(0f, 0f, 0f, 0.001f));
-            var skip = skipRect.gameObject.AddComponent<Button>();
-            skip.transition = Selectable.Transition.None;
-            skip.onClick.AddListener(() =>
-            {
-                AudioCuePlayer.Play(AudioCue.UiClick);
-                Skip();
-            });
+            skipButton = skipRect.gameObject.AddComponent<Button>();
+            skipButton.transition = Selectable.Transition.None;
 
             var column = UiBuilder.Column(Root, "Content", 12, new RectOffset(72, 72, 0, 140), TextAnchor.LowerCenter);
             UiBuilder.Stretch(column);
             column.gameObject.AddComponent<CanvasGroup>().blocksRaycasts = false;
             UiBuilder.Spacer(column);
-            _message = UiBuilder.Label(column, "Message", "", 48, UiBuilder.TextColor, TextAnchor.MiddleCenter, 70);
+            message = UiBuilder.Label(column, "Message", "The train is running...", 48, UiBuilder.TextColor, TextAnchor.MiddleCenter, 70);
             UiBuilder.Label(column, "Hint", "Tap to skip", 34, UiBuilder.Muted, TextAnchor.MiddleCenter, 50);
+        }
+
+        protected override void Wire()
+        {
+            UiBuilder.Wire(skipButton, AudioCue.UiClick, Skip);
         }
 
         public override void Refresh(GameState state)
         {
             _remaining = stubDuration;
-            _message.text = "The train is running...";
+            message.text = "The train is running...";
             AudioCuePlayer.Play(AudioCue.TrainStart);
         }
 
         private void Update()
         {
-            if (Flow == null || Flow.State != GameState.TrainRun) return;
+            if (Game == null || Flow.State != GameState.TrainRun) return;
             _remaining -= Time.deltaTime;
             if (_remaining <= 0f) Flow.FinishTrainRun();
         }
