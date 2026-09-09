@@ -42,8 +42,11 @@ namespace TrainSudoku.Core
         /// <summary>Raised after every state change with (previous, current).</summary>
         public event Action<GameState, GameState> StateChanged;
 
-        /// <summary>Raised when a level should be (re)loaded onto the board: start, retry and next.</summary>
-        public event Action<int> LevelStarted;
+        /// <summary>
+        /// Raised when a level should be (re)loaded onto the board: start, retry and next. The snapshot is the saved
+        /// progress to continue from, or null to show only the fixed pieces.
+        /// </summary>
+        public event Action<int, LevelProgress> LevelStarted;
 
         public GameFlow(IReadOnlyList<string> levelIds, ISaveStore store)
         {
@@ -58,6 +61,9 @@ namespace TrainSudoku.Core
             seconds = 0;
             return index >= 0 && index < LevelCount && Progress.TryGetBestTime(_levelIds[index], out seconds);
         }
+
+        /// <summary>True when the level was left unfinished and selecting it will continue that attempt.</summary>
+        public bool HasInProgress(int index) => index >= 0 && index < LevelCount && Progress.TryGetInProgress(_levelIds[index], out _);
 
         public void Tick(double deltaSeconds) => Timer.Tick(deltaSeconds);
 
@@ -83,7 +89,7 @@ namespace TrainSudoku.Core
             if (index < 0 || index >= LevelCount)
                 throw new ArgumentOutOfRangeException(nameof(index), index, $"There are {LevelCount} levels.");
             if (!IsUnlocked(index)) throw new InvalidOperationException($"Level {index} is locked.");
-            Begin(index);
+            Begin(index, true);
         }
 
         // ---- Play
@@ -102,12 +108,24 @@ namespace TrainSudoku.Core
             Transition(GameState.Pause);
         }
 
+        /// <summary>
+        /// Remembers the current attempt (pieces and clock) so the level can be continued later. The Unity layer calls
+        /// this after every board change, on pause and when the app is about to quit.
+        /// </summary>
+        public void SaveProgress(Board board)
+        {
+            Require(GameState.Play, GameState.Pause);
+            if (board == null) throw new ArgumentNullException(nameof(board));
+            Progress.SaveInProgress(CurrentLevelId, LevelProgress.Capture(board, Timer.Elapsed));
+        }
+
         /// <summary>The board reports a win: the clock stops, the result is recorded and the train run begins.</summary>
         public void CompleteLevel()
         {
             Require(GameState.Play);
             Timer.Stop();
             LastResult = Progress.RecordCompletion(CurrentLevelId, Timer.Elapsed);
+            Progress.ClearInProgress(CurrentLevelId);
             Transition(GameState.TrainRun);
         }
 
@@ -120,11 +138,12 @@ namespace TrainSudoku.Core
             Transition(GameState.Play);
         }
 
-        /// <summary>Clears the board and the clock and plays the same level again.</summary>
+        /// <summary>Clears the board, the clock and any saved progress, and plays the same level again.</summary>
         public void Retry()
         {
             Require(GameState.Pause, GameState.Win);
-            Begin(CurrentLevelIndex);
+            Progress.ClearInProgress(CurrentLevelId);
+            Begin(CurrentLevelIndex, false);
         }
 
         // ---- Train run
@@ -142,17 +161,20 @@ namespace TrainSudoku.Core
         {
             Require(GameState.Win);
             if (!HasNextLevel) throw new InvalidOperationException("This is the last level.");
-            Begin(CurrentLevelIndex + 1);
+            Begin(CurrentLevelIndex + 1, true);
         }
 
         // ---- internals
 
-        private void Begin(int index)
+        /// <summary>Enters Play on a level. With <paramref name="resume"/> a saved attempt is continued, clock included.</summary>
+        private void Begin(int index, bool resume)
         {
             CurrentLevelIndex = index;
             Timer.Reset();
+            LevelProgress progress = null;
+            if (resume && Progress.TryGetInProgress(CurrentLevelId, out progress)) Timer.Restore(progress.Elapsed);
             Transition(GameState.Play);
-            LevelStarted?.Invoke(index);
+            LevelStarted?.Invoke(index, progress);
         }
 
         private void Transition(GameState next)

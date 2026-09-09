@@ -84,6 +84,7 @@ Main Menu -> Level Select -> Play <-> Pause
 - On win, if no best time exists or the new time is lower, it is saved as the best time for that level.
 - Best times and unlock state live in one JSON save file under `Application.persistentDataPath`, accessed through an `ISaveStore` interface with an in-memory implementation for tests.
 - Level identity is a string `id` field on the level asset, so renaming files never loses progress.
+- Auto-save: leaving a level unfinished (pause and exit, backgrounding the app, quitting) keeps its player pieces and elapsed time in the same save file, per level. Selecting the level again continues from that state, with the clock waiting for the first tap. Retry and winning discard it. Level Select marks such levels "Continue".
 
 ## 7. Presentation
 

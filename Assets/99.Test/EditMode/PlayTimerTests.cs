@@ -88,6 +88,33 @@ namespace TrainSudoku.Tests
         }
 
         [Test]
+        public void RestoreShowsTheSavedTimeAndWaitsForTheFirstTap()
+        {
+            var timer = new PlayTimer();
+            timer.Start();
+            timer.Tick(3);
+            timer.Restore(40.25);
+            Assert.AreEqual(TimerState.Idle, timer.State);
+            Assert.AreEqual(40.25, timer.Elapsed, 1e-9);
+            timer.Tick(5);
+            Assert.AreEqual(40.25, timer.Elapsed, 1e-9, "idle until the first tap");
+
+            timer.Start();
+            timer.Tick(1);
+            Assert.AreEqual(41.25, timer.Elapsed, 1e-9);
+        }
+
+        [Test]
+        public void RestoreRejectsInvalidTimes()
+        {
+            var timer = new PlayTimer();
+            Assert.Throws<System.ArgumentOutOfRangeException>(() => timer.Restore(-1));
+            Assert.Throws<System.ArgumentOutOfRangeException>(() => timer.Restore(double.NaN));
+            Assert.Throws<System.ArgumentOutOfRangeException>(() => timer.Restore(double.PositiveInfinity));
+            Assert.AreEqual(0, timer.Elapsed);
+        }
+
+        [Test]
         public void NegativeDeltasAreIgnored()
         {
             var timer = new PlayTimer();

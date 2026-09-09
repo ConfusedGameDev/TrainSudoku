@@ -4,7 +4,10 @@ using UnityEngine.UI;
 
 namespace TrainSudoku.Game
 {
-    /// <summary>Ordered level list (PRD section 5): locked entries are greyed, completed ones show their best time.</summary>
+    /// <summary>
+    /// Ordered level list (PRD section 5): locked entries are greyed, completed ones show their best time and a level
+    /// left unfinished offers to continue.
+    /// </summary>
     public sealed class LevelSelectPanel : PanelBase
     {
         [SerializeField] private RectTransform list;
@@ -51,8 +54,10 @@ namespace TrainSudoku.Game
                 UiBuilder.Wire(button, AudioCue.UiConfirm, () => Flow.StartLevel(index));
                 button.interactable = unlocked && level != null;
 
-                var status = hasBest ? $"Best {ProgressTracker.FormatTime(best)}" : unlocked ? "New" : "Locked";
-                var statusLabel = UiBuilder.Label(button.transform, "Status", status, 34, hasBest ? UiBuilder.Success : UiBuilder.TextColor, TextAnchor.MiddleRight, 140);
+                var inProgress = Flow.HasInProgress(index);
+                var status = inProgress ? "Continue" : hasBest ? $"Best {ProgressTracker.FormatTime(best)}" : unlocked ? "New" : "Locked";
+                var statusColor = inProgress ? UiBuilder.Accent : hasBest ? UiBuilder.Success : UiBuilder.TextColor;
+                var statusLabel = UiBuilder.Label(button.transform, "Status", status, 34, statusColor, TextAnchor.MiddleRight, 140);
                 var rect = (RectTransform)statusLabel.transform;
                 UiBuilder.Stretch(rect);
                 rect.offsetMax = new Vector2(-36f, 0f);

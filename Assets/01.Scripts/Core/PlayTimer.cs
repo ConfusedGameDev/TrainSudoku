@@ -45,6 +45,15 @@ namespace TrainSudoku.Core
             State = TimerState.Idle;
         }
 
+        /// <summary>Continues a saved run: the clock shows the saved time and waits idle for the first tap.</summary>
+        public void Restore(double elapsedSeconds)
+        {
+            if (elapsedSeconds < 0 || double.IsNaN(elapsedSeconds) || double.IsInfinity(elapsedSeconds))
+                throw new System.ArgumentOutOfRangeException(nameof(elapsedSeconds), elapsedSeconds, "Elapsed time must be a finite, non-negative number.");
+            Elapsed = elapsedSeconds;
+            State = TimerState.Idle;
+        }
+
         public void Tick(double deltaSeconds)
         {
             if (IsRunning && deltaSeconds > 0) Elapsed += deltaSeconds;

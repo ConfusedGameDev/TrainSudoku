@@ -9,7 +9,8 @@ namespace TrainSudoku.Game
 {
     /// <summary>
     /// Scene entry point. Owns the <see cref="GameFlow"/> and keeps the generated UI and board in step with it: panels
-    /// show according to the flow state, board events feed the flow, and the clock ticks every frame.
+    /// show according to the flow state, board events feed the flow, and the clock ticks every frame. An unfinished
+    /// level is auto-saved after every board change, on pause and when the app quits, and backgrounding the app pauses it.
     /// The scene objects (canvas, panels, board root, audio player, event system) are created by
     /// <see cref="Generate"/>, normally from the Inspector button so they are saved in the scene. If a scene was never
     /// generated, <see cref="Awake"/> generates them at runtime as a fallback.
@@ -151,6 +152,7 @@ namespace TrainSudoku.Game
             boardView.Configure(trackAssets);
             boardView.Interacted += OnBoardInteracted;
             boardView.Completed += OnBoardCompleted;
+            boardView.BoardChanged += SaveProgress;
 
             // Scenes baked before the train existed get the runner at runtime; Regenerate bakes it.
             if (trainRunner == null) trainRunner = TrainRunner.Create(transform, trainAssets);
@@ -173,10 +175,34 @@ namespace TrainSudoku.Game
             if (Flow == null) return;
             Flow.StateChanged -= OnStateChanged;
             Flow.LevelStarted -= OnLevelStarted;
+            if (boardView != null) boardView.BoardChanged -= SaveProgress;
             if (trainRunner != null) trainRunner.Finished -= OnTrainFinished;
         }
 
-        private void OnStateChanged(GameState previous, GameState current) => ApplyState(current);
+        /// <summary>Going to the background mid-level pauses the game, which also saves the attempt.</summary>
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused && Flow != null && Flow.State == GameState.Play) Flow.PauseGame();
+        }
+
+        private void OnApplicationQuit()
+        {
+            if (Flow != null && Flow.State == GameState.Play) SaveProgress();
+        }
+
+        private void OnStateChanged(GameState previous, GameState current)
+        {
+            if (previous == GameState.Play && current == GameState.Pause) SaveProgress();
+            ApplyState(current);
+        }
+
+        /// <summary>Writes the current attempt to the save file. Safe to call in any state; only Play and Pause have one.</summary>
+        private void SaveProgress()
+        {
+            if (Flow.State != GameState.Play && Flow.State != GameState.Pause) return;
+            if (boardView.Board == null) return;
+            Flow.SaveProgress(boardView.Board);
+        }
 
         private void ApplyState(GameState state)
         {
@@ -198,7 +224,8 @@ namespace TrainSudoku.Game
             if (Flow.State == GameState.TrainRun) Flow.FinishTrainRun();
         }
 
-        private void OnLevelStarted(int index) => boardView.Load(index >= 0 && index < levels.Count ? levels[index] : null);
+        private void OnLevelStarted(int index, LevelProgress resume) =>
+            boardView.Load(index >= 0 && index < levels.Count ? levels[index] : null, resume);
 
         private void OnBoardInteracted()
         {

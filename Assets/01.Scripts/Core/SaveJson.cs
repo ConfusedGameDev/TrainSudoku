@@ -5,18 +5,25 @@ using System.Text;
 
 namespace TrainSudoku.Core
 {
-    /// <summary>Everything the game persists (PRD section 6): best times keyed by level id. Unlocking derives from them.</summary>
+    /// <summary>
+    /// Everything the game persists (PRD section 6): best times keyed by level id, from which unlocking derives, and the
+    /// in-progress snapshot of every level the player left unfinished.
+    /// </summary>
     public sealed class SaveData
     {
         public const int CurrentVersion = 1;
 
         public int Version { get; set; } = CurrentVersion;
         public Dictionary<string, double> BestTimes { get; } = new Dictionary<string, double>(StringComparer.Ordinal);
+        public Dictionary<string, LevelProgress> InProgress { get; } = new Dictionary<string, LevelProgress>(StringComparer.Ordinal);
     }
 
     /// <summary>
-    /// The save file format: <c>{"version":1,"bestTimes":{"level-id":12.5}}</c>. A small hand-written reader and writer
-    /// so Core stays free of UnityEngine; the reader accepts any well-formed JSON and ignores unknown members.
+    /// The save file format:
+    /// <c>{"version":1,"bestTimes":{"level-id":12.5},"inProgress":{"level-id":{"elapsed":40.25,"pieces":[{"x":1,"y":0,"key":"NE"}]}}}</c>.
+    /// A small hand-written reader and writer so Core stays free of UnityEngine; the reader accepts any well-formed JSON
+    /// and ignores unknown members. A malformed in-progress entry is skipped rather than failing the file, so a bad
+    /// snapshot never costs the best times.
     /// </summary>
     public static class SaveJson
     {
@@ -35,6 +42,37 @@ namespace TrainSudoku.Core
                 sb.Append(first ? "\n" : ",\n").Append("    ");
                 WriteString(sb, id);
                 sb.Append(": ").Append(data.BestTimes[id].ToString("R", CultureInfo.InvariantCulture));
+                first = false;
+            }
+
+            sb.Append(first ? "}" : "\n  }");
+
+            sb.Append(",\n  \"inProgress\": {");
+            first = true;
+            ids = new List<string>(data.InProgress.Keys);
+            ids.Sort(StringComparer.Ordinal);
+            foreach (var id in ids)
+            {
+                var progress = data.InProgress[id];
+                if (progress == null) continue;
+                sb.Append(first ? "\n" : ",\n").Append("    ");
+                WriteString(sb, id);
+                sb.Append(": {\n      \"elapsed\": ").Append(progress.Elapsed.ToString("R", CultureInfo.InvariantCulture));
+                sb.Append(",\n      \"pieces\": [");
+                var firstPiece = true;
+                foreach (var piece in progress.Pieces)
+                {
+                    sb.Append(firstPiece ? "\n" : ",\n").Append("        ");
+                    sb.Append("{ \"x\": ").Append(piece.X.ToString(CultureInfo.InvariantCulture));
+                    sb.Append(", \"y\": ").Append(piece.Y.ToString(CultureInfo.InvariantCulture));
+                    sb.Append(", \"key\": ");
+                    WriteString(sb, piece.Key.ToString());
+                    sb.Append(" }");
+                    firstPiece = false;
+                }
+
+                sb.Append(firstPiece ? "]" : "\n      ]");
+                sb.Append("\n    }");
                 first = false;
             }
 
@@ -66,6 +104,13 @@ namespace TrainSudoku.Core
                     }
                 }
 
+                if (obj.TryGetValue("inProgress", out var snapshots))
+                {
+                    if (!(snapshots is Dictionary<string, object> map)) return false;
+                    foreach (var pair in map)
+                        if (TryReadProgress(pair.Value, out var progress)) result.InProgress[pair.Key] = progress;
+                }
+
                 data = result;
                 return true;
             }
@@ -73,6 +118,41 @@ namespace TrainSudoku.Core
             {
                 return false;
             }
+        }
+
+        /// <summary>One in-progress entry. False for anything misshapen, which the caller skips.</summary>
+        private static bool TryReadProgress(object value, out LevelProgress progress)
+        {
+            progress = null;
+            if (!(value is Dictionary<string, object> obj)) return false;
+            if (!obj.TryGetValue("elapsed", out var elapsedValue) || !(elapsedValue is double elapsed)) return false;
+            if (elapsed < 0 || double.IsNaN(elapsed) || double.IsInfinity(elapsed)) return false;
+
+            var pieces = new List<PlacedPiece>();
+            if (obj.TryGetValue("pieces", out var piecesValue))
+            {
+                if (!(piecesValue is List<object> list)) return false;
+                foreach (var item in list)
+                {
+                    if (!(item is Dictionary<string, object> pieceObj)) return false;
+                    if (!TryReadInt(pieceObj, "x", out var x) || !TryReadInt(pieceObj, "y", out var y)) return false;
+                    if (!pieceObj.TryGetValue("key", out var keyValue) || !(keyValue is string keyText)) return false;
+                    if (!PieceKeys.TryParse(keyText, out var key)) return false;
+                    pieces.Add(new PlacedPiece(x, y, key));
+                }
+            }
+
+            progress = new LevelProgress(elapsed, pieces);
+            return true;
+        }
+
+        private static bool TryReadInt(Dictionary<string, object> obj, string name, out int value)
+        {
+            value = 0;
+            if (!obj.TryGetValue(name, out var raw) || !(raw is double number)) return false;
+            if (number != Math.Floor(number) || number < int.MinValue || number > int.MaxValue) return false;
+            value = (int)number;
+            return true;
         }
 
         private static void WriteString(StringBuilder sb, string value)

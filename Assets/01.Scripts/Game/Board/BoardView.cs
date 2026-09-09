@@ -100,7 +100,7 @@ namespace TrainSudoku.Game
 
         // ------------------------------------------------------------------ IBoardView
 
-        public void Load(LevelDefinition level)
+        public void Load(LevelDefinition level, LevelProgress resume)
         {
             Clear();
             LastTappedCell = null;
@@ -113,6 +113,7 @@ namespace TrainSudoku.Game
 
             BuildTiles();
             foreach (var piece in Level.FixedPieces) SpawnPiece(piece.X, piece.Y, piece.Key, true, false);
+            if (resume != null) RestorePieces(resume);
             BuildTunnels();
             BuildClues();
 
@@ -120,6 +121,15 @@ namespace TrainSudoku.Game
 
             // Colour the clues for the fixed pieces, but never win a level the player has not touched.
             Validate(false);
+        }
+
+        /// <summary>Puts a saved attempt back on the board (auto-save, PRD section 6) and shows its pieces without animation.</summary>
+        private void RestorePieces(LevelProgress resume)
+        {
+            resume.ApplyTo(Board);
+            for (var y = 0; y < Level.Height; y++)
+            for (var x = 0; x < Level.Width; x++)
+                if (Board[x, y] is Piece piece && !piece.IsFixed) SpawnPiece(x, y, piece.Key, false, false);
         }
 
         public void SetInteractable(bool interactable)

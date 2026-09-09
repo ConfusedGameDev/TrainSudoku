@@ -21,7 +21,7 @@ namespace TrainSudoku.Core
         }
     }
 
-    /// <summary>Best times and unlocking (PRD section 6) on top of an <see cref="ISaveStore"/>.</summary>
+    /// <summary>Best times, unlocking and in-progress snapshots (PRD section 6) on top of an <see cref="ISaveStore"/>.</summary>
     public sealed class ProgressTracker
     {
         private readonly ISaveStore _store;
@@ -55,6 +55,27 @@ namespace TrainSudoku.Core
             }
 
             return new CompletionResult(seconds, best, isNewBest);
+        }
+
+        public bool TryGetInProgress(string levelId, out LevelProgress progress)
+        {
+            progress = null;
+            return levelId != null && _store.TryGetProgress(levelId, out progress);
+        }
+
+        /// <summary>Remembers a level mid-play so it can be continued later.</summary>
+        public void SaveInProgress(string levelId, LevelProgress progress)
+        {
+            if (levelId == null) throw new ArgumentNullException(nameof(levelId));
+            if (progress == null) throw new ArgumentNullException(nameof(progress));
+            _store.SetProgress(levelId, progress);
+        }
+
+        /// <summary>Forgets the snapshot: the level was won or retried.</summary>
+        public void ClearInProgress(string levelId)
+        {
+            if (levelId == null) throw new ArgumentNullException(nameof(levelId));
+            _store.ClearProgress(levelId);
         }
 
         /// <summary>Formats seconds as m:ss.t, for example 1:05.3. Hours roll into the minutes.</summary>

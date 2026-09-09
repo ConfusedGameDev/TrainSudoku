@@ -83,6 +83,60 @@ namespace TrainSudoku.Tests
         }
 
         [Test]
+        public void InProgressSnapshotsPersistAcrossInstances()
+        {
+            var store = Open();
+            store.SetProgress("half", new LevelProgress(40.25, new[] { new PlacedPiece(1, 0, PieceKey.NE) }));
+            Assert.IsTrue(File.Exists(_path));
+
+            var again = Open();
+            Assert.IsTrue(again.TryGetProgress("half", out var progress));
+            Assert.AreEqual(40.25, progress.Elapsed);
+            CollectionAssert.AreEqual(new[] { new PlacedPiece(1, 0, PieceKey.NE) }, progress.Pieces);
+            Assert.IsFalse(again.TryGetProgress("other", out _));
+            Assert.IsFalse(again.TryGetProgress(null, out _));
+
+            again.ClearProgress("half");
+            Assert.IsFalse(Open().TryGetProgress("half", out _));
+            Assert.IsEmpty(_log);
+        }
+
+        [Test]
+        public void OldFilesWithoutSnapshotsStillLoad()
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_path));
+            File.WriteAllText(_path, "{\"version\":1,\"bestTimes\":{\"a\":2}}");
+            var store = Open();
+            Assert.IsFalse(store.LoadedFromCorruptFile);
+            Assert.IsTrue(store.TryGetBestTime("a", out _));
+            Assert.IsFalse(store.TryGetProgress("a", out _));
+        }
+
+        [Test]
+        public void AnUnfinishedLevelIsContinuedAfterARestart()
+        {
+            var ids = new[] { "one", "two" };
+            var flow = new GameFlow(ids, Open());
+            flow.ShowLevelSelect();
+            flow.StartLevel(0);
+            flow.BoardTouched();
+            flow.Tick(6);
+            var board = TestLevels.Corridor();
+            TestLevels.Place(board, 0, 1, PieceKey.EW);
+            flow.SaveProgress(board);
+
+            LevelProgress resumed = null;
+            var restarted = new GameFlow(ids, Open());
+            restarted.LevelStarted += (_, progress) => resumed = progress;
+            Assert.IsTrue(restarted.HasInProgress(0));
+            restarted.ShowLevelSelect();
+            restarted.StartLevel(0);
+            Assert.IsNotNull(resumed);
+            Assert.AreEqual(6, restarted.Timer.Elapsed, 1e-9);
+            CollectionAssert.AreEqual(new[] { new PlacedPiece(0, 1, PieceKey.EW) }, resumed.Pieces);
+        }
+
+        [Test]
         public void CorruptFileIsSetAsideAndProgressStartsFresh()
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_path));

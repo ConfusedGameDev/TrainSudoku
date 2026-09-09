@@ -16,6 +16,12 @@ MonoBehaviour:
   wagons:
   - {fileID: 919132149155446097, guid: 0eaeaca4f3d41bd498ca93c0349780f7, type: 3}
   - {fileID: 919132149155446097, guid: 69296c8162dadb5468dea0ff494ec884, type: 3}
+  - {fileID: 919132149155446097, guid: 69296c8162dadb5468dea0ff494ec884, type: 3}
+  - {fileID: 919132149155446097, guid: 69296c8162dadb5468dea0ff494ec884, type: 3}
+  - {fileID: 919132149155446097, guid: 69296c8162dadb5468dea0ff494ec884, type: 3}
+  - {fileID: 919132149155446097, guid: 69296c8162dadb5468dea0ff494ec884, type: 3}
+  - {fileID: 919132149155446097, guid: 69296c8162dadb5468dea0ff494ec884, type: 3}
+  - {fileID: 919132149155446097, guid: 69296c8162dadb5468dea0ff494ec884, type: 3}
   carSpacing: 0.9
   speedCellsPerSecond: 2.5
   modelYawOffset: 0

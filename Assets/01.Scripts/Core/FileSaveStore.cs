@@ -6,8 +6,8 @@ namespace TrainSudoku.Core
 {
     /// <summary>
     /// <see cref="ISaveStore"/> backed by one JSON file (PRD section 6). Loads on construction and writes through on
-    /// every change, via a temporary file so a crash mid-write cannot lose the previous save. An unreadable file is
-    /// set aside with a <c>.corrupt</c> suffix and progress starts fresh.
+    /// every change (a new best time, an in-progress snapshot), via a temporary file so a crash mid-write cannot lose
+    /// the previous save. An unreadable file is set aside with a <c>.corrupt</c> suffix and progress starts fresh.
     /// </summary>
     public sealed class FileSaveStore : ISaveStore
     {
@@ -47,7 +47,27 @@ namespace TrainSudoku.Core
             Save();
         }
 
-        /// <summary>Forgets every best time and deletes the file.</summary>
+        public bool TryGetProgress(string levelId, out LevelProgress progress)
+        {
+            progress = null;
+            return levelId != null && _data.InProgress.TryGetValue(levelId, out progress);
+        }
+
+        public void SetProgress(string levelId, LevelProgress progress)
+        {
+            if (levelId == null) throw new ArgumentNullException(nameof(levelId));
+            if (progress == null) throw new ArgumentNullException(nameof(progress));
+            _data.InProgress[levelId] = progress;
+            Save();
+        }
+
+        public void ClearProgress(string levelId)
+        {
+            if (levelId == null) throw new ArgumentNullException(nameof(levelId));
+            if (_data.InProgress.Remove(levelId)) Save();
+        }
+
+        /// <summary>Forgets every best time and snapshot and deletes the file.</summary>
         public void Clear()
         {
             _data = new SaveData();

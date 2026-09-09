@@ -13,6 +13,7 @@ namespace TrainSudoku.Tests
         private GameFlow _flow;
         private List<(GameState From, GameState To)> _changes;
         private List<int> _started;
+        private List<LevelProgress> _resumed;
 
         [SetUp]
         public void CreateFlow()
@@ -21,8 +22,21 @@ namespace TrainSudoku.Tests
             _flow = new GameFlow(Ids, _store);
             _changes = new List<(GameState, GameState)>();
             _started = new List<int>();
+            _resumed = new List<LevelProgress>();
             _flow.StateChanged += (from, to) => _changes.Add((from, to));
-            _flow.LevelStarted += _started.Add;
+            _flow.LevelStarted += (index, resume) =>
+            {
+                _started.Add(index);
+                _resumed.Add(resume);
+            };
+        }
+
+        /// <summary>A board for level "one" with a single player piece on it.</summary>
+        private static Board BoardWithOnePiece()
+        {
+            var board = TestLevels.Corridor();
+            TestLevels.Place(board, 0, 1, PieceKey.EW);
+            return board;
         }
 
         private void PlayLevel(int index)
@@ -64,6 +78,7 @@ namespace TrainSudoku.Tests
             Assert.IsTrue(_flow.HasNextLevel);
             Assert.AreEqual(TimerState.Idle, _flow.Timer.State);
             CollectionAssert.AreEqual(new[] { 0 }, _started);
+            Assert.IsNull(_resumed[0], "nothing to continue");
         }
 
         [Test]
@@ -221,6 +236,94 @@ namespace TrainSudoku.Tests
             Assert.AreEqual(9, best, 1e-9);
             Assert.IsFalse(_flow.TryGetBestTime(1, out _));
             Assert.IsFalse(_flow.TryGetBestTime(-1, out _));
+        }
+
+        [Test]
+        public void SavedProgressIsContinuedWhenTheLevelIsSelectedAgain()
+        {
+            PlayLevel(0);
+            _flow.BoardTouched();
+            _flow.Tick(7.5);
+            _flow.SaveProgress(BoardWithOnePiece());
+            Assert.IsTrue(_flow.HasInProgress(0));
+            Assert.IsFalse(_flow.HasInProgress(1));
+
+            _flow.PauseGame();
+            _flow.ShowLevelSelect();
+            _flow.StartLevel(0);
+
+            Assert.AreEqual(GameState.Play, _flow.State);
+            Assert.AreEqual(TimerState.Idle, _flow.Timer.State, "the restored clock waits for the first tap");
+            Assert.AreEqual(7.5, _flow.Timer.Elapsed, 1e-9);
+            var resume = _resumed[1];
+            Assert.IsNotNull(resume);
+            Assert.AreEqual(7.5, resume.Elapsed, 1e-9);
+            CollectionAssert.AreEqual(new[] { new PlacedPiece(0, 1, PieceKey.EW) }, resume.Pieces);
+
+            _flow.BoardTouched();
+            _flow.Tick(1);
+            Assert.AreEqual(8.5, _flow.Timer.Elapsed, 1e-9);
+        }
+
+        [Test]
+        public void SavingWhilePausedKeepsThePausedClock()
+        {
+            PlayLevel(0);
+            _flow.BoardTouched();
+            _flow.Tick(2);
+            _flow.PauseGame();
+            _flow.SaveProgress(BoardWithOnePiece());
+            Assert.IsTrue(_store.TryGetProgress("one", out var stored));
+            Assert.AreEqual(2, stored.Elapsed, 1e-9);
+        }
+
+        [Test]
+        public void RetryDiscardsTheSavedProgress()
+        {
+            PlayLevel(0);
+            _flow.SaveProgress(BoardWithOnePiece());
+            _flow.PauseGame();
+            _flow.Retry();
+
+            Assert.IsFalse(_flow.HasInProgress(0));
+            Assert.IsNull(_resumed[1]);
+            Assert.AreEqual(0, _flow.Timer.Elapsed);
+        }
+
+        [Test]
+        public void WinningDiscardsTheSavedProgress()
+        {
+            PlayLevel(0);
+            _flow.SaveProgress(BoardWithOnePiece());
+            _flow.CompleteLevel();
+            Assert.IsFalse(_flow.HasInProgress(0));
+            Assert.IsFalse(_store.TryGetProgress("one", out _));
+        }
+
+        [Test]
+        public void NextLevelContinuesThatLevelsSavedProgress()
+        {
+            _store.SetProgress("two", new LevelProgress(4, new[] { new PlacedPiece(2, 1, PieceKey.EW) }));
+            PlayLevel(0);
+            _flow.CompleteLevel();
+            _flow.FinishTrainRun();
+            _flow.NextLevel();
+
+            Assert.AreEqual(1, _flow.CurrentLevelIndex);
+            Assert.AreEqual(4, _flow.Timer.Elapsed, 1e-9);
+            Assert.IsNotNull(_resumed[1]);
+        }
+
+        [Test]
+        public void ProgressCanOnlyBeSavedWhilePlayingOrPaused()
+        {
+            Assert.Throws<InvalidOperationException>(() => _flow.SaveProgress(BoardWithOnePiece()));
+            PlayLevel(0);
+            _flow.CompleteLevel();
+            Assert.Throws<InvalidOperationException>(() => _flow.SaveProgress(BoardWithOnePiece()));
+            Assert.IsFalse(_flow.HasInProgress(0));
+            Assert.IsFalse(_flow.HasInProgress(-1));
+            Assert.IsFalse(_flow.HasInProgress(3));
         }
 
         [Test]

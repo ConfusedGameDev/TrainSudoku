@@ -1,4 +1,5 @@
 using System;
+using TrainSudoku.Core;
 
 namespace TrainSudoku.Game
 {
@@ -13,8 +14,11 @@ namespace TrainSudoku.Game
         /// <summary>The board is in a winning state.</summary>
         event Action Completed;
 
-        /// <summary>Shows a level with only its fixed pieces. Also used for Retry.</summary>
-        void Load(LevelDefinition level);
+        /// <summary>
+        /// Shows a level. With a snapshot the saved player pieces are put back; with null only the fixed pieces show,
+        /// which is also what Retry uses.
+        /// </summary>
+        void Load(LevelDefinition level, LevelProgress resume);
 
         /// <summary>Whether taps reach the board. Off while the pause, train run and win screens are up.</summary>
         void SetInteractable(bool interactable);
