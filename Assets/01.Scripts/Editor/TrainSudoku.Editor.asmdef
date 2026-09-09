@@ -1,0 +1,19 @@
+{
+    "name": "TrainSudoku.Editor",
+    "rootNamespace": "TrainSudoku.Editor",
+    "references": [
+        "TrainSudoku.Core",
+        "TrainSudoku.Game"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

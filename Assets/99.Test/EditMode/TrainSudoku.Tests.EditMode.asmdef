@@ -3,6 +3,7 @@
     "rootNamespace": "TrainSudoku.Tests",
     "references": [
         "TrainSudoku.Core",
+        "TrainSudoku.Game",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

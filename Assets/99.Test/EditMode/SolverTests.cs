@@ -64,6 +64,28 @@ namespace TrainSudoku.Tests
         }
 
         [Test]
+        public void NodeBudgetStopsTheSearchAndReportsExhaustion()
+        {
+            var level = TestLevels.PlanExample();
+            var tiny = Solver.Solve(level, Solver.DefaultLimit, 10);
+            Assert.IsTrue(tiny.Exhausted);
+            Assert.AreEqual(11, tiny.Nodes, "The search stops on the first node past the budget");
+            Assert.AreEqual(0, tiny.Count);
+            Assert.IsNull(tiny.First);
+
+            var full = Solver.Solve(level);
+            Assert.IsFalse(full.Exhausted);
+            Assert.AreEqual(1, full.Count);
+            Assert.IsNotNull(full.First);
+            Assert.IsTrue(WinChecker.Evaluate(full.First).IsWin);
+            Assert.Greater(full.Nodes, 11);
+
+            var enough = Solver.Solve(level, Solver.DefaultLimit, full.Nodes);
+            Assert.IsFalse(enough.Exhausted);
+            Assert.AreEqual(1, enough.Count);
+        }
+
+        [Test]
         public void LoopLevelHasExactlyTwoSolutions()
         {
             // Straight row plus a detached loop, or a snake through the same four cells.

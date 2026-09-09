@@ -1,5 +1,28 @@
 namespace TrainSudoku.Core
 {
+    public sealed class SolveResult
+    {
+        /// <summary>Solutions found, never above the requested limit.</summary>
+        public int Count { get; }
+
+        /// <summary>The first solution found, or null.</summary>
+        public Board First { get; }
+
+        /// <summary>True when the node budget ran out before the search finished; <see cref="Count"/> is then a lower bound.</summary>
+        public bool Exhausted { get; }
+
+        /// <summary>Search nodes visited.</summary>
+        public long Nodes { get; }
+
+        internal SolveResult(int count, Board first, bool exhausted, long nodes)
+        {
+            Count = count;
+            First = first;
+            Exhausted = exhausted;
+            Nodes = nodes;
+        }
+    }
+
     /// <summary>
     /// Backtracking solver. Cells are decided in row-major order; each is left empty or given a key legal against the
     /// neighbours decided so far. Pruning: an empty cell may not have a forced side, and line counts must stay
@@ -9,19 +32,23 @@ namespace TrainSudoku.Core
     {
         public const int DefaultLimit = 2;
 
-        /// <summary>Counts solutions, stopping at <paramref name="limit"/>. The editor shows 0 / 1 / 2+.</summary>
-        public static int CountSolutions(LevelData level, int limit = DefaultLimit)
+        /// <summary>
+        /// Searches for solutions, stopping at <paramref name="limit"/> solutions or after <paramref name="nodeBudget"/>
+        /// search nodes so that an interactive caller can keep the editor responsive.
+        /// </summary>
+        public static SolveResult Solve(LevelData level, int limit = DefaultLimit, long nodeBudget = long.MaxValue)
         {
-            var run = new Run(level, limit);
+            var run = new Run(level, limit, nodeBudget);
             run.Execute();
-            return run.Count;
+            return new SolveResult(run.Count, run.First, run.Exhausted, run.Nodes);
         }
+
+        /// <summary>Counts solutions, stopping at <paramref name="limit"/>. The editor shows 0 / 1 / 2+.</summary>
+        public static int CountSolutions(LevelData level, int limit = DefaultLimit) => Solve(level, limit).Count;
 
         public static bool TrySolve(LevelData level, out Board solution)
         {
-            var run = new Run(level, 1);
-            run.Execute();
-            solution = run.First;
+            solution = Solve(level, 1).First;
             return solution != null;
         }
 
@@ -30,6 +57,7 @@ namespace TrainSudoku.Core
             private readonly LevelData _level;
             private readonly Board _board;
             private readonly int _limit;
+            private readonly long _nodeBudget;
             private readonly int[] _rowCounts;
             private readonly int[] _columnCounts;
             private readonly int[,] _rowFreeAfter;    // [y, x]: non-fixed cells in row y with column > x
@@ -37,11 +65,14 @@ namespace TrainSudoku.Core
 
             public int Count { get; private set; }
             public Board First { get; private set; }
+            public bool Exhausted { get; private set; }
+            public long Nodes { get; private set; }
 
-            public Run(LevelData level, int limit)
+            public Run(LevelData level, int limit, long nodeBudget)
             {
                 _level = level;
                 _limit = limit;
+                _nodeBudget = nodeBudget;
                 _board = new Board(level);
 
                 _rowCounts = new int[level.Height];
@@ -95,9 +126,15 @@ namespace TrainSudoku.Core
                 Step(0);
             }
 
-            /// <summary>Returns true when the limit has been reached and the search should stop.</summary>
+            /// <summary>Returns true when the search should stop: the limit or the node budget has been reached.</summary>
             private bool Step(int index)
             {
+                if (++Nodes > _nodeBudget)
+                {
+                    Exhausted = true;
+                    return true;
+                }
+
                 if (index == _level.Width * _level.Height)
                 {
                     if (!WinChecker.Evaluate(_board).IsWin) return false;
