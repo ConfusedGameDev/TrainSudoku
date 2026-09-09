@@ -35,7 +35,7 @@ namespace TrainSudoku.Game
         private TextMesh[] _rowClues;
         private readonly Dictionary<(int X, int Y), PieceView> _pieceViews = new Dictionary<(int, int), PieceView>();
         private PlacementSession _session;
-        private Mesh _segment;
+        private TrackMeshProfile _profile;
         private bool _interactable;
 
         // Current press, for taps and long presses.
@@ -109,7 +109,7 @@ namespace TrainSudoku.Game
             Level = level.ToLevelData();
             Board = new Board(Level);
             _session = new PlacementSession(Board);
-            _segment = trackAssets != null ? trackAssets.ResolveSegment() : ProceduralTrackMesh.Straight();
+            _profile = trackAssets != null ? trackAssets.ResolveProfile() : TrackAssets.PlaceholderProfile();
 
             BuildTiles();
             foreach (var piece in Level.FixedPieces) SpawnPiece(piece.X, piece.Y, piece.Key, true, false);
@@ -200,6 +200,8 @@ namespace TrainSudoku.Game
         {
             foreach (var group in new[] { tiles, pieces, tunnels, clues, markers })
                 if (group != null) UiBuilder.Clear(group);
+            // The bent meshes belong to the level that just went away, and the next one may use a different profile.
+            TrackMeshBender.Clear();
             _cells = null;
             _columnClues = null;
             _rowClues = null;
@@ -242,7 +244,7 @@ namespace TrainSudoku.Game
             var lift = trackAssets != null ? trackAssets.VerticalOffset : 0f;
             go.transform.localPosition = new Vector3((float)wx, lift, (float)wz);
 
-            go.AddComponent<MeshFilter>().sharedMesh = TrackMeshBender.ForKey(_segment, key);
+            go.AddComponent<MeshFilter>().sharedMesh = TrackMeshBender.ForKey(_profile, key);
             var renderer = go.AddComponent<MeshRenderer>();
             renderer.sharedMaterial = isFixed
                 ? trackAssets != null ? trackAssets.FixedTrackMaterial : BoardMaterials.FixedTrack

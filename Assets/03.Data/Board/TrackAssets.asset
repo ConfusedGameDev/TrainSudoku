@@ -12,7 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 467d291c3f6325ada86ace27cb2a98a4, type: 3}
   m_Name: TrackAssets
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.TrackAssets
-  segmentMesh: {fileID: 0}
-  trackMaterial: {fileID: 0}
-  fixedTrackMaterial: {fileID: 0}
+  segmentMesh: {fileID: -2487569502045341451, guid: 336ed1350dd1a4044bb51b91a997d0f4, type: 3}
+  sleeperMesh: {fileID: 4971150158610780899, guid: 06b8789730625834f9a6560cd33340b2, type: 3}
+  sleepersPerCell: 6
+  evenSleeperSpacing: 1
+  curveSlices: 16
+  widthScale: 1
+  sleeperWidthScale: 0.7
+  trackMaterial: {fileID: -6538903991835684241, guid: e8a6896fc31ecd3459422300f5b4d5ac, type: 3}
+  fixedTrackMaterial: {fileID: -6538903991835684241, guid: e8a6896fc31ecd3459422300f5b4d5ac, type: 3}
   verticalOffset: 0
