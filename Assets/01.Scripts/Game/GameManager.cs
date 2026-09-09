@@ -19,6 +19,7 @@ namespace TrainSudoku.Game
         [SerializeField] private LevelCollection levels = null;
         [SerializeField] private InputActionAsset inputActions = null;
         [SerializeField] private AudioCueLibrary audioCues = null;
+        [SerializeField] private TrackAssets trackAssets = null;
 
         [Tooltip("Editor only: every level counts as unlocked in Level Select (PRD section 5).")]
         [SerializeField] private bool unlockAllLevelsInEditor = false;
@@ -78,7 +79,7 @@ namespace TrainSudoku.Game
             AddPanel<TrainRunPanel>("Train Run");
             AddPanel<WinPanel>("Win");
 
-            boardView = BoardView.Create(transform, boardCamera);
+            boardView = BoardView.Create(transform, boardCamera, trackAssets);
         }
 
         /// <summary>Removes everything <see cref="Generate"/> created. The camera keeps its BoardCamera.</summary>
@@ -136,6 +137,7 @@ namespace TrainSudoku.Game
                 if (panel is PlayPanel play) _playPanel = play;
             }
 
+            boardView.Configure(trackAssets);
             boardView.Interacted += OnBoardInteracted;
             boardView.Completed += OnBoardCompleted;
 

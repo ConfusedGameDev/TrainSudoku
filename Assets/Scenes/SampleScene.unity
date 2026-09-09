@@ -5592,6 +5592,7 @@ MonoBehaviour:
   levels: {fileID: 11400000, guid: d42e64ff98282048f5e39238411cabde, type: 2}
   inputActions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   audioCues: {fileID: 11400000, guid: dbe504bbcd3a8ba712d0f49adb6895e3, type: 2}
+  trackAssets: {fileID: 11400000, guid: 847a2bad6fef7129273ec8edecc95225, type: 2}
   unlockAllLevelsInEditor: 1
   canvas: {fileID: 519009426}
   eventSystem: {fileID: 2012014214}
