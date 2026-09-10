@@ -746,10 +746,10 @@ carries the identity **before** building six more screens on top of it.
 
 **Done when**
 
-- [ ] A scratch scene draws the TS line from its asset at 9:16, 9:19.5 and 9:21 with no clipping — **needs your eye**
-- [ ] Clicking a station raises the right index; clicking a line raises the right line
+- [x] A scratch scene draws the TS line from its asset at 9:16, 9:19.5 and 9:21 with no clipping
+- [x] Clicking a station raises the right index; clicking a line raises the right line
 - [x] No signage is clipped or ellipsised in `es` or `fr` (3.3)
-- [ ] **The look test is judged by eye and passes** — see 0.1. If it reads as generic, fix it typographically here, not by reinstating the bilingual pair
+- [x] **The look test is judged by eye and passes** — see 0.1. If it reads as generic, fix it typographically here, not by reinstating the bilingual pair
 - [x] **Verified by human** ☑ &nbsp;&nbsp; date: 10 Sep 2026
 
 #### M15 notes
@@ -770,7 +770,9 @@ carries the identity **before** building six more screens on top of it.
   a bitmap on purpose.
 - **`LedStrip` runs on `Time.realtimeSinceStartup`**, not `Time.deltaTime`, so the strip keeps moving while the game
   is paused (section 9's "all unscaled time").
-- **What I could not do: see it.** The Game view was not rendering frames — the editor's own AI package logged
+- **Judged and passed on 10 Sep 2026: single-line signage carries.** 0.1's question is closed, and the recovery it
+  described — tightening type rather than reinstating the bilingual pair — is not needed.
+- **What I could not do: see it myself.** The Game view was not rendering frames — the editor's own AI package logged
   *"may be due to network issues or editor focus"* at the same moment — so both a screenshot and a render-to-texture
   came back black. I verified layout and colour numerically instead (map fills 1196x1068, nine nodes, TS #9ACD32,
   every element present) and confirmed **no label overflows its container in any of the four locales**. The look
