@@ -164,8 +164,6 @@ namespace TrainSudoku.Game
 
         // ------------------------------------------------------------------ validation
 
-        private static readonly Color ClueExceeded = new Color(0.95f, 0.40f, 0.35f);
-
         /// <summary>Runs the Core validator, colours the clues and, after a player action, fires the win.</summary>
         private void Validate(bool announceWin)
         {
@@ -192,14 +190,14 @@ namespace TrainSudoku.Game
         }
 
         private static Color ClueColor(bool satisfied, bool exceeded) =>
-            satisfied ? UiBuilder.Success : exceeded ? ClueExceeded : UiBuilder.TextColor;
+            satisfied ? Palette.Success : exceeded ? Palette.ClueExceeded : Palette.ClueText;
 
         // ------------------------------------------------------------------ building
 
         private void Clear()
         {
             foreach (var group in new[] { tiles, pieces, tunnels, clues, markers })
-                if (group != null) UiBuilder.Clear(group);
+                if (group != null) SceneObjects.Clear(group);
             // The bent meshes belong to the level that just went away, and the next one may use a different profile.
             TrackMeshBender.Clear();
             _cells = null;
@@ -299,7 +297,7 @@ namespace TrainSudoku.Game
             for (var x = 0; x < Level.Width; x++)
             {
                 var (wx, wz) = BoardLayout.ColumnClueAnchor(x, Level.Width, Level.Height);
-                _columnClues[x] = Label(clues, Level.ColumnClues[x].ToString(), 0.7f, UiBuilder.TextColor);
+                _columnClues[x] = Label(clues, Level.ColumnClues[x].ToString(), 0.7f, Palette.ClueText);
                 _columnClues[x].transform.localPosition = new Vector3((float)wx, 0.05f, (float)wz);
                 _columnClues[x].name = $"Column clue {x}";
             }
@@ -308,7 +306,7 @@ namespace TrainSudoku.Game
             for (var y = 0; y < Level.Height; y++)
             {
                 var (wx, wz) = BoardLayout.RowClueAnchor(y, Level.Width, Level.Height);
-                _rowClues[y] = Label(clues, Level.RowClues[y].ToString(), 0.7f, UiBuilder.TextColor);
+                _rowClues[y] = Label(clues, Level.RowClues[y].ToString(), 0.7f, Palette.ClueText);
                 _rowClues[y].transform.localPosition = new Vector3((float)wx, 0.05f, (float)wz);
                 _rowClues[y].name = $"Row clue {y}";
             }
@@ -335,14 +333,14 @@ namespace TrainSudoku.Game
             var go = new GameObject($"Label {text}");
             go.transform.SetParent(parent, false);
             var mesh = go.AddComponent<TextMesh>();
-            mesh.font = UiBuilder.Font;
+            mesh.font = Palette.Font;
             mesh.text = text;
             mesh.fontSize = 64;
             mesh.characterSize = worldHeight / 6.4f;
             mesh.anchor = TextAnchor.MiddleCenter;
             mesh.alignment = TextAlignment.Center;
             mesh.color = color;
-            go.GetComponent<MeshRenderer>().sharedMaterial = UiBuilder.Font.material;
+            go.GetComponent<MeshRenderer>().sharedMaterial = Palette.Font.material;
             var pitch = boardCamera != null ? boardCamera.PitchDegrees : 60f;
             go.transform.rotation = Quaternion.Euler(pitch, 0f, 0f);
             return mesh;
@@ -353,7 +351,7 @@ namespace TrainSudoku.Game
         /// <summary>Rebuilds the markers and the tile tint from the session state.</summary>
         private void RefreshSelection()
         {
-            if (markers != null) UiBuilder.Clear(markers);
+            if (markers != null) SceneObjects.Clear(markers);
             _holdIndicator = null;
             if (_cells == null) return;
 

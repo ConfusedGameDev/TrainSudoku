@@ -4,7 +4,8 @@
     "references": [
         "TrainSudoku.Core",
         "Unity.InputSystem",
-        "UnityEngine.UI"
+        "UnityEngine.UI",
+        "Unity.Localization"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

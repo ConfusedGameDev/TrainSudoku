@@ -27,16 +27,8 @@ namespace TrainSudoku.Game
         public const float ReferenceWidth = 1080f;
         public const float ReferenceHeight = 1920f;
 
-        private static Font _font;
-
-        public static Font Font
-        {
-            get
-            {
-                if (_font == null) _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                return _font;
-            }
-        }
+        /// <summary>The widget face. Held by <see cref="Palette"/> so the board can share it without reaching in here.</summary>
+        public static Font Font => Palette.Font;
 
         /// <summary>Screen-space overlay canvas scaled from the portrait reference resolution.</summary>
         public static Canvas CreateCanvas(string name, Transform parent)
@@ -255,18 +247,10 @@ namespace TrainSudoku.Game
             return content;
         }
 
-        /// <summary>Destroys a GameObject in play mode or edit mode.</summary>
-        public static void Destroy(GameObject go)
-        {
-            if (go == null) return;
-            if (Application.isPlaying) Object.Destroy(go);
-            else Object.DestroyImmediate(go);
-        }
+        /// <summary>Destroys a GameObject in play mode or edit mode. Lives in <see cref="SceneObjects"/>.</summary>
+        public static void Destroy(GameObject go) => SceneObjects.Destroy(go);
 
-        public static void Clear(Transform parent)
-        {
-            for (var i = parent.childCount - 1; i >= 0; i--)
-                Destroy(parent.GetChild(i).gameObject);
-        }
+        /// <summary>Destroys every child of <paramref name="parent"/>. Lives in <see cref="SceneObjects"/>.</summary>
+        public static void Clear(Transform parent) => SceneObjects.Clear(parent);
     }
 }

@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Localization-Asset-Tables-Spanish
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: Localization-Asset-Tables-Spanish
+  m_GUID: fd21e80b609bc4bc4b028cd40b1eacaf
+  m_SerializeEntries:
+  - m_GUID: 8b3b5676c1167488bab632b96e200fc1
+    m_Address: Fonts_es
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-es
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 1
+  m_Settings: {fileID: 11400000, guid: c58ceaac003e747d48600e704b18eafb, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: f7f94946e2fad47f1af8599e2abd6843, type: 2}
+    - {fileID: 11400000, guid: 2445de713bd514c918c1c5ac93b307e0, type: 2}
+    m_SchemaDisplayOrder:
+    - Localization-Asset-Tables-Spanish_BundledAssetGroupSchema
+    - Localization-Asset-Tables-Spanish_ContentUpdateGroupSchema
+  m_IncludeInBuild: 1
+  m_IncludeInBuildMigrated: 1

@@ -1,6 +1,6 @@
 TRAINSUDOKU · UI WORK ORDER
 v0.4 · 10 SEP 2026 · main @ 3947585
-STATUS: not started · M11 of M11–M20 · progress table in 11.0
+STATUS: M11 done · M12 next of M11–M20 · progress table in 11.0
 
 # Station UI — implementation work order
 
@@ -502,7 +502,7 @@ next begins.
 
 | MILESTONE | TITLE | VERIFIED |
 |---|---|---|
-| M11 | Foundations | ☐ |
+| M11 | Foundations | ☑ |
 | M12 | Shell and tokens | ☐ |
 | M13 | Core: save v2, network, flow | ☐ |
 | M14 | Content pass | ☐ |
@@ -521,23 +521,45 @@ next begins.
 **Touches:** `Packages/manifest.json`, `Ui/UiBuilder.cs`, `Ui/Palette.cs`, `Board/BoardCamera.cs`,
 `Board/BoardView.cs`, `Train/TrainRunner.cs`.
 
-- [ ] Add `com.unity.localization` to the manifest
-- [ ] Create locales `en` (source), `ja`, `es`, `fr`
-- [ ] Create the UI String Table and the font Asset Table (3.2)
-- [ ] Create `Palette.cs`; move every colour `BoardCamera`/`BoardView` reads from `UiBuilder`, unchanged in value (4.1)
-- [ ] Repoint `BoardCamera.Attach`, `BoardView.Label`, `BoardView.ClueColor`, and the `UiBuilder.Clear` callers in `BoardView` and `TrainRunner` (section 1)
-- [ ] Pointer-trap spike: board + one `UIDocument` button in a scratch scene (4.4)
+- [x] Add `com.unity.localization` to the manifest
+- [x] Create locales `en` (source), `ja`, `es`, `fr`
+- [x] Create the UI String Table and the font Asset Table (3.2)
+- [x] Create `Palette.cs`; move every colour `BoardCamera`/`BoardView` reads from `UiBuilder`, unchanged in value (4.1)
+- [x] Repoint `BoardCamera.Attach`, `BoardView.Label`, `BoardView.ClueColor`, and the `UiBuilder.Clear` callers in `BoardView` and `TrainRunner` (section 1)
+- [x] Pointer-trap spike: board + one `UIDocument` button in a scratch scene (4.4)
 
 **Done when**
 
-- [ ] Project compiles; the existing uGUI game runs and plays exactly as before
-- [ ] The board renders identically — clear colour, clue label font, clue colours all unchanged
-- [ ] Switching locale at runtime changes a test label's language
-- [ ] Tapping the `UIDocument` button over the board places **no** piece — or, if it does, `IsOverUi` is patched per 4.4 and then it doesn't
-- [ ] **Verified by human** ☐ &nbsp;&nbsp; date: ______
+- [x] Project compiles; the existing uGUI game runs and plays exactly as before
+- [x] The board renders identically — clear colour, clue label font, clue colours all unchanged
+- [x] Switching locale at runtime changes a test label's language
+- [x] Tapping the `UIDocument` button over the board places **no** piece — or, if it does, `IsOverUi` is patched per 4.4 and then it doesn't
+- [x] **Verified by human** ☑ &nbsp;&nbsp; date: 10 Sep 2026
 
 > If the pointer spike fails and the 4.4 patch doesn't fix it, stop and re-plan. Everything downstream assumes
 > UI can consume a tap.
+
+#### M11 notes — what the milestone found
+
+- **The editor moved from `6000.7.0a3` to `6000.7.0a6`.** `com.unity.localization` ships code guarded by
+  `#if UNITY_6000_7_OR_NEWER` that calls the group-aware `EditorGUIUtility.TrTextContent*` overloads. Those land
+  in a6 ("Editor: Added group aware localization APIs"), so on a3 the package's editor assembly did not compile
+  at all. a6 also bundles the package as **BuiltIn at 1.5.12** — the manifest pin is 1.5.12 to match, and that is
+  the only version the editor offers. Addressables came along at 4.0.1.
+- **4.4's pointer trap does not bite.** In play mode a `PanelRaycaster` is created alongside the old
+  `GraphicRaycaster`, so UI Toolkit is registered with the EventSystem and `BoardView.IsOverUi` works unchanged.
+  **No patch to `IsOverUi` was needed** — leave it alone at M16.
+- **`Palette` carries `ClueText`**, a name not in 4.1's list. 4.1 says board colours move "unchanged in value",
+  but section 6's `--ink` is near-black while the clue text is near-white; both cannot be `Ink`. `ClueText` holds
+  the old `UiBuilder.TextColor`; `Ink` holds the section 6 value. Re-skinning at M19 is one line.
+- **`SceneObjects.cs` holds `Destroy`/`Clear`**, with `UiBuilder` forwarding, so section 1's "keep it" and M11's
+  "repoint the callers" are both satisfied and M16 can delete the widget half safely.
+- **`PanelSettings.asset` was created early** (M12's first checkbox) because a runtime `UIDocument` cannot exist
+  without one and the spike needs it. 1080x1920, Match 0.5, at `03.Data/Ui/`.
+- **`Assets/AddressableAssetsData/` sits at the Assets root** and holds two files. Its path is a hard-coded const
+  in Addressables; the real settings were placed under `03.Data/AddressableAssetsData/`. The generated
+  `Assets/UI Toolkit/` theme folder *was* relocated, to `03.Data/Ui/`.
+- **The throwaway spike is gone.** `PointerSpike.cs` and `Spike_M11.unity` were deleted at sign-off, as planned.
 
 ---
 

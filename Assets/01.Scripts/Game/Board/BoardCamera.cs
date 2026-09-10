@@ -49,7 +49,7 @@ namespace TrainSudoku.Game
             if (camera == null) return null;
             if (!camera.TryGetComponent<BoardCamera>(out var rig)) rig = camera.gameObject.AddComponent<BoardCamera>();
             camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = UiBuilder.Background;
+            camera.backgroundColor = Palette.BoardBackground;
             rig.transform.SetPositionAndRotation(new Vector3(0f, 10f, -5f), Quaternion.Euler(rig.pitchDegrees, 0f, 0f));
             return rig;
         }

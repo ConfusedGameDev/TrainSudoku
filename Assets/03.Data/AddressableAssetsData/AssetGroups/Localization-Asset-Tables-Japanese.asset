@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Localization-Asset-Tables-Japanese
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: Localization-Asset-Tables-Japanese
+  m_GUID: f76bad5aa63f04f519e85e6b01f39778
+  m_SerializeEntries:
+  - m_GUID: 8fdb1ed7580e54cc3907522b5fe551c5
+    m_Address: Fonts_ja
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-ja
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 1
+  m_Settings: {fileID: 11400000, guid: c58ceaac003e747d48600e704b18eafb, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 70055f8a6b59442ae959bc15f822e3e3, type: 2}
+    - {fileID: 11400000, guid: d920582e84dbc46d78f0bc2ba9fc9978, type: 2}
+    m_SchemaDisplayOrder:
+    - Localization-Asset-Tables-Japanese_BundledAssetGroupSchema
+    - Localization-Asset-Tables-Japanese_ContentUpdateGroupSchema
+  m_IncludeInBuild: 1
+  m_IncludeInBuildMigrated: 1

@@ -4,14 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-TrainSudoku: a portrait mobile puzzle game (mouse-compatible) built in Unity `6000.7.0a3` with URP and the new Input System. The agreed spec is `Docs/PRD.md` (rules, screens, data format, architecture, milestones M0–M10); read it before touching gameplay. `Plan.md` is the original brief and is superseded where they differ. The only scene is `Assets/Scenes/SampleScene.unity`.
+TrainSudoku: a portrait mobile puzzle game (mouse-compatible) built in Unity `6000.7.0a6` with URP and the new Input System. The agreed spec is `Docs/PRD.md` (rules, screens, data format, architecture, milestones M0–M10); read it before touching gameplay. `Plan.md` is the original brief and is superseded where they differ. The only scene is `Assets/Scenes/SampleScene.unity`.
 
-Progress: every milestone M0 to M10 is done (Core rules, level editor, UI flow, 3D board, piece placement with bent track meshes, validator hookup, train run, JSON save with auto-save, level loader with a shipped level set). Next steps are content and polish. Assemblies:
+Progress: every milestone M0 to M10 is done (Core rules, level editor, UI flow, 3D board, piece placement with bent track meshes, validator hookup, train run, JSON save with auto-save, level loader with a shipped level set).
+
+The current work is **M11-M20**, the Station UI rebuild: uGUI screens out, UI Toolkit in, plus localisation, star ratings and a line/network progression model. `Docs/UIDesign.MD` is the work order for it and is authoritative for that work — its section 0 holds 21 closed decisions, and its section 11 the milestones and their progress table. **Do not `git commit` until a milestone's *Verified by human* box is ticked**; one commit per milestone, message `M<n>: <title>`. Assemblies:
 
 | Assembly | Location | Notes |
 |---|---|---|
 | `TrainSudoku.Core` | `Assets/01.Scripts/Core/` | `noEngineReferences: true`. Board, legality, win check, path finder, solver (with node budget), `LevelText` parser/serialiser, `LevelAuthoring` edit helpers, `GameFlow` state machine, `PlayTimer`, `ProgressTracker`, `BoardLayout` (cell/tunnel/clue world positions), `CameraFit` (fit-to-board maths), `TrackCurve` (per-cell centre line: straight or quarter circle), `PlacementSession` (tap-to-place interaction on top of `Legality`), `TrackPath` (S-to-E route by arc length), `LevelProgress` (in-progress snapshot: player pieces plus elapsed time), `ISaveStore` with `InMemorySaveStore` and `FileSaveStore` (JSON via `SaveJson`) |
-| `TrainSudoku.Game` | `Assets/01.Scripts/Game/` | References `UnityEngine.UI` and `Unity.InputSystem`. `GameManager` (scene entry point on the `Game` object in `SampleScene`), `UiBuilder` and one `PanelBase` subclass per state under `Ui/`, `IBoardView` + `BoardView` (tiles with colliders, tunnels, clue labels, pieces, markers, long-press erase) + `BoardCamera`, `TrackMeshBender`, `ProceduralTrackMesh`, `TrackAssets` under `Board/`, `TrainRunner` + `TrainAssets` under `Train/`, `AudioCue` hooks under `Audio/`, `LevelDefinition` and `LevelCollection` ScriptableObjects |
+| `TrainSudoku.Game` | `Assets/01.Scripts/Game/` | References `UnityEngine.UI`, `Unity.InputSystem` and `Unity.Localization`. `GameManager` (scene entry point on the `Game` object in `SampleScene`), `Palette` (all colour and font tokens) and `SceneObjects` (`Destroy`/`Clear`) plus `UiBuilder` and one `PanelBase` subclass per state under `Ui/`, `IBoardView` + `BoardView` (tiles with colliders, tunnels, clue labels, pieces, markers, long-press erase) + `BoardCamera`, `TrackMeshBender`, `ProceduralTrackMesh`, `TrackAssets` under `Board/`, `TrainRunner` + `TrainAssets` under `Train/`, `AudioCue` hooks under `Audio/`, `LevelDefinition` and `LevelCollection` ScriptableObjects |
 | `TrainSudoku.Editor` | `Assets/01.Scripts/Editor/` | Editor only. `LevelEditorWindow` (Window > TrainSudoku > Level Editor, UI Toolkit) and the `LevelDefinition` inspector button |
 | `TrainSudoku.Tests.EditMode` | `Assets/99.Test/EditMode/` | NUnit tests for Core, the asset round-trip and `LevelCollectionTests` (every shipped level well formed and, within a node budget, uniquely solvable) |
 
@@ -24,12 +26,13 @@ Numbered top-level folders under `Assets/`; put new files in the matching one:
 | `00.Plugins` | Third-party code and packages not managed by UPM |
 | `01.Scripts` | Runtime C# (add `Editor/` subfolders for editor-only code) |
 | `02.Graphics` | Sprites, materials, shaders; URP pipeline assets live in `RenderPipeline/` |
-| `03.Data` | ScriptableObjects and data assets: level definitions, `Input/InputSystem_Actions.inputactions` |
+| `03.Data` | ScriptableObjects and data assets: level definitions, `Input/InputSystem_Actions.inputactions`, `Localization/` (settings, locales, the `UI` String Table and `Fonts` Asset Table), `Ui/` (`PanelSettings.asset` and the runtime theme), `AddressableAssetsData/` |
 | `04.Prefabs` | Prefabs |
 | `05.Audio` | Audio clips and mixers |
 | `Resources`, `StreamingAssets` | Unity special folders (runtime-loaded content) |
 | `99.Test` | EditMode and PlayMode test assemblies |
 | `Scenes` | Scenes |
+| `AddressableAssetsData` | **Not ours.** Two files holding Addressables' `DefaultObject.asset`, whose path is a hard-coded const in the package. The real settings live under `03.Data/` |
 
 Empty folders hold a `.gitkeep` so git tracks them.
 
@@ -44,29 +47,46 @@ Empty folders hold a `.gitkeep` so git tracks them.
 
 ## Commands
 
-Unity is at `C:\Program Files\Unity\Hub\Editor\6000.7.0a3\Editor\Unity.exe`. Close the Unity Editor before running any batchmode command, or it fails on the project lock.
+Development happens on **macOS** with the Unity Editor at `/Applications/Unity/Hub/Editor/6000.7.0a6/Unity.app`,
+and the Editor is normally **left open** (check `Temp/UnityLockfile`). That makes `-batchmode` unavailable — it
+fails on the project lock — so the primary way to drive Unity is the **Unity MCP tools against the live Editor**:
 
-```powershell
-$unity = "C:\Program Files\Unity\Hub\Editor\6000.7.0a3\Editor\Unity.exe"
+- `Unity_RunCommand` compiles and runs a C# snippet in the Editor. The class must be named `CommandScript` and be
+  `internal`. Two traps: the wrapper re-emits your code inside its own namespace, so **declare helper classes at
+  top level, never nested inside `CommandScript`** (a nested one gets hoisted *and* duplicated), and fully qualify
+  `UnityEditor.Compilation.CompilationPipeline` because the injected namespace shadows it. `System.Reflection` is
+  blocked. Long-running work (a test run, a UPM request) must write its result to a file the shell then polls —
+  the call returns before the work finishes.
+- `Unity_GetConsoleLogs` with `logTypes: "Error"` is the compile check. Note the project's analyzer emits
+  `UAL0010`/`UAL0013` static-cleanup warnings on every class with a static field; they are pre-existing noise.
+- `Unity_Camera_Capture` does **not** work in play mode.
+
+To run the EditMode suite, call `TestRunnerApi.Execute` from `Unity_RunCommand` with an `ICallbacks` sink that
+writes the counts to a file, then poll that file. A full run is ~235 tests and takes about 20 seconds.
+
+Batchmode still works if the Editor is closed:
+
+```bash
+unity="/Applications/Unity/Hub/Editor/6000.7.0a6/Unity.app/Contents/MacOS/Unity"
 
 # Compile check (script errors land in the log, exit code non-zero on failure)
-& $unity -batchmode -nographics -quit -projectPath . -logFile -
+"$unity" -batchmode -nographics -quit -projectPath . -logFile -
 
 # Run all EditMode tests (use PlayMode for the other platform)
-& $unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testResults TestResults.xml -logFile -
+"$unity" -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testResults TestResults.xml -logFile -
 
 # Run a single test / fixture
-& $unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter "Namespace.ClassName.MethodName" -testResults TestResults.xml -logFile -
+"$unity" -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter "Namespace.ClassName.MethodName" -testResults TestResults.xml -logFile -
 ```
 
 Tests need the Unity Test Framework (already a dependency): put them under `Assets/99.Test/EditMode` or `Assets/99.Test/PlayMode` with their own `.asmdef` referencing the game assembly. There is no build script yet; a build requires adding a static method and invoking it with `-executeMethod`.
-
-When the Editor is open (check `Temp/UnityLockfile`), batchmode is unavailable. Two fallbacks work from the shell: run the Core tests with a throwaway `dotnet test` project that compiles `Assets/01.Scripts/Core/**` plus the Core-only test files against NUnit 3, and compile-check Game and Editor code with a `netstandard2.1` project that references `C:\Program Files\Unity\Hub\Editor\6000.7.0a3\Editor\Data\Managed\UnityEngine\*.dll`. The open Editor also recompiles on focus; `Library/ScriptAssemblies/TrainSudoku.*.dll` timestamps show whether it succeeded. Tests that need `UnityEngine` still have to run in the Editor's Test Runner.
 
 ## Conventions
 
 - Editor-only code lives in `Assets/01.Scripts/Editor/` under `TrainSudoku.Editor`; runtime code in `Game`; anything that can be plain C# goes in `Core` so it stays unit-testable without Unity.
 - Board rules (placement legality, connection resolution, win check, solver) stay free of `UnityEngine`. The `Core` asmdef enforces this with `noEngineReferences`.
+- Every colour and font comes from `Ui/Palette.cs`; a re-skin is an edit to that one file. It holds two disjoint sets that must not be mixed: the station-signage tokens from `Docs/UIDesign.MD` section 6 (`Paper`, `Ink`, `InkDim`, `Closed`, `Led`, `LedGround`, `Warn`, `Stop`), and the board's own values carried over unchanged (`BoardBackground`, `Success`, `ClueExceeded`, `ClueText`, `Font`). **The line colour is deliberately absent** — it is a runtime value published as the USS variable `--line-current` from the active line, never a constant. Scene teardown (`Destroy`, `Clear`) lives in `Ui/SceneObjects.cs`. Nothing under `Board/` or `Train/` may reference `UiBuilder`: that class is the uGUI widget factory and is deleted at M16.
+- Localisation is `com.unity.localization`, bundled **BuiltIn at 1.5.12** with the a6 editor — the only version it offers, so the manifest pin must match. Locales are `en` (source), `ja`, `es`, `fr`; UI copy goes in the one `UI` String Table under `03.Data/Localization/`, keyed by screen (`play.pause`, `arrival.on_time`). One language per build, no bilingual pairs. Station and line names are untranslated proper nouns held on the assets, not in the table. Prefer `StringDatabase.GetLocalizedString`; the async overload returns an Addressables `AsyncOperationHandle`, which would drag `Unity.ResourceManager` into the Game assembly's references.
 - Progress lives in `save.json` under `Application.persistentDataPath` (`GameManager.SaveFilePath`), written through on every change by `FileSaveStore` with a temp-file swap; a corrupt file is set aside as `.corrupt`. The format is `{"version":1,"bestTimes":{"level-id":seconds},"inProgress":{"level-id":{"elapsed":seconds,"pieces":[{"x":1,"y":0,"key":"NE"}]}}}`, read and written by the hand-rolled `SaveJson` so Core needs no UnityEngine; a malformed `inProgress` entry is skipped, never fatal. The Game inspector has "Delete save file" for testing.
 - Auto-save: an unfinished level is snapshotted per level id by `GameFlow.SaveProgress` after every `BoardView.BoardChanged`, on entering Pause and in `OnApplicationQuit`; `OnApplicationPause(true)` calls `PauseGame` so backgrounding saves too. `StartLevel` and `NextLevel` pass the snapshot through `LevelStarted(index, progress)` to `IBoardView.Load`, which applies it with `Board.SetUnchecked` (replaying `TryPlace` in raster order can refuse a legal board) and restores the clock idle at the saved time, waiting for the first tap. `Retry` and `CompleteLevel` clear the snapshot. Level Select shows "Continue" for such levels.
 - Level assets are saved by the editor window into `Assets/03.Data/Levels/`; the level `id` string is the save-file identity and must not change after release. `LevelCollection.asset` in that folder is what the `GameManager` loads; it is ordered by difficulty (solver node count is the rough proxy): simple, Corner, First, PlanExample, Zigzag, Crossing, Spiral, LongHaul (8x8), Hard (12x11). All but Hard are solver-verified unique; Hard is too large for the backtracking solver to finish (billions of nodes without a result), so its solvability is unproven.

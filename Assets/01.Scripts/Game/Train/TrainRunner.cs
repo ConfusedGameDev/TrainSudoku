@@ -79,7 +79,7 @@ namespace TrainSudoku.Game
         {
             _running = false;
             _path = null;
-            UiBuilder.Clear(cars);
+            SceneObjects.Clear(cars);
             _cars.Clear();
             _renderers.Clear();
         }
