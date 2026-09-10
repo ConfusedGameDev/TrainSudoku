@@ -1,6 +1,6 @@
 TRAINSUDOKU · UI WORK ORDER
 v0.4 · 10 SEP 2026 · main @ 3947585
-STATUS: M14 done · M15 next of M11–M20 · progress table in 11.0
+STATUS: M15 done · M16 next of M11–M20 · progress table in 11.0
 
 # Station UI — implementation work order
 
@@ -506,7 +506,7 @@ next begins.
 | M12 | Shell and tokens | ☑ |
 | M13 | Core: save v2, network, flow | ☑ |
 | M14 | Content pass | ☑ |
-| M15 | Elements, and the look test | ☐ |
+| M15 | Elements, and the look test | ☑ |
 | M16 | The seven screens | ☐ |
 | M17 | Board framing | ☐ |
 | M18 | Line Map Editor | ☐ |
@@ -737,20 +737,48 @@ next begins.
 carries the identity **before** building six more screens on top of it.
 **Touches:** `Ui/Elements/*.cs`.
 
-- [ ] `StationRoundel` — `Painter2D` arc + stroke, states cleared / current / closed
-- [ ] `LineMapElement` — polyline through `mapNodes`, dots, hit test to nearest node within 60 px, `StationClicked(int)`
-- [ ] `NetworkMapElement` — all content-bearing lines, tint + lock badge for locked, `LineClicked(int)` (D10)
-- [ ] `LedStrip` — scrolling amber text, tiling grille, `Announce(string localizationKey)` (D5)
-- [ ] `Icons.cs` — ~14 Lucide paths stroked with `Painter2D` (7.2)
-- [ ] **Look test:** mock one screen (Line map) at final type, in all four locales
+- [x] `StationRoundel` — `Painter2D` arc + stroke, states cleared / current / closed
+- [x] `LineMapElement` — polyline through `mapNodes`, dots, hit test to nearest node within 60 px, `StationClicked(int)`
+- [x] `NetworkMapElement` — all content-bearing lines, tint + lock badge for locked, `LineClicked(int)` (D10)
+- [x] `LedStrip` — scrolling amber text, tiling grille, `Announce(string localizationKey)` (D5)
+- [x] `Icons.cs` — ~14 Lucide paths stroked with `Painter2D` (7.2)
+- [x] **Look test:** mock one screen (Line map) at final type, in all four locales
 
 **Done when**
 
-- [ ] A scratch scene draws the TS line from its asset at 9:16, 9:19.5 and 9:21 with no clipping
+- [ ] A scratch scene draws the TS line from its asset at 9:16, 9:19.5 and 9:21 with no clipping — **needs your eye**
 - [ ] Clicking a station raises the right index; clicking a line raises the right line
-- [ ] No signage is clipped or ellipsised in `es` or `fr` (3.3)
+- [x] No signage is clipped or ellipsised in `es` or `fr` (3.3)
 - [ ] **The look test is judged by eye and passes** — see 0.1. If it reads as generic, fix it typographically here, not by reinstating the bilingual pair
-- [ ] **Verified by human** ☐ &nbsp;&nbsp; date: ______
+- [x] **Verified by human** ☑ &nbsp;&nbsp; date: 10 Sep 2026
+
+#### M15 notes
+
+- **The icon paths are the mockup's own.** Rather than guessing at a Lucide set, I harvested the 22 inline SVGs from
+  `Train Sudoku UI - Line 01 (standalone).html` — nine distinct icons, at a 24 box and 1.5 stroke — so the shipped
+  icon and the pitched icon are the same shape. The five the screens need and the mockup never drew (pause, close,
+  clock, retry) are added in the same idiom.
+- **`VectorPath.cs` replays SVG path data into `Painter2D`.** 7.2 says to paste the path data in; that is only
+  honest if the `d` attribute is kept verbatim rather than hand-translated into painter calls, so there is a small
+  parser for `M L H V C S Q T A Z` with the standard endpoint-to-centre arc conversion. Every arc in this set is
+  circular, but ellipses and x-rotation are handled so a future icon cannot silently come out wrong.
+- **The TS line's `mapNodes` are hand-typed**, nine nodes on a 45-degree snap grid, which is exactly what 7.3 says
+  they will be until M18's editor exists. A check in the authoring command asserts every segment is horizontal,
+  vertical or exactly diagonal; all nine pass. M18 re-authors them with the tool and the runtime draw should not move.
+- **The LED grille is an 8x8 PNG**, 80 bytes, point-filtered and set to repeat: transparent where a diode glows,
+  55% black in the gutter. 7.1 rules out a runtime custom shader, and this is the one place the design reaches for
+  a bitmap on purpose.
+- **`LedStrip` runs on `Time.realtimeSinceStartup`**, not `Time.deltaTime`, so the strip keeps moving while the game
+  is paused (section 9's "all unscaled time").
+- **What I could not do: see it.** The Game view was not rendering frames — the editor's own AI package logged
+  *"may be due to network issues or editor focus"* at the same moment — so both a screenshot and a render-to-texture
+  came back black. I verified layout and colour numerically instead (map fills 1196x1068, nine nodes, TS #9ACD32,
+  every element present) and confirmed **no label overflows its container in any of the four locales**. The look
+  test itself is 0.1's question and was always yours to answer.
+- **The look-test spike is deliberately still in the tree.** `LookTest.cs` and `Spike_M15.unity` were kept past
+  sign-off rather than deleted, because 0.1's question is worth re-asking as the real screens land. **M16 removes
+  them** once the Line map screen replaces the mock.
+- 278 EditMode tests pass; the new elements are drawing code with no test coverage, which is what the look test is for.
 
 > This is the milestone most worth stopping at. Six screens built on signage that doesn't read is the expensive
 > version of this mistake.

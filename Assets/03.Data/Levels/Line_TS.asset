@@ -20,5 +20,14 @@ MonoBehaviour:
   unlockRule:
     minStarsPerStation: 1
   mapShape: 0
-  mapNodes: []
-  stationNodeIndices: 
+  mapNodes:
+  - {x: 100, y: 200}
+  - {x: 400, y: 200}
+  - {x: 600, y: 400}
+  - {x: 600, y: 700}
+  - {x: 400, y: 900}
+  - {x: 400, y: 1150}
+  - {x: 650, y: 1400}
+  - {x: 900, y: 1400}
+  - {x: 900, y: 1150}
+  stationNodeIndices: 000000000100000002000000030000000400000005000000060000000700000008000000i
