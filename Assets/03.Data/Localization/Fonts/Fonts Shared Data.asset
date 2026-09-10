@@ -14,9 +14,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Tables.SharedTableData
   m_TableCollectionName: Fonts
   m_TableCollectionNameGuidString: da2f4b763733745f483ca84089a947dd
-  m_Entries: []
+  m_Entries:
+  - m_Id: 7942211362816
+    m_Key: font.signage
+    m_Metadata:
+      m_Items: []
+  - m_Id: 7942215557120
+    m_Key: font.body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 7942215557121
+    m_Key: font.numerals
+    m_Metadata:
+      m_Items: []
   m_Metadata:
-    m_Items: []
+    m_Items:
+    - rid: 2187414842887373062
   m_KeyGenerator:
     rid: 2187414842887372829
   references:
@@ -26,3 +39,26 @@ MonoBehaviour:
       type: {class: DistributedUIDGenerator, ns: UnityEngine.Localization.Tables, asm: Unity.Localization}
       data:
         m_CustomEpoch: 1789016335149
+    - rid: 2187414842887373062
+      type: {class: AssetTypeMetadata, ns: UnityEngine.Localization.Metadata, asm: Unity.Localization}
+      data:
+        m_Entries:
+        - m_KeyId: 7942211362816
+          m_TableCodes:
+          - en
+          - es
+          - fr
+          - ja
+        - m_KeyId: 7942215557120
+          m_TableCodes:
+          - en
+          - es
+          - fr
+          - ja
+        - m_KeyId: 7942215557121
+          m_TableCodes:
+          - en
+          - es
+          - fr
+          - ja
+        m_TypeString: UnityEngine.TextCore.Text.FontAsset, UnityEngine.TextCoreTextEngineModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null

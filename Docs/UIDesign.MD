@@ -1,6 +1,6 @@
 TRAINSUDOKU · UI WORK ORDER
 v0.4 · 10 SEP 2026 · main @ 3947585
-STATUS: M11 done · M12 next of M11–M20 · progress table in 11.0
+STATUS: M12 done · M13 next of M11–M20 · progress table in 11.0
 
 # Station UI — implementation work order
 
@@ -503,7 +503,7 @@ next begins.
 | MILESTONE | TITLE | VERIFIED |
 |---|---|---|
 | M11 | Foundations | ☑ |
-| M12 | Shell and tokens | ☐ |
+| M12 | Shell and tokens | ☑ |
 | M13 | Core: save v2, network, flow | ☐ |
 | M14 | Content pass | ☐ |
 | M15 | Elements, and the look test | ☐ |
@@ -568,19 +568,45 @@ next begins.
 **Goal:** an empty UI Toolkit shell that renders correctly on a real device and themes itself from data.
 **Touches:** `03.Data/Ui/PanelSettings.asset`, font assets, `Ui/UiShell.cs`, `Ui/PanelBase.cs`, `Uss/tokens.uss`.
 
-- [ ] `PanelSettings.asset` — 1080×1920, Match 0.5, Scale With Screen Size
-- [ ] Import Barlow and Barlow Condensed; build SDF atlases
-- [ ] Import Noto Sans JP; wire the per-locale font Asset Table (3.4)
-- [ ] `tokens.uss` — every token in section 6 as a USS variable
-- [ ] `UiShell.cs` — owns `PanelSettings`, applies `Screen.safeArea` as root padding, publishes `--line-current`
-- [ ] Rewrite `PanelBase` against `UIDocument`, same public surface (4.2)
+- [x] `PanelSettings.asset` — 1080×1920, Match 0.5, Scale With Screen Size *(created early, at M11)*
+- [x] Import Barlow and Barlow Condensed; build SDF atlases
+- [x] Import Noto Sans JP; wire the per-locale font Asset Table (3.4)
+- [x] `tokens.uss` — every token in section 6 as a USS variable
+- [x] `UiShell.cs` — owns `PanelSettings`, applies `Screen.safeArea` as root padding, publishes `--line-current` *(see notes: published by tint class, not by USS variable)*
+- [x] Rewrite `PanelBase` against `UIDocument`, same public surface (4.2) *(as `UiScreen`, alongside `PanelBase` — see notes)*
 
 **Done when**
 
-- [ ] The shell renders at 1080×1920 with correct safe-area inset on a device or a notched simulator
-- [ ] Setting `--line-current` at runtime changes a test element's colour
-- [ ] Switching to `ja` swaps the font asset; switching back restores it
-- [ ] **Verified by human** ☐ &nbsp;&nbsp; date: ______
+- [x] The shell renders at 1080×1920 with correct safe-area inset on a device or a notched simulator
+- [x] Setting `--line-current` at runtime changes a test element's colour
+- [x] Switching to `ja` swaps the font asset; switching back restores it
+- [x] **Verified by human** ☑ &nbsp;&nbsp; date: 10 Sep 2026
+
+#### M12 notes — two places the plan met the engine
+
+- **`--line-current` cannot be a USS variable.** UI Toolkit can only *read* custom properties from C#
+  (`CustomStyleProperty<T>` + `customStyleResolved`); the setter, `SetCustomProperty`, is internal to the
+  UIElements module — verified by compiling against it on 6000.7.0a6. The contract in 4.1 is kept by a different
+  mechanism: a screen tags an element `line-bg`, `line-fg` or `line-border` and `UiShell.ApplyLineColour` tints
+  it. Screens still never name a line's colour and the swap is still one call. `tokens.uss` keeps a
+  `--line-current` fallback so a screen opened outside the shell still renders.
+  **Ordering matters:** the tint pass only finds elements that already exist, so `UiScreen.Build` registers with
+  the shell *before* building the tree (for the token sheet) and re-tints *after* it. Getting this backwards
+  silently leaves the first line colour unapplied — the elements render black.
+- **`PanelBase` is not rewritten in place; `UiScreen` lands beside it.** M14 requires a *playable* game to read
+  real times out of `save.json` for the star thresholds, and the six uGUI panels are `PanelBase` subclasses.
+  Rewriting the base at M12 would leave the game uncompilable from M12 until the screens land at M16. `UiScreen`
+  carries the same public surface, so `GameManager`'s state loop is unchanged; at M16 the seven screens, the
+  `List<PanelBase>`, the six old panels, `PanelBase` and the widget half of `UiBuilder` all go together — which
+  is what 4.2 asks for anyway ("delete the old panels only after the replacements compile").
+- **Font assets are Dynamic, not baked static atlases.** All four are SDF with on-demand glyph rasterisation, so
+  no atlas has to be rebuilt while copy is still moving. M20 already owns the static bake ("Rebuild the `ja` SDF
+  atlas from the actual translated strings"), and that is where the build-size measurement belongs. Note the
+  source `NotoSansJP-Variable.ttf` is 9.1 MB — the largest single asset in the project.
+- **Table keys for fonts:** `font.signage`, `font.body`, `font.numerals`. Numerals stay Barlow in *every* locale,
+  including `ja` — the roundel and clock are tabular figures (section 6) and Noto's are not the ones the layout
+  was drawn against. That is why 3.4 lists Barlow in the `ja` row.
+- **The throwaway spike is gone.** `ShellSpike.cs` and `Spike_M12.unity` were deleted at sign-off, as planned.
 
 ---
 

@@ -1,0 +1,62 @@
+/*
+ * Station UI design tokens - Docs/UIDesign.MD section 6.
+ *
+ * These values are mirrored by Palette.cs, which is what the 3D board reads (a MonoBehaviour cannot resolve a USS
+ * variable). Change one and change the other.
+ *
+ * --line-current is deliberately NOT set here. It is a runtime value: UiShell publishes it from the active
+ * LineDefinition on every state change, so no screen ever names a specific line's colour.
+ */
+
+:root {
+    /* ---- colour ---- */
+    --paper: #F4F5F2;           /* screen ground */
+    --ink: #1F2321;             /* text, signage panels, 4px object borders */
+    --ink-dim: #5A615D;         /* secondary text */
+    --closed: #9AA3A0;          /* locked stations and lines */
+    --closed-light: #B9C0BC;    /* locked fills under a --closed stroke */
+    --led: #FFB020;             /* ticker and clock glyphs */
+    --led-ground: #0D0F0E;      /* the strip behind --led */
+    --warn: #F2C230;            /* platform edge, erase ring */
+    --stop: #D0342C;            /* exit portal, error */
+
+    /* Fallback only, so a screen still renders if the shell has not published yet. TS green. */
+    --line-current: #9ACD32;
+
+    /* ---- geometry ---- */
+    --screen-margin: 48px;
+    --border-width: 4px;        /* square 4px --ink borders on objects */
+    --signage-band-min: 190px;  /* a minimum, never a fixed height: signage wraps, it never ellipsises (3.3) */
+    --signage-rule: 12px;       /* the line-colour rule beneath a signage band */
+    --hud-top: 250px;           /* Play sign bar; BoardCamera is told about this (5.3) */
+    --hud-bottom: 150px;        /* Play LED strip */
+
+    /* ---- map drawing, read by the Painter2D elements ---- */
+    --map-stroke-active: 28px;  /* section 6 allows 26-30 */
+    --map-stroke-inactive: 22px;
+    --station-dot-radius: 9px;
+    --station-dot-stroke: 6px;
+    --interchange-radius: 17px;
+    --interchange-stroke: 7px;
+
+    /* ---- type ---- */
+    --font-size-min: 24px;      /* the floor at the 1080x1920 reference */
+    --tracking-signage: 0.06px; /* 0.04-0.10em, tighter as size grows */
+}
+
+/*
+ * Signage never truncates. Every signage element gets normal wrapping and a minimum height rather than a fixed
+ * one, because es and fr run 20-30% longer than en (3.3).
+ */
+.signage {
+    white-space: normal;
+    min-height: var(--signage-band-min);
+    -unity-text-align: middle-left;
+    color: var(--ink);
+    letter-spacing: var(--tracking-signage);
+}
+
+.signage__rule {
+    height: var(--signage-rule);
+    background-color: var(--line-current);
+}

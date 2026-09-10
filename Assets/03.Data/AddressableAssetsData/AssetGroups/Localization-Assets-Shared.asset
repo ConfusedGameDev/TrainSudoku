@@ -15,10 +15,35 @@ MonoBehaviour:
   m_GroupName: Localization-Assets-Shared
   m_GUID: 0389335a55dff4b549d559b2b15cb67b
   m_SerializeEntries:
+  - m_GUID: 0b36389b3c14846cabfe243055bb5aa2
+    m_Address: Barlow-Medium SDF
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-en
+    - Locale-es
+    - Locale-fr
+    - Locale-ja
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3e15c2f9d523b4ba0a81ee308ce76352
+    m_Address: Barlow-Regular SDF
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-en
+    - Locale-es
+    - Locale-fr
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 718637512d997495289d5d2c455ff09b
     m_Address: Assets/03.Data/Localization/UI/UI Shared Data.asset
     m_ReadOnly: 1
     m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b7691d766afdc44cbb0c62ae386d4913
+    m_Address: BarlowCondensed-SemiBold SDF
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-en
+    - Locale-es
+    - Locale-fr
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: da2f4b763733745f483ca84089a947dd
     m_Address: Assets/03.Data/Localization/Fonts/Fonts Shared Data.asset
