@@ -22,5 +22,11 @@ namespace TrainSudoku.Game
 
         /// <summary>Whether taps reach the board. Off while the pause, train run and win screens are up.</summary>
         void SetInteractable(bool interactable);
+
+        /// <summary>
+        /// How much track is on the board, fixed pieces included. The pause and arrival screens read it out as
+        /// "rails laid"; nothing decides anything with it.
+        /// </summary>
+        int PieceCount { get; }
     }
 }

@@ -1,0 +1,130 @@
+/*
+ * Station UI components - Docs/UIDesign.MD sections 2 and 6.
+ *
+ * Everything here is square-cornered, flat-filled and bordered in --ink. The only circle in the UI is the roundel,
+ * which draws itself. Values that appear in more than one place live in tokens.uss.
+ */
+
+/* ---- signage: a dark band with a line-colour rule beneath it ---- */
+
+.band {
+    min-height: var(--signage-band-min);
+    background-color: var(--ink);
+    padding-left: var(--screen-margin);
+    padding-right: var(--screen-margin);
+    padding-top: 24px;
+    padding-bottom: 24px;
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.band__rule {
+    height: var(--signage-rule);
+    flex-shrink: 0;
+}
+
+/* Signage wraps and grows; it never ellipsises, because a truncated station name is worse than a tall one (3.3). */
+.signage {
+    white-space: normal;
+    color: var(--ink);
+    letter-spacing: 0.06px;
+}
+
+.signage--onDark { color: var(--paper); }
+.signage--dim { color: var(--ink-dim); }
+
+.body {
+    white-space: normal;
+    color: var(--ink);
+}
+
+.body--dim { color: var(--ink-dim); }
+
+/* Tabular figures: the clock must not reflow as its digits change (section 6). */
+.numerals { -unity-text-align: middle-right; }
+
+/* ---- surfaces ---- */
+
+.card {
+    background-color: #FFFFFF;
+    border-left-width: var(--border-width);
+    border-right-width: var(--border-width);
+    border-top-width: var(--border-width);
+    border-bottom-width: var(--border-width);
+    border-left-color: var(--ink);
+    border-right-color: var(--ink);
+    border-top-color: var(--ink);
+    border-bottom-color: var(--ink);
+    flex-shrink: 0;
+}
+
+.scrim { background-color: rgba(31, 35, 33, 0.65); }
+
+.screen {
+    flex-grow: 1;
+    background-color: var(--paper);
+}
+
+/* A screen that sits over the 3D board leaves the middle alone. */
+.screen--transparent {
+    flex-grow: 1;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+/* ---- buttons ---- */
+
+.button {
+    min-height: 132px;
+    background-color: #FFFFFF;
+    color: var(--ink);
+    border-left-width: var(--border-width);
+    border-right-width: var(--border-width);
+    border-top-width: var(--border-width);
+    border-bottom-width: var(--border-width);
+    border-left-color: var(--ink);
+    border-right-color: var(--ink);
+    border-top-color: var(--ink);
+    border-bottom-color: var(--ink);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    margin: 0;
+    padding-left: 32px;
+    padding-right: 32px;
+    white-space: normal;
+    letter-spacing: 0.06px;
+}
+
+.button:hover { background-color: #F0F1EE; }
+.button:active { background-color: var(--ink); color: var(--paper); }
+.button:disabled { opacity: 0.4; }
+
+/* The one filled button on a screen: the thing the player came to do. */
+.button--primary {
+    background-color: var(--ink);
+    color: var(--paper);
+}
+
+.button--primary:hover { background-color: #2B302D; }
+
+/* A small square icon button, e.g. pause. */
+.button--icon {
+    min-height: 96px;
+    width: 96px;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+/* ---- the LED strip ---- */
+
+.led-strip {
+    background-color: var(--led-ground);
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+/* ---- the roundel ---- */
+
+.station-roundel { flex-shrink: 0; }

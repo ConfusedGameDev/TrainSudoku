@@ -34,6 +34,102 @@ MonoBehaviour:
     m_Localized: "MAPA DE L\xCDNEA"
     m_Metadata:
       m_Items: []
+  - m_Id: 52156995461120
+    m_Localized: "ATR\xC1S"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655424
+    m_Localized: SUBIR AHORA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655425
+    m_Localized: "MAPA DE L\xCDNEA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655426
+    m_Localized: "PR\xD3XIMA ESTACI\xD3N"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655427
+    m_Localized: "L\xCDNEA COMPLETA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655428
+    m_Localized: RED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655429
+    m_Localized: "MAPA DE L\xCDNEA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655430
+    m_Localized: SUBIR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655431
+    m_Localized: "PR\xD3XIMA PARADA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655432
+    m_Localized: "PARADA DE SE\xD1AL"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655433
+    m_Localized: TIEMPO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655434
+    m_Localized: "V\xCDAS COLOCADAS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655435
+    m_Localized: CONTINUAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655436
+    m_Localized: EMPEZAR DE NUEVO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655437
+    m_Localized: VOLVER AL MAPA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655438
+    m_Localized: SALIENDO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655439
+    m_Localized: LLEGADA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655440
+    m_Localized: ESTA VUELTA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655441
+    m_Localized: MEJOR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655442
+    m_Localized: "NUEVO R\xC9CORD"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655443
+    m_Localized: "SIGUIENTE ESTACI\xD3N"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655444
+    m_Localized: A LA RED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655445
+    m_Localized: OTRA VEZ
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655446
+    m_Localized: "MAPA DE L\xCDNEA"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

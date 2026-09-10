@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LineDefinition
   id: ts
   code: TS
-  displayName: Trunk
+  displayName: Thornemoor
   color: {r: 0.6039216, g: 0.8039216, b: 0.19607843, a: 1}
   levels: {fileID: 11400000, guid: d42e64ff98282048f5e39238411cabde, type: 2}
   unlockRule:

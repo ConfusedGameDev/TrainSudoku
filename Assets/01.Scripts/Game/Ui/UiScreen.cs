@@ -6,24 +6,21 @@ namespace TrainSudoku.Game
 {
     /// <summary>
     /// One UI Toolkit screen. The UI Toolkit counterpart of <see cref="PanelBase"/>, carrying the same public
-    /// surface — <c>Build</c>, <c>Bind</c>, <c>IsVisibleIn</c>, <c>Refresh</c>, <c>SetVisible</c>, <c>IsBuilt</c> —
-    /// so <see cref="GameManager"/>'s state loop works against either without being rewritten.
+    /// surface the uGUI panels had — <c>Build</c>, <c>Bind</c>, <c>IsVisibleIn</c>, <c>Refresh</c>,
+    /// <c>SetVisible</c>, <c>IsBuilt</c> — so <see cref="GameManager"/>'s state loop did not have to be rewritten.
     /// </summary>
     /// <remarks>
-    /// The work order (4.2) says to rewrite <c>PanelBase</c> in place. It cannot happen at this milestone: the six
-    /// uGUI panels are <c>PanelBase</c> subclasses, and M14 requires a **playable** game to read real times out of
-    /// <c>save.json</c> for the star thresholds. Rewriting the base in place would leave the game uncompilable from
-    /// M12 until the new screens land at M16. So the new base lands *alongside* the old one; at M16 the seven
-    /// screens, the <c>List&lt;PanelBase&gt;</c> on <see cref="GameManager"/>, the six old panels, <c>PanelBase</c>
-    /// itself and the widget half of <c>UiBuilder</c> all change together, which is what 4.2 asks for anyway:
-    /// "delete the old panels only after the replacements compile".
+    /// It landed alongside the old uGUI <c>PanelBase</c> at M12 rather than replacing it, so the game stayed playable
+    /// through M13 and M14 — M14 needed real play to read star times out of <c>save.json</c>. At M16 the seven
+    /// screens, the six old panels, <c>PanelBase</c> and the uGUI widget factory all went together, which is what 4.2
+    /// asks for: "delete the old panels only after the replacements compile".
     ///
     /// Two deliberate differences from <see cref="PanelBase"/>:
     /// <list type="bullet">
     /// <item><b>Nothing is baked into the scene.</b> uGUI needed a Generate Scene Objects step because widgets are
     /// GameObjects with serialized references. A UI Toolkit tree is built in code at runtime, so the
-    /// <c>BuildWidgets</c>/<c>Wire</c> split exists only to keep the shape familiar — both run at runtime and
-    /// lambdas are fine.</item>
+    /// <c>BuildTree</c>/<c>Wire</c> split exists only to keep the shape familiar — both run at runtime and lambdas
+    /// are fine.</item>
     /// <item><b><see cref="SetVisible"/> toggles display, not the GameObject</b>, so a hidden screen still receives
     /// <see cref="Refresh"/>.</item>
     /// </list>

@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.Localization.Settings;
+using UnityEngine.TextCore.Text;
 using UnityEngine.UIElements;
 
 namespace TrainSudoku.Game
@@ -34,6 +36,12 @@ namespace TrainSudoku.Game
         [SerializeField] private PanelSettings panelSettings;
 
         [SerializeField] private StyleSheet tokens;
+        [SerializeField] private StyleSheet components;
+
+        /// <summary>Tag a label with one of these and the shell keeps it on the right face for the active locale.</summary>
+        public const string SignageClass = "signage";
+        public const string BodyClass = "body";
+        public const string NumeralsClass = "numerals";
 
         private readonly System.Collections.Generic.List<VisualElement> _roots = new();
         private Rect _appliedSafeArea = new(-1f, -1f, -1f, -1f);
@@ -43,14 +51,45 @@ namespace TrainSudoku.Game
         /// <summary>The active line's colour. Screens read this only through the tint classes.</summary>
         public Color LineColour { get; private set; } = new Color32(0x9A, 0xCD, 0x32, 0xFF);
 
-        public static UiShell Create(Transform parent, PanelSettings settings, StyleSheet tokenSheet)
+        public static UiShell Create(Transform parent, PanelSettings settings, StyleSheet tokenSheet, StyleSheet componentSheet = null)
         {
             var go = new GameObject("UI Shell");
             go.transform.SetParent(parent, false);
             var shell = go.AddComponent<UiShell>();
             shell.panelSettings = settings;
             shell.tokens = tokenSheet;
+            shell.components = componentSheet;
             return shell;
+        }
+
+        private void OnEnable() => LocalizationSettings.SelectedLocaleChanged += OnLocaleChanged;
+
+        private void OnDisable() => LocalizationSettings.SelectedLocaleChanged -= OnLocaleChanged;
+
+        private void OnLocaleChanged(UnityEngine.Localization.Locale locale)
+        {
+            foreach (var root in _roots) ApplyFonts(root);
+        }
+
+        /// <summary>
+        /// Puts every tagged label on the face the Fonts asset table gives for the active locale (3.4). Doing it here
+        /// rather than in each screen is what keeps the en/es/fr builds free of Japanese glyphs: one lookup, one rule.
+        /// </summary>
+        public void ApplyFonts(VisualElement root)
+        {
+            if (root == null || LocalizationSettings.SelectedLocale == null) return;
+
+            Apply(root, SignageClass, "font.signage");
+            Apply(root, BodyClass, "font.body");
+            Apply(root, NumeralsClass, "font.numerals");
+        }
+
+        private static void Apply(VisualElement root, string className, string key)
+        {
+            var face = LocalizationSettings.AssetDatabase.GetLocalizedAsset<FontAsset>("Fonts", key);
+            if (face == null) return;
+            var definition = new StyleFontDefinition(face);
+            foreach (var element in root.Query(className: className).Build()) element.style.unityFontDefinition = definition;
         }
 
         /// <summary>
@@ -63,8 +102,10 @@ namespace TrainSudoku.Game
             if (root == null) return;
             if (!_roots.Contains(root)) _roots.Add(root);
             if (tokens != null && !root.styleSheets.Contains(tokens)) root.styleSheets.Add(tokens);
+            if (components != null && !root.styleSheets.Contains(components)) root.styleSheets.Add(components);
             ApplySafeArea(root);
             ApplyLineColour(root);
+            ApplyFonts(root);
         }
 
         public void Unregister(VisualElement root) => _roots.Remove(root);

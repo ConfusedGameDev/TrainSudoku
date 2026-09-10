@@ -4,20 +4,26 @@ using TrainSudoku.Core;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.UIElements;
 
 namespace TrainSudoku.Game
 {
     /// <summary>
-    /// Scene entry point. Owns the <see cref="GameFlow"/> and keeps the generated UI and board in step with it: panels
-    /// show according to the flow state, board events feed the flow, and the clock ticks every frame. An unfinished
-    /// level is auto-saved after every board change, on pause and when the app quits, and backgrounding the app pauses it.
-    /// The scene objects (canvas, panels, board root, audio player, event system) are created by
+    /// Scene entry point. Owns the <see cref="GameFlow"/> and keeps the generated UI and board in step with it:
+    /// screens show according to the flow state, board events feed the flow, and the clock ticks every frame. An
+    /// unfinished level is auto-saved after every board change, on pause and when the app quits, and backgrounding the
+    /// app pauses it. The scene objects (UI shell, screens, board root, audio player, event system) are created by
     /// <see cref="Generate"/>, normally from the Inspector button so they are saved in the scene. If a scene was never
     /// generated, <see cref="Awake"/> generates them at runtime as a fallback.
     /// </summary>
     public sealed class GameManager : MonoBehaviour
     {
         [Header("Content")]
+        [Tooltip("Every line the game ships. The flat level order is this asset's line order, concatenated, and that " +
+                 "order is the save-file identity.")]
+        [SerializeField] private NetworkDefinition network = null;
+
+        [Tooltip("Legacy flat list, kept as a fallback for a scene authored before the network existed.")]
         [SerializeField] private LevelCollection levels = null;
         [SerializeField] private InputActionAsset inputActions = null;
         [SerializeField] private AudioCueLibrary audioCues = null;
@@ -28,15 +34,21 @@ namespace TrainSudoku.Game
         [SerializeField] private bool unlockAllLevelsInEditor = false;
 
         [Header("Generated scene objects")]
-        [SerializeField] private Canvas canvas = null;
+        [SerializeField] private UiShell shell = null;
         [SerializeField] private EventSystem eventSystem = null;
         [SerializeField] private AudioCuePlayer audioPlayer = null;
         [SerializeField] private BoardCamera boardCamera = null;
         [SerializeField] private BoardView boardView = null;
         [SerializeField] private TrainRunner trainRunner = null;
-        [SerializeField] private List<PanelBase> panels = new List<PanelBase>();
+        [SerializeField] private List<UiScreen> screens = new List<UiScreen>();
 
-        private PlayPanel _playPanel;
+        [Header("UI assets")]
+        [SerializeField] private PanelSettings panelSettings = null;
+        [SerializeField] private StyleSheet tokenSheet = null;
+        [SerializeField] private StyleSheet componentSheet = null;
+
+        private PlayScreen _playScreen;
+        private List<LevelDefinition> _flatLevels;
 
         /// <summary>The JSON save file (PRD section 6).</summary>
         public static string SaveFilePath => Path.Combine(Application.persistentDataPath, "save.json");
@@ -45,27 +57,99 @@ namespace TrainSudoku.Game
         public ISaveStore SaveStore { get; private set; }
         public LevelCollection Levels => levels;
         public IBoardView Board => boardView;
+        public UiShell Shell => shell;
+        public NetworkDefinition Network => network;
 
-        public LevelDefinition CurrentLevel =>
-            Flow != null && Flow.CurrentLevelIndex >= 0 && Flow.CurrentLevelIndex < levels.Count ? levels[Flow.CurrentLevelIndex] : null;
+        /// <summary>Every level across every line, in line order. This order is the save-file identity.</summary>
+        public IReadOnlyList<LevelDefinition> FlatLevels => _flatLevels;
 
-        /// <summary>True when every generated object exists and the panels have their widgets.</summary>
+        public LineDefinition CurrentLine => network != null ? network.Line(Flow != null ? Flow.SelectedLineIndex : 0) : null;
+
+        public LevelDefinition CurrentLevel => Level(Flow != null ? Flow.CurrentLevelIndex : -1);
+
+        private LevelDefinition Level(int flatIndex) =>
+            _flatLevels != null && flatIndex >= 0 && flatIndex < _flatLevels.Count ? _flatLevels[flatIndex] : null;
+
+        /// <summary>One station of one line, or null.</summary>
+        public LevelDefinition Station(int lineIndex, int station) =>
+            Level(Flow != null ? Flow.Layout.FlatIndex(lineIndex, station) : -1);
+
+        public string StationId(int lineIndex, int station)
+        {
+            var level = Station(lineIndex, station);
+            return level != null ? level.Id : null;
+        }
+
+        /// <summary>
+        /// The only line with content, or -1 when the network has a choice to offer. While it is set, the network
+        /// screen is a hop with nothing in it -- one line drawn without its stations, between the concourse and that
+        /// same line's map -- so the screens step over it and go straight to the line. It is the same reasoning as
+        /// D10, which keeps empty lines off the map: a network of one reads as a missing screen, not a network.
+        /// The moment a second line has content this returns -1 and the network takes its place back.
+        /// </summary>
+        public int SoleLineIndex
+        {
+            get
+            {
+                if (network == null) return -1;
+                var only = -1;
+                for (var i = 0; i < network.LineCount; i++)
+                {
+                    var line = network.Line(i);
+                    if (line == null || !line.HasContent) continue;   // D10: the same lines the map draws
+                    if (only >= 0) return -1;
+                    only = i;
+                }
+
+                return only;
+            }
+        }
+
+        /// <summary>
+        /// The first station on a line the player has not cleared, or -1 when the line is finished. This is what
+        /// "board now" means and where the line map opens.
+        /// </summary>
+        public int NextStationOnLine(int lineIndex)
+        {
+            if (Flow == null) return -1;
+            var count = Flow.Layout.StationCount(lineIndex);
+            for (var station = 0; station < count; station++)
+            {
+                var id = StationId(lineIndex, station);
+                if (id == null) continue;
+                if (Flow.Progress.GetStars(id) == 0) return station;
+            }
+
+            return -1;
+        }
+
+        /// <summary>The same, as a flat index, for the concourse's one button.</summary>
+        public int NextStationIndex()
+        {
+            if (Flow == null) return -1;
+            var station = NextStationOnLine(Flow.SelectedLineIndex);
+            return station < 0 ? -1 : Flow.Layout.FlatIndex(Flow.SelectedLineIndex, station);
+        }
+
+        /// <summary>True when every generated object exists and all seven screens are present.</summary>
         public bool IsGenerated
         {
             get
             {
-                if (canvas == null || audioPlayer == null || boardCamera == null || boardView == null || !boardView.IsGenerated) return false;
+                if (shell == null || audioPlayer == null || boardCamera == null || boardView == null || !boardView.IsGenerated) return false;
                 if (trainRunner == null) return false;
-                if (panels == null || panels.Count != 6) return false;
-                foreach (var panel in panels)
-                    if (panel == null || !panel.IsBuilt) return false;
+                // Seven screens, one per row of work order section 2. Change this with the screen list or the scene
+                // silently regenerates its UI on every launch.
+                if (screens == null || screens.Count != 7) return false;
+                foreach (var screen in screens)
+                    if (screen == null) return false;
                 return true;
             }
         }
 
         // ------------------------------------------------------------------ generation
 
-        /// <summary>Creates the canvas, panels, board root, audio player and event system as children of this object.</summary>
+        /// <summary>Creates the UI shell and its screens, the board root, the audio player and the event system.</summary>
         [ContextMenu("Generate Scene Objects")]
         public void Generate()
         {
@@ -77,16 +161,18 @@ namespace TrainSudoku.Game
             if (boardCamera == null) Debug.LogWarning("GameManager: no camera in the scene, the board will not be visible.", this);
 
             audioPlayer = AudioCuePlayer.Create(transform, audioCues);
-            eventSystem = UiBuilder.EnsureEventSystem(inputActions, transform);
-            canvas = UiBuilder.CreateCanvas("UI", transform);
+            // UI Toolkit still routes runtime pointer events through the EventSystem, so this stays.
+            eventSystem = SceneObjects.EnsureEventSystem(inputActions, transform);
+            shell = UiShell.Create(transform, panelSettings, tokenSheet, componentSheet);
 
-            panels.Clear();
-            AddPanel<MainMenuPanel>("Main Menu");
-            AddPanel<LevelSelectPanel>("Level Select");
-            AddPanel<PlayPanel>("Play");
-            AddPanel<PausePanel>("Pause");
-            AddPanel<TrainRunPanel>("Train Run");
-            AddPanel<WinPanel>("Win");
+            screens.Clear();
+            AddScreen<ConcourseScreen>("Concourse");
+            AddScreen<NetworkScreen>("Network");
+            AddScreen<LineMapScreen>("Line Map");
+            AddScreen<PlayScreen>("Play");
+            AddScreen<SignalStopScreen>("Signal Stop");
+            AddScreen<TrainRunScreen>("Train Run");
+            AddScreen<ArrivalScreen>("Arrival");
 
             boardView = BoardView.Create(transform, boardCamera, trackAssets);
             trainRunner = TrainRunner.Create(transform, trainAssets);
@@ -96,36 +182,52 @@ namespace TrainSudoku.Game
         [ContextMenu("Clear Generated Scene Objects")]
         public void ClearGenerated()
         {
-            if (canvas != null) UiBuilder.Destroy(canvas.gameObject);
-            if (audioPlayer != null) UiBuilder.Destroy(audioPlayer.gameObject);
-            if (boardView != null) UiBuilder.Destroy(boardView.gameObject);
-            if (trainRunner != null) UiBuilder.Destroy(trainRunner.gameObject);
+            if (shell != null) SceneObjects.Destroy(shell.gameObject);
+            if (audioPlayer != null) SceneObjects.Destroy(audioPlayer.gameObject);
+            if (boardView != null) SceneObjects.Destroy(boardView.gameObject);
+            if (trainRunner != null) SceneObjects.Destroy(trainRunner.gameObject);
             // Only remove the event system if it is ours; the scene may have had one already.
-            if (eventSystem != null && eventSystem.transform.parent == transform) UiBuilder.Destroy(eventSystem.gameObject);
-            canvas = null;
+            if (eventSystem != null && eventSystem.transform.parent == transform) SceneObjects.Destroy(eventSystem.gameObject);
+            shell = null;
             audioPlayer = null;
             boardView = null;
             trainRunner = null;
             eventSystem = null;
-            panels.Clear();
+            screens.Clear();
         }
 
-        private void AddPanel<T>(string name) where T : PanelBase
+        /// <summary>
+        /// One screen, one <see cref="UIDocument"/>, all sharing the shell's <see cref="PanelSettings"/>. Nothing is
+        /// baked: a UI Toolkit tree is built in code at runtime, so unlike the uGUI panels there are no serialized
+        /// widget references and no Generate step is needed after changing a screen's layout.
+        /// </summary>
+        private void AddScreen<T>(string name) where T : UiScreen
         {
-            var rect = UiBuilder.Stretch(UiBuilder.Rect(canvas.transform, name));
-            var panel = rect.gameObject.AddComponent<T>();
-            panel.Build();
-            panels.Add(panel);
+            var go = new GameObject(name);
+            go.transform.SetParent(shell != null ? shell.transform : transform, false);
+            var document = go.AddComponent<UIDocument>();
+            document.panelSettings = panelSettings;
+            screens.Add(go.AddComponent<T>());
         }
 
         // ------------------------------------------------------------------ runtime
 
         private void Awake()
         {
-            if (levels == null)
+            // The network is the source of truth; the flat collection is the fallback for a scene authored before it.
+            if (network != null)
             {
-                Debug.LogWarning("GameManager has no LevelCollection assigned; Level Select will be empty.", this);
-                levels = ScriptableObject.CreateInstance<LevelCollection>();
+                _flatLevels = network.FlatLevels();
+            }
+            else
+            {
+                if (levels == null)
+                {
+                    Debug.LogWarning("GameManager has neither a NetworkDefinition nor a LevelCollection; the line will be empty.", this);
+                    levels = ScriptableObject.CreateInstance<LevelCollection>();
+                }
+
+                _flatLevels = new List<LevelDefinition>(levels.Levels);
             }
 
             if (!IsGenerated)
@@ -134,11 +236,11 @@ namespace TrainSudoku.Game
                 Generate();
             }
 
-            var ids = new List<string>(levels.Count);
-            foreach (var level in levels.Levels) ids.Add(level != null ? level.Id : "");
+            var ids = new List<string>(_flatLevels.Count);
+            foreach (var level in _flatLevels) ids.Add(level != null ? level.Id : "");
 
             SaveStore = new FileSaveStore(SaveFilePath, message => Debug.LogWarning($"Save: {message}", this));
-            Flow = new GameFlow(ids, SaveStore);
+            Flow = new GameFlow(ids, SaveStore, network != null ? network.ToLayout() : null);
 #if UNITY_EDITOR
             Flow.UnlockAll = unlockAllLevelsInEditor;
 #endif
@@ -147,14 +249,17 @@ namespace TrainSudoku.Game
             // level carrying a best time but no rating - the shape a version 1 save leaves behind - has one worked
             // out from those thresholds. Both are idempotent and neither can lower a rating already earned.
             Flow.StarTimesForLevel = index =>
-                index >= 0 && index < levels.Count && levels[index] != null ? levels[index].StarTimes : null;
+                index >= 0 && index < _flatLevels.Count && _flatLevels[index] != null ? _flatLevels[index].StarTimes : null;
             Flow.AwardMissingStars();
 
-            foreach (var panel in panels)
+            foreach (var screen in screens)
             {
-                panel.Bind(this);
-                if (panel is PlayPanel play) _playPanel = play;
+                screen.Bind(this);
+                if (screen is PlayScreen play) _playScreen = play;
             }
+
+            // The active line's colour is published once here; every state change republishes it.
+            if (shell != null && CurrentLine != null) shell.SetLineColour(CurrentLine.Color);
 
             boardView.Configure(trackAssets);
             boardView.Interacted += OnBoardInteracted;
@@ -174,7 +279,7 @@ namespace TrainSudoku.Game
         private void Update()
         {
             Flow.Tick(Time.deltaTime);
-            if (Flow.State == GameState.Play && _playPanel != null) _playPanel.UpdateClock(Flow.Timer.Elapsed);
+            if (Flow.State == GameState.Play && _playScreen != null) _playScreen.UpdateClock(Flow.Timer.Elapsed);
         }
 
         private void OnDestroy()
@@ -213,11 +318,14 @@ namespace TrainSudoku.Game
 
         private void ApplyState(GameState state)
         {
-            foreach (var panel in panels)
+            // The loop is deliberately unchanged from the uGUI version: show, then refresh what is showing.
+            if (shell != null && CurrentLine != null) shell.SetLineColour(CurrentLine.Color);
+
+            foreach (var screen in screens)
             {
-                var visible = panel.IsVisibleIn(state);
-                panel.SetVisible(visible);
-                if (visible) panel.Refresh(state);
+                var visible = screen.IsVisibleIn(state);
+                screen.SetVisible(visible);
+                if (visible) screen.Refresh(state);
             }
 
             boardView.SetInteractable(state == GameState.Play);
@@ -231,8 +339,7 @@ namespace TrainSudoku.Game
             if (Flow.State == GameState.TrainRun) Flow.FinishTrainRun();
         }
 
-        private void OnLevelStarted(int index, LevelProgress resume) =>
-            boardView.Load(index >= 0 && index < levels.Count ? levels[index] : null, resume);
+        private void OnLevelStarted(int index, LevelProgress resume) => boardView.Load(Level(index), resume);
 
         private void OnBoardInteracted()
         {

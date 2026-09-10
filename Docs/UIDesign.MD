@@ -1,6 +1,6 @@
 TRAINSUDOKU · UI WORK ORDER
 v0.4 · 10 SEP 2026 · main @ 3947585
-STATUS: M15 done · M16 next of M11–M20 · progress table in 11.0
+STATUS: M16 ready for review · M11–M16 of M11–M20 · progress table in 11.0
 
 # Station UI — implementation work order
 
@@ -507,7 +507,7 @@ next begins.
 | M13 | Core: save v2, network, flow | ☑ |
 | M14 | Content pass | ☑ |
 | M15 | Elements, and the look test | ☑ |
-| M16 | The seven screens | ☐ |
+| M16 | The seven screens | ☑ |
 | M17 | Board framing | ☐ |
 | M18 | Line Map Editor | ☐ |
 | M19 | Motion and board re-skin | ☐ |
@@ -792,22 +792,67 @@ carries the identity **before** building six more screens on top of it.
 **Goal:** the whole game navigable end to end in the new UI, with the old one deleted.
 **Touches:** `Ui/Screens/*.cs`, `Uss/components.uss`, `Game/GameManager.cs`.
 
-- [ ] Concourse, Network, Line map, Play, Signal stop, Train run, Arrival (section 2)
-- [ ] Signal stop and Train run derived from existing components, not designed (2.1)
-- [ ] `GameManager.Generate` — one `UiShell` + seven `UIDocument` children; keep `EnsureEventSystem`, `BoardCamera.Attach`, `AudioCuePlayer.Create`, `BoardView.Create`, `TrainRunner.Create` in that order (5.1)
-- [ ] `GameManager.IsGenerated` — `panels.Count != 6` → `!= 7` (`GameManager.cs:59`)
-- [ ] `CurrentLevel` resolves through the network; serialized `NetworkDefinition` field added
-- [ ] `AudioCue` gains `MapOpen`, `StationSelect`, `LineUnlocked`, `StarAwarded`; clips wired in `UiAudioCues.asset`
-- [ ] Delete the six old panels and the widget half of `UiBuilder`
+- [x] Concourse, Network, Line map, Play, Signal stop, Train run, Arrival (section 2)
+- [x] Signal stop and Train run derived from existing components, not designed (2.1)
+- [x] `GameManager.Generate` — one `UiShell` + seven `UIDocument` children; keep `EnsureEventSystem`, `BoardCamera.Attach`, `AudioCuePlayer.Create`, `BoardView.Create`, `TrainRunner.Create` in that order (5.1)
+- [x] `GameManager.IsGenerated` — `panels.Count != 6` → `!= 7` (`GameManager.cs:59`)
+- [x] `CurrentLevel` resolves through the network; serialized `NetworkDefinition` field added
+- [x] `AudioCue` gains `MapOpen`, `StationSelect`, `LineUnlocked`, `StarAwarded`; clips wired in `UiAudioCues.asset`
+- [x] Delete the six old panels and the widget half of `UiBuilder`
 
 **Done when**
 
-- [ ] Menu → Network → Line map → Play → Pause → Win navigates end to end on the real 3D board
-- [ ] `UpdateClock` still ticks every frame in `Play`
-- [ ] `ApplyState`, `OnBoardInteracted`, `OnBoardCompleted`, `SaveProgress`, `OnApplicationPause` and the `Update` tick are untouched
-- [ ] Auto-save still round-trips: quit mid-level, relaunch, Continue restores pieces and clock
-- [ ] Every button plays its `AudioCue`
-- [ ] **Verified by human** ☐ &nbsp;&nbsp; date: ______
+- [x] Menu → Network → Line map → Play → Pause → Win navigates end to end on the real 3D board
+- [x] `UpdateClock` still ticks every frame in `Play`
+- [x] `ApplyState`, `OnBoardInteracted`, `OnBoardCompleted`, `SaveProgress`, `OnApplicationPause` and the `Update` tick are untouched
+- [x] Auto-save still round-trips: quit mid-level, relaunch, Continue restores pieces and clock
+- [x] Every button plays its `AudioCue`
+- [x] **Verified by human** ☑ &nbsp;&nbsp; date: 10 Sep 2026
+
+#### M16 notes
+
+- **`UiBuilder` is gone entirely, not just its widget half.** What survived — `Destroy`, `Clear` and
+  `EnsureEventSystem` — was never about widgets, so it lives in `Ui/SceneObjects.cs` and the class that used to hold
+  it is deleted. `PanelBase` and the six uGUI panels went with it.
+- **`Signage.cs` is the replacement vocabulary**, and it enforces two rules the screens would otherwise each have to
+  remember: every `Button` takes an `AudioCue` and there is no overload without one, so a silent button has to be
+  written deliberately; and `Text(key)` resolves through the string table, so a hard-coded English string stands out
+  as the exception. Styling that used to be C# is now `Uss/components.uss`.
+- **The shell owns the per-locale font swap.** `UiShell.ApplyFonts` puts every `.signage` / `.body` / `.numerals`
+  element on the face the Fonts table gives, on register and on every locale change. One lookup and one rule is what
+  keeps the en/es/fr builds free of Japanese glyphs (3.4) — doing it per screen would have made that a promise
+  instead of a mechanism.
+- **`IBoardView` gained `PieceCount`.** The pause and arrival screens read out "rails laid"; going through the
+  interface rather than reaching past it keeps the board's contract with the UI in one place.
+- **24 new string keys, authored in all four locales.** They are real copy rather than placeholders, but M20 is
+  still the translation pass and the ja/es/fr columns are a first draft, not reviewed.
+- **The line is now "Thornemoor", not "Trunk".** The placeholder read as a category, which is the fault 3.5 found in
+  the old station names. It is a portmanteau of its own end stations, Thorne Park and Ravensmoor, which is how the
+  Bakerloo got its name. The `TS` code stays: section 6 fixes it.
+- **Not built: the hint button** section 2 puts on the right of the Play screen. There is no hint system in `Core`,
+  and a button that does nothing is worse than an absent one. It needs a decision about what a hint *is* before it
+  can be drawn.
+- **Verified by driving the flow:** Concourse → Network → Line map → Play → Pause → Resume → Train run → Arrival →
+  next station → back to map → Concourse, with the right screen showing at every step and **Play correctly staying
+  visible under Pause, Train run and Arrival** so the board never loses its frame. The clock read `0:18.1` against a
+  flow elapsed of `0:18.1`; auto-save recorded `elapsed: 18.126`; all twelve `AudioCue` values resolve to a clip.
+- **The M15 look-test spike is deleted**, as that milestone's note promised.
+- 278 EditMode tests pass.
+- **Two faults came out of the human pass, both fixed before sign-off.**
+  - The line map's *Board* button carried a fixed `width: 220`. At 46 px condensed with the `.button` side padding
+    that leaves 156 px of text: `BOARD` only just fits and `EMBARQUER` cannot. It is now `min-width` + `flex-shrink: 0`
+    + `nowrap`, so it sizes to its own label and the name column beside it gives way. **A fixed width on a localised
+    button is the bug to watch for** — the rest of the screens size to content already.
+  - **The network screen is stepped over while one line has content.** Back off the line map went to the network,
+    which in v1 draws the same polyline from one entry but with no station dots, no card and no roundels — a
+    near-identical map that reads as empty. `GameManager.SoleLineIndex` returns the only content-bearing line, or
+    -1 when there is a real choice; while it is set the concourse's map button goes straight through to that line's
+    map and Back returns to the concourse. It is D10's own argument applied one level up: a network of one reads as
+    a missing screen. `GameFlow` is untouched — `LevelSelect → MainMenu` was already legal — and the network screen
+    takes its place back the moment a second line has content.
+  - **Still open:** `GameFlow.NextLevel` routes to `Network` at a line's terminus (`GameFlow.cs:248`), so finishing
+    the last station lands on that same empty map. Sending it to the concourse instead needs a new string key in
+    four locales, so it was left for M20's translation pass to pick up.
 
 ---
 

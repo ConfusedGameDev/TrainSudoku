@@ -37,3 +37,15 @@ MonoBehaviour:
   - cue: 7
     clip: {fileID: 8300000, guid: 44a0ff6f0b2f1ec48b6241e28fc069ab, type: 3}
     volume: 1
+  - cue: 8
+    clip: {fileID: 8300000, guid: 18973115e9feadb40a83dbba1db421b1, type: 3}
+    volume: 0.6
+  - cue: 9
+    clip: {fileID: 8300000, guid: 0d9875dc11eee3945bbd1f3d2947fd71, type: 3}
+    volume: 0.7
+  - cue: 10
+    clip: {fileID: 8300000, guid: f7275c377329a25499e8a7e9df8b4c78, type: 3}
+    volume: 0.9
+  - cue: 11
+    clip: {fileID: 8300000, guid: f66899a74d886eb4bad9b5e1e0fa3a25, type: 3}
+    volume: 0.8

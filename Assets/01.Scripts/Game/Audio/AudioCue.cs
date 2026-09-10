@@ -11,5 +11,12 @@ namespace TrainSudoku.Game
         Error = 5,
         Win = 6,
         TrainStart = 7,
+
+        // Added with the station UI (work order 10). Values are appended, never inserted, because the cue library
+        // asset maps clips by enum value.
+        MapOpen = 8,
+        StationSelect = 9,
+        LineUnlocked = 10,
+        StarAwarded = 11,
     }
 }

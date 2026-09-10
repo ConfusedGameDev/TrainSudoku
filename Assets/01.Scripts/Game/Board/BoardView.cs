@@ -58,6 +58,9 @@ namespace TrainSudoku.Game
         /// <summary>Validator output for the current board, refreshed after every change (PRD section 3.4).</summary>
         public WinResult LastResult { get; private set; }
 
+        /// <summary>Track pieces currently on the board, or zero when no level is loaded.</summary>
+        public int PieceCount => Board != null ? Board.PieceCount : 0;
+
         public bool IsGenerated => tiles != null && pieces != null && tunnels != null && clues != null && markers != null;
 
         public event Action Interacted;

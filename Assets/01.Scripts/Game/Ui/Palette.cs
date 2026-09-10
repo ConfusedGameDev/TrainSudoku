@@ -3,9 +3,9 @@ using UnityEngine;
 namespace TrainSudoku.Game
 {
     /// <summary>
-    /// The single place colour and font live. The 3D board reads from here (it used to reach into
-    /// <see cref="UiBuilder"/>, which is deleted once the UI Toolkit screens land), and the USS token sheet is
-    /// generated from the same values, so a re-skin is an edit to this file.
+    /// The single place colour and font live. The 3D board reads from here — it used to reach into the uGUI widget
+    /// factory, which is now gone — and <c>Uss/tokens.uss</c> mirrors the same values, so a re-skin is an edit to
+    /// this file and that sheet.
     /// </summary>
     /// <remarks>
     /// Two disjoint sets live here and they must not be confused:
@@ -13,7 +13,7 @@ namespace TrainSudoku.Game
     /// <item>The station-signage tokens (<see cref="Paper"/> down to <see cref="Stop"/>) are the values from the
     /// UI work order section 6. Nothing reads them yet; the shell picks them up as USS variables.</item>
     /// <item>The board values (<see cref="BoardBackground"/> down to <see cref="ClueText"/>) are carried over from
-    /// <c>UiBuilder</c> unchanged, so the playfield renders exactly as it did before the move.</item>
+    /// the old uGUI palette unchanged, so the playfield renders exactly as it did before the move.</item>
     /// </list>
     /// The line colour is deliberately absent: it is a runtime value published as the USS variable
     /// <c>--line-current</c> from the active line, never a constant.

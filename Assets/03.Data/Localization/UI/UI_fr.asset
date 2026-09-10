@@ -34,6 +34,102 @@ MonoBehaviour:
     m_Localized: PLAN DE LIGNE
     m_Metadata:
       m_Items: []
+  - m_Id: 52156995461120
+    m_Localized: RETOUR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655424
+    m_Localized: EMBARQUER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655425
+    m_Localized: PLAN DE LIGNE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655426
+    m_Localized: PROCHAINE STATION
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655427
+    m_Localized: "LIGNE TERMIN\xC9E"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655428
+    m_Localized: "R\xC9SEAU"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655429
+    m_Localized: PLAN DE LIGNE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655430
+    m_Localized: EMBARQUER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655431
+    m_Localized: "PROCHAIN ARR\xCAT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655432
+    m_Localized: "ARR\xCAT SIGNAL"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655433
+    m_Localized: "TEMPS \xC9COUL\xC9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655434
+    m_Localized: "RAILS POS\xC9S"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655435
+    m_Localized: REPRENDRE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655436
+    m_Localized: RECOMMENCER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655437
+    m_Localized: RETOUR AU PLAN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655438
+    m_Localized: "D\xC9PART"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655439
+    m_Localized: "ARRIV\xC9E"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655440
+    m_Localized: CE TRAJET
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655441
+    m_Localized: MEILLEUR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655442
+    m_Localized: NOUVEAU RECORD
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655443
+    m_Localized: STATION SUIVANTE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655444
+    m_Localized: "VERS LE R\xC9SEAU"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655445
+    m_Localized: REFAIRE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655446
+    m_Localized: PLAN DE LIGNE
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

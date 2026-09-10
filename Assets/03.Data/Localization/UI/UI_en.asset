@@ -34,6 +34,102 @@ MonoBehaviour:
     m_Localized: LINE MAP
     m_Metadata:
       m_Items: []
+  - m_Id: 52156995461120
+    m_Localized: BACK
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655424
+    m_Localized: BOARD NOW
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655425
+    m_Localized: LINE MAP
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655426
+    m_Localized: NEXT STATION
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655427
+    m_Localized: LINE COMPLETE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655428
+    m_Localized: NETWORK
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655429
+    m_Localized: LINE MAP
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655430
+    m_Localized: BOARD
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655431
+    m_Localized: NEXT STOP
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655432
+    m_Localized: SIGNAL STOP
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655433
+    m_Localized: ELAPSED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655434
+    m_Localized: RAILS LAID
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655435
+    m_Localized: RESUME
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655436
+    m_Localized: START OVER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655437
+    m_Localized: BACK TO MAP
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655438
+    m_Localized: DEPARTING
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655439
+    m_Localized: ARRIVAL
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655440
+    m_Localized: THIS RUN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655441
+    m_Localized: BEST
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655442
+    m_Localized: NEW BEST
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655443
+    m_Localized: NEXT STATION
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655444
+    m_Localized: TO THE NETWORK
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655445
+    m_Localized: RUN AGAIN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 52156999655446
+    m_Localized: LINE MAP
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []
