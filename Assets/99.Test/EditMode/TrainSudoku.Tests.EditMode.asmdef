@@ -4,6 +4,7 @@
     "references": [
         "TrainSudoku.Core",
         "TrainSudoku.Game",
+        "TrainSudoku.Editor",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

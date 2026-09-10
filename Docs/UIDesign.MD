@@ -509,7 +509,7 @@ next begins.
 | M15 | Elements, and the look test | ☑ |
 | M16 | The seven screens | ☑ |
 | M17 | Board framing | ☑ |
-| M18 | Line Map Editor | ☐ |
+| M18 | Line Map Editor | ☑ |
 | M19 | Motion and board re-skin | ☐ |
 | M20 | Translation pass | ☐ |
 
@@ -922,16 +922,64 @@ carries the identity **before** building six more screens on top of it.
 **Goal:** maps become authored data instead of hand-typed coordinates.
 **Touches:** `01.Scripts/Editor/`.
 
-- [ ] Editor window beside `LevelEditorWindow`: drag nodes on a 45° snap grid
-- [ ] Assign stations to nodes; set line colour and code
-- [ ] Preview the runtime `Painter2D` draw at device aspect
-- [ ] Validate: every station on a node, no overlapping strokes, each interchange shared by exactly two lines
+- [x] Editor window beside `LevelEditorWindow`: drag nodes on a 45° snap grid
+- [x] Assign stations to nodes; set line colour and code
+- [x] Preview the runtime `Painter2D` draw at device aspect
+- [x] Validate: every station on a node, no overlapping strokes, each interchange shared by exactly two lines
 
 **Done when**
 
-- [ ] The TS line's `mapNodes` are re-authored with the tool and the runtime draw is unchanged
-- [ ] Validation catches a deliberately broken line
-- [ ] **Verified by human** ☐ &nbsp;&nbsp; date: ______
+- [x] The TS line's `mapNodes` are re-authored with the tool — **the draw deliberately changed**: the map was
+  re-dragged into a new 16-node shape rather than reproduced (see the notes)
+- [x] Validation catches a deliberately broken line
+- [x] **Verified by human** ☑ &nbsp;&nbsp; date: 10 Sep 2026
+
+#### M18 notes
+
+- **Four files, all in `Editor/`.** `MapGrid` is the lattice and the snap, `LineMapValidation` is the four checks,
+  `LineMapEditorWindow` is the window over both, and `LineDefinitionInspector` is the one-button way in, mirroring
+  the level editor's. The first two are plain statics taking plain lists, which is why 27 of the milestone's tests
+  never open a window.
+- **The asset is written through `SerializedObject`, not through `LineDefinition`'s own setters.** That keeps the
+  milestone inside `01.Scripts/Editor/` as the work order says — `Game` grows no new API — and Unity records the
+  asset's Undo entry for free. Edits live in the window's own `[SerializeField]` fields until Save, so Undo and
+  domain reloads both see them and a half-finished map cannot leak into the game.
+- **The 45° snap is a guarantee, not a tolerance, and it took seeing the tool used to get there.** The first version
+  merely *preferred* an aligned point within a cell and a half of the pointer, so a free drag mostly landed on the
+  plain grid and authored segments the validator then rejected — which is exactly what happened the first time
+  someone dragged the TS line with the toggle on. Now, with a neighbour present, the node always lands on one of the
+  eight rays out of it. A point satisfying *both* neighbours — a corner of the diagram — wins over a merely closer
+  one, but only while it is within a cell and a half of the closest legal answer, so a corner never yanks the node
+  across the map. `EveryDragOfEveryShapeLandsSomewhereLegal` sweeps 2,156 drag targets and asserts it.
+- **The pull can be long, and that is correct.** A pointer 20° off the axis at 1,000 units is ~370 units from the ray
+  it belongs to. Snapping is what the toggle means; the toggle is the escape hatch.
+- **The preview is the runtime `LineMapElement` itself**, fed from a throwaway `LineDefinition`, sized to the chosen
+  device aspect and given the line colour directly (the runtime resolves the same value out of `--line-current`). If
+  the preview and the game ever disagree it is because the data changed, not because the tool drifted.
+- **Two problem boxes, not one.** The live one validates the buffer in the window; the second validates the network
+  as saved, with the edited line's own problems filtered out so a stale copy of them cannot contradict the live list.
+  Cross-line checks — strokes running over one another, interchanges — only mean anything against saved assets.
+- **"No overlapping strokes" means collinear and sharing length**, not crossing. A diagram is allowed a bridge; what
+  it cannot have is two strokes hiding one another. A straight run split into two segments is therefore fine, and a
+  stroke that doubles back over itself is not. The perpendicular-offset check is what stops the opposite sides of a
+  loop reading as an overlap.
+- **Station order is validated as well as station placement.** The stations are the levels in order, so a map whose
+  station nodes do not ascend draws a route whose numbers run backwards.
+- **The TS line was re-authored by hand, and the map changed on purpose.** The first thing that happened when the
+  window opened was that the line got dragged into a different shape — which is the tool doing its job, and the
+  reason the "runtime draw is unchanged" check reads the way it now does. The map is no longer the hand-typed one.
+- **`Straighten` is what repaired it, and it is a keeper.** The freehand drags left seven segments off the compass.
+  Straighten inserts a corner into every illegal segment — along the dominant axis, then 45° into the far end, the
+  way a transit diagram turns — and **moves no node**, so all nine stations stayed exactly where they had been
+  dragged and only the corners between them are new: 9 nodes became 16, stations sitting on 0, 2, 4, 6, 8, 9, 11,
+  13, 15. Repairing by moving nodes instead would have dragged the stations off the shape someone had just chosen.
+- **The save path is byte-lossless**: loading `Line_TS.asset` into the window and pressing Save leaves the file
+  hash-identical, so the tool's write is a true round trip and not a reformat.
+- **A `Button` cannot be driven with a synthetic `ClickEvent`.** `Clickable` listens for pointer events, so a sent
+  `ClickEvent` is silently ignored and the button *looks* pressed with nothing happening — the trap that made a
+  first attempt at this verification report a pass it had not earned. `NavigationSubmitEvent`, which `Button`
+  handles for keyboard Enter, does fire it. Worth knowing for any later scripted check of an editor window.
+- 315 EditMode tests pass, up from 288. The test assembly now references `TrainSudoku.Editor`.
 
 ---
 
