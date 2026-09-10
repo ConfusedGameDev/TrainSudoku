@@ -3,7 +3,8 @@
     "rootNamespace": "TrainSudoku.Editor",
     "references": [
         "TrainSudoku.Core",
-        "TrainSudoku.Game"
+        "TrainSudoku.Game",
+        "Unity.Localization"
     ],
     "includePlatforms": [
         "Editor"

@@ -27,5 +27,5 @@ MonoBehaviour:
   modelYawOffset: 0
   modelScale: 0.3
   heightOffset: 0
-  signageFont: {fileID: 12800000, guid: a1927b1f68409430abda6eccf22fc205, type: 3}
+  signageFont: {fileID: 12800000, guid: f64494546d22473d8a404528208a76f6, type: 3}
   destinationSuffix: "\u884C"

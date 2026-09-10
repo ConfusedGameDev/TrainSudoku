@@ -16,7 +16,7 @@ MonoBehaviour:
   m_GUID: 23b1e74095c0644a6b57c73d6e530667
   m_SerializeEntries:
   - m_GUID: 79bfbdec8f8834ee4ae0419594330a61
-    m_Address: NotoSansJP-Variable SDF
+    m_Address: NotoSansJP-Medium SDF
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-ja

@@ -167,7 +167,7 @@ than a tall one. Every signage element gets `white-space: normal` and a `min-hei
 | LOCALE | FONT ASSETS | NOTE |
 |---|---|---|
 | en, es, fr | Barlow, Barlow Condensed | **Zero Japanese glyphs.** Latin Extended covers the accents |
-| ja | Barlow, Barlow Condensed, Noto Sans JP | Static SDF atlas built from the *actual* ja String Table |
+| ja | Barlow, Barlow Condensed, Noto Sans JP **Medium** | SDF atlas baked from the *actual* ja String Table. Must be a static instance: a variable Noto bakes at Thin (M20) |
 
 All three faces are SIL OFL, so commercial use is clear. Build the ja atlas from the translated strings once
 copy is final and regenerate it whenever copy changes — a UI this small is a few hundred glyphs, not a full CJK
@@ -1043,20 +1043,60 @@ carries the identity **before** building six more screens on top of it.
 **Goal:** four locales that all ship.
 **Touches:** the String Table, the `ja` font atlas, `ProjectSettings.asset`.
 
-- [ ] Final `en` copy locked
-- [ ] `ja`, `es`, `fr` translations authored into the String Table
-- [ ] Rebuild the `ja` SDF atlas from the actual translated strings (3.4)
-- [ ] Lock `defaultScreenOrientation` to portrait (currently `4`, auto-rotate)
-- [ ] Record iOS build size before and after the font work
+- [x] Final `en` copy locked — 29 keys, all four locales complete. The M11 spike leftover `spike.hello` is gone.
+      `arrival.on_time`, `network.opens_after` and `play.pause` are translated but **no screen draws them**: they
+      are this document's own key-naming examples (3.2), seeded and never wired. Left in place rather than
+      deleted, because each is plausible copy for the screen it names — decide before release.
+- [x] `ja`, `es`, `fr` translations authored into the String Table
+- [x] Rebuild the `ja` SDF atlas from the actual translated strings (3.4) — `Window > TrainSudoku > Rebuild ja
+      Font Atlas`, so it can be re-run whenever copy changes. 151 characters (56 kana/kanji + ASCII printable,
+      because station names are untranslated Latin), one 1024x1024 sheet, nothing missing.
+- [x] Lock `defaultScreenOrientation` to portrait (currently `4`, auto-rotate) — now `0`, and landscape
+      autorotation is off with it.
+- [ ] Record iOS build size before and after the font work — **not done: there is no build script** (see
+      `CLAUDE.md`), so this needs one adding or a build driven by hand from the Editor.
 
 **Done when**
 
 - [ ] All four locales render all seven screens with no clipped, wrapped-badly or ellipsised signage
-- [ ] `en`/`es`/`fr` builds contain no Japanese glyphs in the UI atlas
-- [ ] The `ja` atlas covers every glyph in the `ja` table — no missing-glyph boxes anywhere
-- [ ] The build is portrait-locked on device
+      — `ja` now bakes at Medium (see below); the four locales still need looking at by eye.
+- [ ] `en`/`es`/`fr` builds contain no Japanese glyphs in the UI atlas — true by construction (the `Fonts` asset
+      table routes en/es/fr to Barlow only, and Barlow has no CJK), but unproven until a build is measured.
+- [x] The `ja` atlas covers every glyph in the `ja` table — no missing-glyph boxes anywhere
+- [ ] The build is portrait-locked on device — set in `ProjectSettings`, unverified on hardware
 - [ ] Build size is recorded and acceptable
 - [ ] **Verified by human** ☐ &nbsp;&nbsp; date: ______
+
+> #### Two things M20 found that the plan did not anticipate
+>
+> **1. `AtlasPopulationMode.Static` is deprecated on 6000.7.0a6.** The Advanced Text Generator does not support
+> static font assets at all; Unity's replacement is a *dynamic* asset carrying a pre-baked atlas, with
+> `m_ClearDynamicDataOnBuild` turned off so the bake survives into the build. That flag is the whole trick — with
+> it left on (the default) the atlas is baked, saved, and then silently thrown away, and the face ships at 5 KB
+> claiming glyphs it has no pixels for. `JaFontAtlasBuilder` does it the supported way. The intent of 3.4 is
+> unchanged: the ja build carries the characters it can draw and not the rest of Noto.
+>
+> **2. `NotoSansJP-Variable.ttf` could only ever bake Thin — it is gone.** A variable font's default instance is
+> weight 100 and Unity's font engine exposes exactly one face from it (`Noto Sans JP - Thin`), with no API on
+> this version to reach a heavier instance. Every Japanese screen was rendering hairline against en/es/fr's
+> Barlow Medium and Barlow Condensed SemiBold, and so were the platform decals and the destination plate (D13),
+> which read the same file.
+>
+> The variable font is replaced by **`NotoSansJP-Medium.otf`** — the Japanese-subset static instance from
+> `notofonts/noto-cjk`, SIL OFL like the rest, and 4.5 MB against the variable font's 9.6 MB. The SDF asset is
+> renamed to `NotoSansJP-Medium SDF` and both `signageFont` fields follow it, so the decals gain the weight too.
+>
+> Watch `m_StyleName` when reading one of these assets: a rebake leaves the *previous* source's name in the face
+> info, so the label can say Thin over Medium pixels. `JaFontAtlasBuilder` now rewrites it from the face it
+> actually loaded, but an asset baked by any other route may still lie. The pixels are the evidence — Medium's
+> glyphs are measurably wider.
+>
+> **3. M19's note 4 is halved but not closed.** The decals and destination plate are world-space `TextMesh`, which
+> needs a legacy `Font`, and a dynamic legacy font ships its whole file in *every* locale for four glyphs. That
+> file is now 4.5 MB rather than 9.1 MB, which is the whole of the build-size win M20 can claim without a build
+> to measure. The two cheaper answers M19 named still stand — bake a four-glyph atlas through the importer's
+> character set, or clear `signageFont` on both assets and lose the decals — and both want the measurement
+> first. The measurement is deferred: there is no build script.
 
 ---
 

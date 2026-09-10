@@ -30,10 +30,6 @@ MonoBehaviour:
     m_Localized: ON TIME
     m_Metadata:
       m_Items: []
-  - m_Id: 91552210947
-    m_Localized: LINE MAP
-    m_Metadata:
-      m_Items: []
   - m_Id: 52156995461120
     m_Localized: BACK
     m_Metadata:

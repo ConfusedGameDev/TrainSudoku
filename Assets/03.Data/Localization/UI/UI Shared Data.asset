@@ -27,10 +27,6 @@ MonoBehaviour:
     m_Key: arrival.on_time
     m_Metadata:
       m_Items: []
-  - m_Id: 91552210947
-    m_Key: spike.hello
-    m_Metadata:
-      m_Items: []
   - m_Id: 52156995461120
     m_Key: common.back
     m_Metadata:

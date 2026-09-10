@@ -45,6 +45,7 @@ namespace TrainSudoku.Game
 
         private readonly System.Collections.Generic.List<VisualElement> _roots = new();
         private Rect _appliedSafeArea = new(-1f, -1f, -1f, -1f);
+        private bool _facesApplied;
 
         public PanelSettings PanelSettings => panelSettings;
 
@@ -79,17 +80,43 @@ namespace TrainSudoku.Game
         {
             if (root == null || LocalizationSettings.SelectedLocale == null) return;
 
-            Apply(root, SignageClass, "font.signage");
-            Apply(root, BodyClass, "font.body");
-            Apply(root, NumeralsClass, "font.numerals");
+            var applied = Apply(root, SignageClass, "font.signage");
+            applied &= Apply(root, BodyClass, "font.body");
+            applied &= Apply(root, NumeralsClass, "font.numerals");
+            if (!applied) _facesApplied = false;
         }
 
-        private static void Apply(VisualElement root, string className, string key)
+        /// <summary>
+        /// Retries the face lookup until the asset table can answer it.
+        /// </summary>
+        /// <remarks>
+        /// The screens are built and registered before <c>com.unity.localization</c> has finished loading its asset
+        /// tables, and <see cref="LocalizedAssetDatabase.GetLocalizedAsset{T}(string, string)"/> answers null rather
+        /// than blocking while that is still in flight. A single pass at registration therefore leaves *every* label
+        /// on UI Toolkit's fallback face — the whole game in the wrong type, in every locale, with nothing in the
+        /// console to say so.
+        ///
+        /// Waiting on <c>LocalizationSettings.InitializationOperation</c> would be the direct fix and is not
+        /// available: it hands back an Addressables <c>AsyncOperationHandle</c>, which drags
+        /// <c>Unity.ResourceManager</c> into this assembly's references (see `CLAUDE.md`). So the shell simply asks
+        /// again each frame until the answer comes, which costs three dictionary lookups for the handful of frames
+        /// it takes, and nothing at all afterwards.
+        /// </remarks>
+        private void RetryFaces()
+        {
+            if (_facesApplied || LocalizationSettings.SelectedLocale == null) return;
+
+            _facesApplied = true;
+            foreach (var root in _roots) ApplyFonts(root);
+        }
+
+        private static bool Apply(VisualElement root, string className, string key)
         {
             var face = LocalizationSettings.AssetDatabase.GetLocalizedAsset<FontAsset>("Fonts", key);
-            if (face == null) return;
+            if (face == null) return false;
             var definition = new StyleFontDefinition(face);
             foreach (var element in root.Query(className: className).Build()) element.style.unityFontDefinition = definition;
+            return true;
         }
 
         /// <summary>
@@ -120,6 +147,8 @@ namespace TrainSudoku.Game
 
         private void Update()
         {
+            RetryFaces();
+
             // The safe area changes on rotation and, on iOS, after the first frame. Re-inset only when it moves.
             if (Screen.safeArea == _appliedSafeArea) return;
             _appliedSafeArea = Screen.safeArea;
