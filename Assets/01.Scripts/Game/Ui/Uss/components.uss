@@ -28,7 +28,7 @@
 .signage {
     white-space: normal;
     color: var(--ink);
-    letter-spacing: 0.06px;
+    letter-spacing: var(--tracking-signage);
 }
 
 .signage--onDark { color: var(--paper); }
@@ -94,7 +94,7 @@
     padding-left: 32px;
     padding-right: 32px;
     white-space: normal;
-    letter-spacing: 0.06px;
+    letter-spacing: 3px;
 }
 
 .button:hover { background-color: #F0F1EE; }
@@ -134,3 +134,60 @@
 /* ---- the roundel ---- */
 
 .station-roundel { flex-shrink: 0; }
+
+/*
+ * The line-liveried button: the one thing the player came to do, wearing the line instead of the ink. The shell
+ * paints the background through .line-bg, so this rule owns only the text, and the press state is opacity rather
+ * than a background swap -- an inline background beats a USS one, so :active could not repaint it anyway.
+ */
+.button--line { color: var(--ink); }
+.button--line:hover { opacity: 0.92; }
+.button--line:active { opacity: 0.72; }
+
+/* ---- the concourse ---- */
+
+/* One dot per station, drawn by LineProgressStrip. Height is set by the screen; this is only the floor. */
+.line-progress { flex-shrink: 0; }
+
+/* The platform scene. Everything inside is positioned as a percentage of it, so only the height is set. */
+.platform-art { flex-shrink: 1; }
+
+/*
+ * The station name board: the light counterpart of .band. Paper on paper, held apart by the .card border it
+ * inherits, with the line-colour rule inside the bottom edge rather than under the card.
+ */
+.sign-card {
+    margin-left: var(--screen-margin);
+    margin-right: var(--screen-margin);
+    margin-top: 28px;
+    background-color: #FFFFFF;
+}
+
+.sign-card__row {
+    flex-direction: row;
+    align-items: center;
+    padding-left: 32px;
+    padding-right: 32px;
+    padding-top: 30px;
+    padding-bottom: 30px;
+}
+
+.sign-card__rule {
+    height: var(--signage-rule);
+    flex-shrink: 0;
+}
+
+/* The three utility buttons under the two big ones. */
+.icon-row {
+    flex-direction: row;
+    justify-content: space-between;
+    margin-top: 22px;
+}
+
+.icon-row .button--icon {
+    flex-grow: 1;
+    flex-shrink: 1;
+    width: auto;
+    min-height: 116px;
+    margin-left: 18px;
+}

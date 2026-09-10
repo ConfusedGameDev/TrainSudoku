@@ -41,16 +41,25 @@
 
     /* ---- type ---- */
     --font-size-min: 24px;      /* the floor at the 1080x1920 reference */
-    --tracking-signage: 0.06px; /* 0.04-0.10em, tighter as size grows */
+    /*
+     * Section 6 asks for 0.04-0.10em, tighter as size grows. USS letter-spacing is in PIXELS and has no em unit,
+     * so a token cannot express "a fraction of my own size" -- 0.06px, which is what this used to hold, is 0.06 of
+     * one pixel and reads as no tracking at all. The ramp lives in Signage.SignageLabel, which knows the size; this
+     * is only the floor for anything styled straight from USS.
+     */
+    --tracking-signage: 2px;
 }
 
 /*
- * Signage never truncates. Every signage element gets normal wrapping and a minimum height rather than a fixed
- * one, because es and fr run 20-30% longer than en (3.3).
+ * Signage never truncates: normal wrapping, and it grows rather than ellipsising, because es and fr run 20-30%
+ * longer than en (3.3).
+ *
+ * --signage-band-min is deliberately NOT set here. It is the BAND's minimum, and .band in components.uss is where
+ * it belongs; on this rule it made every signage LABEL 190px tall, so a 32px line in a card reserved six lines of
+ * empty space under itself and every screen came out loose and gappy.
  */
 .signage {
     white-space: normal;
-    min-height: var(--signage-band-min);
     -unity-text-align: middle-left;
     color: var(--ink);
     letter-spacing: var(--tracking-signage);

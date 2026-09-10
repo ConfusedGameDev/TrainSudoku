@@ -101,6 +101,7 @@ namespace TrainSudoku.Game
         public const string ArrowRightHead = "M13 6l6 6-6 6";
         public const string Check = "M4 13l5 5L20 7";
         public const string ChevronLeft = "M15 5 8 12l7 7";
+        public const string ChevronRight = "M9 5l7 7-7 7";
         public const string SpeakerBody = "M11 5 6 9H2v6h4l5 4z";
         public const string SpeakerWave = "M15.5 8.5a5 5 0 0 1 0 7";
         public const string SkipTriangle = "M9 18V6l10 6z";
@@ -116,6 +117,19 @@ namespace TrainSudoku.Game
         public const string ClockHands = "M12 7v5l3 2";
         public const string RetryArc = "M20 12a8 8 0 1 1-2.3-5.6";
         public const string RetryHead = "M20 4v5h-5";
+
+        /// <summary>The two strokes that cross out a speaker, for the muted state.</summary>
+        public const string MuteA = "M16 9l6 6";
+        public const string MuteB = "M22 9l-6 6";
+
+        /// <summary>Lucide "settings": the gear outline, plus its hub.</summary>
+        public const string GearBody = "M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z";
+        public const string GearHub = "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z";
+
+        /// <summary>Lucide "globe": the language button. See <see cref="Globe"/> for why it is not あ/A.</summary>
+        public const string GlobeRing = "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z";
+        public const string GlobeEquator = "M2 12h20";
+        public const string GlobeMeridian = "M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z";
 
         public static Icon Lucide(params string[] paths) => new Icon2(paths);
 
@@ -133,7 +147,35 @@ namespace TrainSudoku.Game
         public static Icon ArrowRight() => Lucide(ArrowRightShaft, ArrowRightHead);
         public static Icon Tick() => Lucide(Check);
         public static Icon Back() => Lucide(ChevronLeft);
+
+        /// <summary>
+        /// The direction arrows on a station sign.
+        /// </summary>
+        /// <remarks>
+        /// Drawn, not typed. The obvious spelling is the glyphs ◀ and ▶, and they cannot ship: the ja atlas is
+        /// baked from the ja string table plus the station names, which comes to 56 kana/kanji and the 95 printable
+        /// ASCII characters, so anything outside that set is a missing-glyph box in the Japanese build. D16 says
+        /// icons are Painter2D paths anyway.
+        /// </remarks>
+        public static Icon ArrowLeftSmall() => Lucide(ChevronLeft);
+
+        public static Icon ArrowRightSmall() => Lucide(ChevronRight);
         public static Icon Speaker() => Lucide(SpeakerBody, SpeakerWave);
+
+        /// <summary>The speaker with its wave replaced by a cross: audio off.</summary>
+        public static Icon SpeakerMuted() => Lucide(SpeakerBody, MuteA, MuteB);
+
+        public static Icon Gear() => Lucide(GearBody, GearHub);
+
+        /// <summary>
+        /// The language button.
+        /// </summary>
+        /// <remarks>
+        /// The mockup draws this one as the characters <c>あ / A</c>, and it cannot ship that way: D13 allows
+        /// Japanese in environment art and nowhere else, and a glyph in a <see cref="Label"/> is neither art nor a
+        /// string-table lookup. A globe says the same thing in every locale and costs no atlas.
+        /// </remarks>
+        public static Icon Globe() => Lucide(GlobeRing, GlobeEquator, GlobeMeridian);
         public static Icon Skip() => Lucide(SkipBar, SkipTriangle);
         public static Icon Pause() => Lucide(PauseLeft, PauseRight);
         public static Icon Close() => Lucide(CloseA, CloseB);

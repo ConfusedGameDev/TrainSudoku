@@ -28,6 +28,9 @@ namespace TrainSudoku.Game
 
         private IVisualElementScheduledItem _ticker;
         private float _offset;
+
+        /// <summary>Set when a message is waiting for the strip to be laid out before it can be parked off-screen.</summary>
+        private bool _awaitingLayout;
         private float _lastTime;
 
         /// <summary>Scroll speed in pixels per second at the 1080x1920 reference.</summary>
@@ -47,6 +50,7 @@ namespace TrainSudoku.Game
             _text.style.position = Position.Absolute;
             _text.style.unityTextAlign = TextAnchor.MiddleLeft;
             _text.style.whiteSpace = WhiteSpace.NoWrap;
+            _text.style.letterSpacing = 4f;
             Add(_text);
 
             _grille.pickingMode = PickingMode.Ignore;
@@ -57,9 +61,44 @@ namespace TrainSudoku.Game
             _grille.style.bottom = 0;
             Add(_grille);
 
+            // A dot-matrix board is a grid of lamps, and without the grille this is just amber text on black. The
+            // strip draws its own by default so no screen has to remember to hand it one; SetGrille still overrides.
+            SetGrille(BuildGrille());
+
             RegisterCallback<AttachToPanelEvent>(_ => Start());
             RegisterCallback<DetachFromPanelEvent>(_ => Stop());
             RegisterCallback<GeometryChangedEvent>(OnGeometryChanged);
+        }
+
+        /// <summary>
+        /// The lamp grid: a tiling cell that is transparent except for one dark row and one dark column, so tiled
+        /// across the strip it darkens the seams between lamps and leaves the lamp faces alone.
+        /// </summary>
+        /// <remarks>
+        /// It is generated rather than imported because it is four lines of code and a 64-byte texture, and 7.1
+        /// rules out the shader that would otherwise do this. The cell is deliberately small: at 8 px on the
+        /// 1080-wide reference the grid reads as texture at arm's length rather than as a visible lattice.
+        /// </remarks>
+        private static Texture2D BuildGrille()
+        {
+            const int size = 8;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                name = "LedGrille",
+                wrapMode = TextureWrapMode.Repeat,
+                filterMode = FilterMode.Bilinear,
+            };
+
+            var pixels = new Color32[size * size];
+            var seam = new Color32(0, 0, 0, 140);
+            var lamp = new Color32(0, 0, 0, 0);
+            for (var y = 0; y < size; y++)
+                for (var x = 0; x < size; x++)
+                    pixels[y * size + x] = x == 0 || y == 0 ? seam : lamp;
+
+            texture.SetPixels32(pixels);
+            texture.Apply();
+            return texture;
         }
 
         /// <summary>The tiling grille. Assigned by the shell or a screen; without it the strip is simply plain.</summary>
@@ -97,7 +136,34 @@ namespace TrainSudoku.Game
             if (_pending.Count == 0) return;
             var (key, args) = _pending.Dequeue();
             _text.text = Resolve(key, args);
-            _offset = contentRect.width;      // enter from the right-hand edge
+            Enter();
+        }
+
+        /// <summary>
+        /// Parks the current message just off the right-hand edge, ready to scroll in.
+        /// </summary>
+        /// <remarks>
+        /// <b>The width may not exist yet.</b> The first <c>Announce</c> arrives from a screen's <c>Refresh</c> on
+        /// the frame the screens are built, which is before the panel has run a layout pass, and an unlaid-out
+        /// element's <c>contentRect</c> is <see cref="float.NaN"/> -- not zero. Seeding the offset from it left
+        /// every arithmetic step downstream NaN, and because every comparison against NaN is false, neither the
+        /// geometry guard nor the wrap-around in <see cref="Tick"/> could ever recover: the strip sat still for the
+        /// rest of the session. It only ever looked fine because changing locale re-announces after layout.
+        ///
+        /// So a message that arrives too early is held, and <see cref="OnGeometryChanged"/> starts it the moment
+        /// the strip has a width.
+        /// </remarks>
+        private void Enter()
+        {
+            var width = contentRect.width;
+            if (float.IsNaN(width) || width <= 0f)
+            {
+                _awaitingLayout = true;
+                return;
+            }
+
+            _awaitingLayout = false;
+            _offset = width;
             ApplyOffset();
         }
 
@@ -115,7 +181,11 @@ namespace TrainSudoku.Game
             _text.style.fontSize = Mathf.Round(Mathf.Max(18f, evt.newRect.height * 0.44f));
             _text.style.top = 0;
             _text.style.height = evt.newRect.height;
-            if (_offset <= 0f) _offset = evt.newRect.width;
+
+            // Only a message still waiting for a width is started here. The old guard was "_offset <= 0", which
+            // also fired on any resize that happened to land while a message was halfway across -- the safe-area
+            // re-inset, or the locale font swap changing the strip's height -- and snapped it back to the right.
+            if (_awaitingLayout) Enter();
         }
 
         private void Start()
@@ -136,12 +206,20 @@ namespace TrainSudoku.Game
 
             if (string.IsNullOrEmpty(_text.text)) return;
 
+            // Belt and braces: if anything ever leaves the offset unusable, re-park rather than freeze.
+            if (_awaitingLayout || float.IsNaN(_offset))
+            {
+                Enter();
+                return;
+            }
+
             _offset -= Speed * delta;
             var width = _text.resolvedStyle.width;
             if (_offset < -(width + Gap))
             {
                 if (_pending.Count > 0) { ShowNext(); return; }
-                _offset = contentRect.width;   // nothing queued: loop the current message
+                Enter();                       // nothing queued: loop the current message
+                return;
             }
 
             ApplyOffset();

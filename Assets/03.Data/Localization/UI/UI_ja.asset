@@ -43,7 +43,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 52156999655426
-    m_Localized: "\u3064\u304E\u306E\u99C5"
+    m_Localized: "\u3064\u304E\u306E\u99C5 {0}"
     m_Metadata:
       m_Items: []
   - m_Id: 52156999655427

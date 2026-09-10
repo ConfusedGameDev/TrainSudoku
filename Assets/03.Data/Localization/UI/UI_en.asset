@@ -43,7 +43,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 52156999655426
-    m_Localized: NEXT STATION
+    m_Localized: "NEXT STATION: {0}"
     m_Metadata:
       m_Items: []
   - m_Id: 52156999655427

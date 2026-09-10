@@ -31,9 +31,11 @@ namespace TrainSudoku.Game
     /// </remarks>
     public class StationRoundel : VisualElement
     {
+        private readonly Label _top = new Label();
         private readonly Label _label = new Label();
         private string _code = "";
         private int _number = -1;
+        private bool _stacked;
         private StationState _state = StationState.Current;
 
         public StationRoundel()
@@ -41,9 +43,14 @@ namespace TrainSudoku.Game
             AddToClassList("station-roundel");
             AddToClassList(UiShell.LineTextClass);   // the shell paints the accent
 
+            _top.pickingMode = PickingMode.Ignore;
+            _top.style.unityTextAlign = TextAnchor.MiddleCenter;
+            _top.style.color = Palette.Ink;
+            _top.style.display = DisplayStyle.None;
+            Add(_top);
+
             _label.pickingMode = PickingMode.Ignore;
             _label.style.unityTextAlign = TextAnchor.MiddleCenter;
-            _label.style.flexGrow = 1f;
             _label.style.color = Palette.Ink;
             Add(_label);
 
@@ -68,6 +75,17 @@ namespace TrainSudoku.Game
             set { _number = value; Refresh(); }
         }
 
+        /// <summary>
+        /// Show the <see cref="Code"/> above the <see cref="Number"/> instead of one or the other — the mockup's
+        /// concourse roundel, which reads "TS" over "01". The number is zero-padded to two digits, the way a
+        /// platform number is on a real one.
+        /// </summary>
+        public bool Stacked
+        {
+            get => _stacked;
+            set { _stacked = value; Refresh(); }
+        }
+
         public StationState State
         {
             get => _state;
@@ -82,11 +100,26 @@ namespace TrainSudoku.Game
 
         private void Refresh()
         {
-            _label.text = _number >= 0 ? _number.ToString() : _code;
-            _label.style.color = _state == StationState.Closed ? Palette.Closed : Palette.Ink;
+            var stacked = _stacked && _number >= 0 && !string.IsNullOrEmpty(_code);
+            var colour = _state == StationState.Closed ? Palette.Closed : Palette.Ink;
+
+            _top.style.display = stacked ? DisplayStyle.Flex : DisplayStyle.None;
+            _top.text = stacked ? _code : "";
+            _top.style.color = colour;
+
+            _label.text = stacked ? _number.ToString("00") : _number >= 0 ? _number.ToString() : _code;
+            _label.style.color = colour;
 
             var size = resolvedStyle.width;
-            if (size > 0f) _label.style.fontSize = Mathf.Round(size * (_number >= 0 ? 0.44f : 0.38f));
+            if (size > 0f)
+            {
+                // Stacked, the two lines share the height the single line had, so both shrink and the gap between
+                // them is closed up with a negative margin -- a roundel is a tight disc, not a paragraph.
+                _top.style.fontSize = Mathf.Round(size * 0.20f);
+                _label.style.fontSize = Mathf.Round(size * (stacked ? 0.34f : _number >= 0 ? 0.44f : 0.38f));
+                _label.style.marginTop = stacked ? -Mathf.Round(size * 0.06f) : 0f;
+            }
+
             MarkDirtyRepaint();
         }
 

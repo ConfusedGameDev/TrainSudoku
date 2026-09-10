@@ -39,8 +39,27 @@ namespace TrainSudoku.Game
             label.AddToClassList(UiShell.SignageClass);
             foreach (var c in extraClasses) label.AddToClassList(c);
             label.style.fontSize = size;
-            label.style.letterSpacing = size * 0.06f;
+            label.style.letterSpacing = Tracking(size);
             return label;
+        }
+
+        /// <summary>
+        /// Section 6's tracking rule, in the only place that can honour it: 0.04-0.10 em, tighter as size grows.
+        /// </summary>
+        /// <remarks>
+        /// It cannot live in USS. <c>letter-spacing</c> there is an absolute pixel value with no em unit, so a
+        /// stylesheet can state a constant but not "a fraction of my own size" -- and a constant is wrong at both
+        /// ends, since the whole point of the rule is that a 24 px caption wants airier tracking than a 68 px
+        /// headline. A flat 0.06 of the size, which this used to be, gets the small end far too tight.
+        ///
+        /// This is also section 0.1's "recovery is typographic": with the kana line gone (D5), the tracking split
+        /// between a small wide over-line and a large tight title is a good part of what is left to carry the
+        /// station-sign read.
+        /// </remarks>
+        public static float Tracking(float size)
+        {
+            var em = Mathf.Lerp(0.10f, 0.04f, Mathf.InverseLerp(24f, 72f, size));
+            return size * em;
         }
 
         public static Label BodyLabel(string text, int size, params string[] extraClasses)
@@ -117,6 +136,42 @@ namespace TrainSudoku.Game
             parent.Add(rule);
 
             return band;
+        }
+
+        /// <summary>
+        /// The station name board: a white card with the line-colour rule along its bottom edge, which is how the
+        /// mockup draws the top of the concourse.
+        /// </summary>
+        /// <remarks>
+        /// It is the light counterpart of <see cref="Band"/>, not a replacement for it. Section 6 puts signage
+        /// panels on <c>--ink</c> and <see cref="Band"/> is that; the mockup's concourse sign is a <c>--paper</c>
+        /// card on a <c>--paper</c> ground, held apart by the 4 px <c>--ink</c> border every object in this UI has.
+        /// Both are legitimate station signage -- a platform hanging sign is dark, a station name board is light --
+        /// so the two live side by side and a screen picks the one it wants.
+        ///
+        /// The rule sits <b>inside</b> the border rather than under the card, again following the mockup: on a card
+        /// the line colour reads as part of the sign, where under it it would read as a separate strip.
+        /// </remarks>
+        public static VisualElement SignCard(VisualElement parent, out VisualElement content)
+        {
+            var card = new VisualElement();
+            card.AddToClassList("card");
+            card.AddToClassList("sign-card");
+            parent.Add(card);
+
+            var row = new VisualElement();
+            row.AddToClassList("sign-card__row");
+            card.Add(row);
+
+            content = new VisualElement { style = { flexGrow = 1f, flexShrink = 1f } };
+            row.Add(content);
+
+            var rule = new VisualElement();
+            rule.AddToClassList("sign-card__rule");
+            rule.AddToClassList(UiShell.LineBackgroundClass);
+            card.Add(rule);
+
+            return card;
         }
 
         public static VisualElement Row(params VisualElement[] children)

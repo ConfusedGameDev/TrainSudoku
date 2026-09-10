@@ -43,7 +43,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 52156999655426
-    m_Localized: "PR\xD3XIMA ESTACI\xD3N"
+    m_Localized: "PR\xD3XIMA ESTACI\xD3N: {0}"
     m_Metadata:
       m_Items: []
   - m_Id: 52156999655427
