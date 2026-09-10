@@ -24,7 +24,7 @@ namespace TrainSudoku.Game
 
         private readonly Label _text = new Label();
         private readonly VisualElement _grille = new VisualElement();
-        private readonly Queue<string> _pending = new Queue<string>();
+        private readonly Queue<(string Key, object[] Args)> _pending = new Queue<(string, object[])>();
 
         private IVisualElementScheduledItem _ticker;
         private float _offset;
@@ -74,13 +74,14 @@ namespace TrainSudoku.Game
         }
 
         /// <summary>
-        /// Queues a message by localisation key. The key is resolved in the active locale at the moment it is shown,
-        /// so a locale change mid-queue announces the rest in the new language.
+        /// Queues a message by localisation key, with anything the entry's placeholders need. The key is resolved in
+        /// the active locale at the moment it is shown, so a locale change mid-queue announces the rest in the new
+        /// language — which is also why the arguments are kept rather than the finished string.
         /// </summary>
-        public void Announce(string localizationKey)
+        public void Announce(string localizationKey, params object[] args)
         {
             if (string.IsNullOrEmpty(localizationKey)) return;
-            _pending.Enqueue(localizationKey);
+            _pending.Enqueue((localizationKey, args));
             if (string.IsNullOrEmpty(_text.text)) ShowNext();
         }
 
@@ -94,16 +95,18 @@ namespace TrainSudoku.Game
         private void ShowNext()
         {
             if (_pending.Count == 0) return;
-            var key = _pending.Dequeue();
-            _text.text = Resolve(key);
+            var (key, args) = _pending.Dequeue();
+            _text.text = Resolve(key, args);
             _offset = contentRect.width;      // enter from the right-hand edge
             ApplyOffset();
         }
 
-        private static string Resolve(string key)
+        private static string Resolve(string key, object[] args)
         {
             if (LocalizationSettings.SelectedLocale == null) return key;
-            var value = LocalizationSettings.StringDatabase.GetLocalizedString(Table, key);
+            var value = args == null || args.Length == 0
+                ? LocalizationSettings.StringDatabase.GetLocalizedString(Table, key)
+                : LocalizationSettings.StringDatabase.GetLocalizedString(Table, key, args);
             return string.IsNullOrEmpty(value) ? key : value;
         }
 

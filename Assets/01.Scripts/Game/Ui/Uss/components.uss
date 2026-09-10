@@ -101,6 +101,12 @@
 .button:active { background-color: var(--ink); color: var(--paper); }
 .button:disabled { opacity: 0.4; }
 
+/*
+ * A screen on its way out is disabled so a button cannot be hit while it fades - GameFlow throws on a transition
+ * it did not expect. The fade owns the opacity for those 260 ms, so the disabled dimming must not join in.
+ */
+.screen--leaving .button:disabled { opacity: 1; }
+
 /* The one filled button on a screen: the thing the player came to do. */
 .button--primary {
     background-color: var(--ink);

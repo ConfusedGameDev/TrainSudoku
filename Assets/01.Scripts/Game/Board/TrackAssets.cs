@@ -41,7 +41,21 @@ namespace TrainSudoku.Game
         [Tooltip("Lifts the track above the tile surface.")]
         [SerializeField] private float verticalOffset = 0f;
 
+        [Header("Platform (D13)")]
+        [Tooltip("Face for the environment decals painted on the platform. This is art, not UI, so it carries Japanese in every locale - assign a face that has the glyphs or the decals are skipped.")]
+        [SerializeField] private Font signageFont = null;
+
+        [Tooltip("Painted along the platform edge, repeated. Untranslated: it is part of the scene, not the UI.")]
+        [SerializeField] private string platformWarning = "\u304d\u3051\u3093";   // きけん, "danger"
+
         public Mesh SegmentMesh => segmentMesh;
+
+        /// <summary>The face for the platform decals, or null to leave the platform unpainted (D13).</summary>
+        public Font SignageFont => signageFont;
+
+        /// <summary>The warning painted along the platform edge.</summary>
+        public string PlatformWarning => platformWarning;
+
         public float VerticalOffset => verticalOffset;
         public Material TrackMaterial => trackMaterial != null ? trackMaterial : BoardMaterials.Track;
         public Material FixedTrackMaterial => fixedTrackMaterial != null ? fixedTrackMaterial : BoardMaterials.FixedTrack;

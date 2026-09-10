@@ -16,15 +16,25 @@ namespace TrainSudoku.Game
     ///
     /// **Only lines with content are drawn** (D10). v1 ships one line, and a map showing it beside four empty
     /// promises would read as a game that is four-fifths missing rather than one line long.
+    ///
+    /// It also owns the line opening of work order 9: a line the player has just earned draws itself outward from
+    /// the interchange it hangs off while its lock badge falls away. With one line shipping, nothing triggers it in
+    /// v1 (D10, D20) — it is here because the second line is the moment it exists for.
     /// </remarks>
     public class NetworkMapElement : VisualElement
     {
         /// <summary>Raised with the line index when an open line is tapped.</summary>
         public event Action<int> LineClicked;
 
+        /// <summary>The line opening, work order 9. The badge falls away over the first share of it.</summary>
+        private const float OpeningDuration = 1.8f;
+        private const float LockFallShare = 0.35f;
+
         private NetworkDefinition _network;
         private Func<int, bool> _unlocked;
         private float _padding = 72f;
+        private int _openingLine = -1;
+        private float _openingProgress = 1f;
 
         public float HitRadius { get; set; } = 60f;
 
@@ -50,6 +60,27 @@ namespace TrainSudoku.Game
         }
 
         public void Refresh() => MarkDirtyRepaint();
+
+        /// <summary>
+        /// Draws a newly earned line onto the map: outward from its interchange, over 1.8 seconds, with the lock
+        /// badge falling away as it goes. A line with no interchange — the first line of a network — opens from its
+        /// first node instead.
+        /// </summary>
+        public void PlayOpening(int lineIndex)
+        {
+            _openingLine = lineIndex;
+            _openingProgress = 0f;
+            Motion.Play(this, OpeningDuration, t =>
+            {
+                _openingProgress = t;
+                MarkDirtyRepaint();
+            }, () =>
+            {
+                _openingLine = -1;
+                _openingProgress = 1f;
+                MarkDirtyRepaint();
+            });
+        }
 
         /// <summary>The lines worth drawing, as indices into the network, in draw order.</summary>
         private List<int> DrawnLines()
@@ -118,17 +149,38 @@ namespace TrainSudoku.Game
                 // legible - the player should be able to see which line they are working towards.
                 var colour = open ? line.Color : Color.Lerp(Palette.Paper, line.Color, 0.25f);
 
+                var points = new Vector2[nodes.Count];
+                for (var i = 0; i < nodes.Count; i++) points[i] = offset + nodes[i] * scale;
+
                 painter.strokeColor = colour;
                 painter.lineWidth = open ? activeWidth : inactiveWidth;
                 painter.lineCap = LineCap.Round;
                 painter.lineJoin = LineJoin.Round;
-                painter.BeginPath();
-                painter.MoveTo(offset + nodes[0] * scale);
-                for (var i = 1; i < nodes.Count; i++) painter.LineTo(offset + nodes[i] * scale);
-                if (line.MapShape == MapShape.Loop) painter.ClosePath();
-                painter.Stroke();
 
-                if (!open) DrawLockBadge(painter, offset + nodes[nodes.Count - 1] * scale, activeWidth * 1.5f);
+                if (index == _openingLine)
+                {
+                    var from = OpeningNode(index);
+                    StrokeRun(painter, points, from, 1, _openingProgress);
+                    StrokeRun(painter, points, from, -1, _openingProgress);
+                }
+                else
+                {
+                    painter.BeginPath();
+                    painter.MoveTo(points[0]);
+                    for (var i = 1; i < points.Length; i++) painter.LineTo(points[i]);
+                    if (line.MapShape == MapShape.Loop) painter.ClosePath();
+                    painter.Stroke();
+                }
+
+                // The badge is drawn for a closed line, and once more on the way out while the line opens under it.
+                if (!open) DrawLockBadge(painter, points[points.Length - 1], activeWidth * 1.5f, Palette.Closed, 0f);
+                else if (index == _openingLine && _openingProgress < LockFallShare)
+                {
+                    var fall = _openingProgress / LockFallShare;
+                    var fading = Palette.Closed;
+                    fading.a = 1f - fall;
+                    DrawLockBadge(painter, points[points.Length - 1], activeWidth * 1.5f, fading, fall * activeWidth * 3f);
+                }
             }
 
             DrawInterchanges(painter, offset, scale, activeWidth);
@@ -156,12 +208,63 @@ namespace TrainSudoku.Game
             }
         }
 
-        /// <summary>The padlock at a closed line's terminus, drawn straight rather than through an Icon child.</summary>
-        private static void DrawLockBadge(Painter2D painter, Vector2 centre, float size)
+        /// <summary>
+        /// The lines this line runs out from: the node it shares with another line, or its first node when it shares
+        /// none. The opening draws outward from there in both directions at once.
+        /// </summary>
+        private int OpeningNode(int lineIndex)
         {
+            if (_network == null) return 0;
+            foreach (var interchange in _network.Interchanges)
+            {
+                if (interchange.lineA == lineIndex) return Mathf.Max(0, interchange.nodeA);
+                if (interchange.lineB == lineIndex) return Mathf.Max(0, interchange.nodeB);
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// Strokes a share of the polyline running away from <paramref name="start"/>, measured along its length so
+        /// the line grows at an even speed rather than a node at a time.
+        /// </summary>
+        private static void StrokeRun(Painter2D painter, Vector2[] points, int start, int step, float fraction)
+        {
+            var total = 0f;
+            for (var i = start; i + step >= 0 && i + step < points.Length; i += step)
+                total += Vector2.Distance(points[i], points[i + step]);
+            if (total <= 0f || fraction <= 0f) return;
+
+            var target = total * Mathf.Clamp01(fraction);
+            var drawn = 0f;
+            painter.BeginPath();
+            painter.MoveTo(points[start]);
+            for (var i = start; i + step >= 0 && i + step < points.Length; i += step)
+            {
+                var a = points[i];
+                var b = points[i + step];
+                var length = Vector2.Distance(a, b);
+                if (drawn + length <= target)
+                {
+                    painter.LineTo(b);
+                    drawn += length;
+                    continue;
+                }
+
+                painter.LineTo(Vector2.Lerp(a, b, (target - drawn) / length));
+                break;
+            }
+
+            painter.Stroke();
+        }
+
+        /// <summary>The padlock at a closed line's terminus, drawn straight rather than through an Icon child.</summary>
+        private static void DrawLockBadge(Painter2D painter, Vector2 centre, float size, Color colour, float drop)
+        {
+            centre.y += drop;
             var body = new Rect(centre.x - size * 0.42f, centre.y - size * 0.10f, size * 0.84f, size * 0.62f);
 
-            painter.fillColor = Palette.Closed;
+            painter.fillColor = colour;
             painter.BeginPath();
             painter.MoveTo(new Vector2(body.xMin, body.yMin));
             painter.LineTo(new Vector2(body.xMax, body.yMin));
@@ -170,7 +273,7 @@ namespace TrainSudoku.Game
             painter.ClosePath();
             painter.Fill();
 
-            painter.strokeColor = Palette.Closed;
+            painter.strokeColor = colour;
             painter.lineWidth = size * 0.16f;
             painter.lineCap = LineCap.Round;
             painter.BeginPath();

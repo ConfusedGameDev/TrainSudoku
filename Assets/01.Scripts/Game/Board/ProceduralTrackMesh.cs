@@ -79,12 +79,15 @@ namespace TrainSudoku.Game
                     _uvs.Add(new Vector2(1f, 1f));
                     _uvs.Add(new Vector2(0f, 1f));
 
+                    // Corners in order: Unity's front face is the winding whose cross(p1 - p0, p2 - p0) faces the
+                    // viewer. This was reversed until M19, which left the placeholder track inside out - invisible
+                    // in practice only because TrackAssets ships with the kit mesh assigned.
                     _triangles.Add(start);
-                    _triangles.Add(start + 2);
                     _triangles.Add(start + 1);
-                    _triangles.Add(start);
-                    _triangles.Add(start + 3);
                     _triangles.Add(start + 2);
+                    _triangles.Add(start);
+                    _triangles.Add(start + 2);
+                    _triangles.Add(start + 3);
                 }
             }
 

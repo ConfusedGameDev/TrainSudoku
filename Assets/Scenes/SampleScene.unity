@@ -614,11 +614,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f9d64f91065663eca3359ed9d01d9abb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.PausePanel
-  built: 1
-  resumeButton: {fileID: 532636998}
-  retryButton: {fileID: 2112524530}
-  exitButton: {fileID: 791929915}
-  debugWinButton: {fileID: 1179132180}
 --- !u!114 &168861417
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1045,9 +1040,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c04660f7450871e1354472f087c5577, type: 3}
   m_Name: 
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.TrainRunPanel
-  built: 1
-  skipButton: {fileID: 1263180683}
-  message: {fileID: 1677157177}
 --- !u!1 &346039192
 GameObject:
   m_ObjectHideFlags: 0
@@ -1413,9 +1405,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 94901660ec78cae65a4fdf284dd8a52c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.MainMenuPanel
-  built: 1
-  playButton: {fileID: 1175910874}
-  quitButton: {fileID: 1315382035}
 --- !u!1 &412503868
 GameObject:
   m_ObjectHideFlags: 0
@@ -2350,10 +2339,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6b7a59787ca1e68f0766ed6fb704c07a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LevelSelectPanel
-  built: 1
-  list: {fileID: 1350239287}
-  empty: {fileID: 896575759}
-  backButton: {fileID: 1523916895}
 --- !u!1 &790451900
 GameObject:
   m_ObjectHideFlags: 0
@@ -3532,13 +3517,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 87aace03d2c79d21b71599b2ceb92c1e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.WinPanel
-  built: 1
-  time: {fileID: 734084437}
-  best: {fileID: 1174076240}
-  newBest: {fileID: 1228914832}
-  nextButton: {fileID: 1259659852}
-  retryButton: {fileID: 9538321}
-  menuButton: {fileID: 1586965208}
 --- !u!224 &1075593226
 RectTransform:
   m_ObjectHideFlags: 0
@@ -5109,6 +5087,37 @@ MonoBehaviour:
   m_LayoutPriority: 1
   m_MaxWidth: -1
   m_MaxHeight: -1
+--- !u!1 &1307341341
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1307341342}
+  m_Layer: 0
+  m_Name: Decor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1307341342
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1307341341}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1976260236}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1315356217
 GameObject:
   m_ObjectHideFlags: 0
@@ -6973,10 +6982,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3168c7b0a42f365584d6547503c92a83, type: 3}
   m_Name: 
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.PlayPanel
-  built: 1
-  levelName: {fileID: 193202959}
-  clock: {fileID: 346039195}
-  pauseButton: {fileID: 1614627630}
 --- !u!1 &1976260234
 GameObject:
   m_ObjectHideFlags: 0
@@ -7011,6 +7016,7 @@ MonoBehaviour:
   tunnels: {fileID: 1425877690}
   clues: {fileID: 2126018046}
   markers: {fileID: 496632323}
+  decor: {fileID: 1307341342}
   boardCamera: {fileID: 330585548}
   trackAssets: {fileID: 11400000, guid: 847a2bad6fef7129273ec8edecc95225, type: 2}
 --- !u!4 &1976260236
@@ -7031,6 +7037,7 @@ Transform:
   - {fileID: 1425877690}
   - {fileID: 2126018046}
   - {fileID: 496632323}
+  - {fileID: 1307341342}
   m_Father: {fileID: 1810000002}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2032751760

@@ -25,6 +25,12 @@ namespace TrainSudoku.Game
         private Button _pause;
         private LedStrip _led;
 
+        /// <summary>
+        /// The board's frame does not slide. See <see cref="UiScreen.Animates"/>: it is up across four states, and
+        /// the camera insets below are measured off this tree, so a transform on it would be a transform on them.
+        /// </summary>
+        protected override bool Animates => false;
+
         public override bool IsVisibleIn(GameState state) =>
             state == GameState.Play || state == GameState.Pause ||
             state == GameState.TrainRun || state == GameState.Win;
@@ -97,6 +103,13 @@ namespace TrainSudoku.Game
             _led.Clear();
             _led.Announce("play.next_stop");
         }
+
+        /// <summary>
+        /// Prints a satisfied row or column on the LED strip (work order 9, clue satisfied). Indices are the board's,
+        /// so they are counted from zero; the strip announces them the way a passenger would count platforms.
+        /// </summary>
+        public void AnnounceLineClear(bool isRow, int index) =>
+            _led.Announce(isRow ? "play.row_clear" : "play.column_clear", index + 1);
 
         /// <summary>Called every frame in Play by <see cref="GameManager"/>. The clock is tabular so it cannot reflow.</summary>
         public void UpdateClock(double seconds) => _clock.text = ProgressTracker.FormatTime(seconds);

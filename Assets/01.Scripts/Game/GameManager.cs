@@ -263,12 +263,17 @@ namespace TrainSudoku.Game
             }
 
             // The active line's colour is published once here; every state change republishes it.
-            if (shell != null && CurrentLine != null) shell.SetLineColour(CurrentLine.Color);
+            if (CurrentLine != null)
+            {
+                if (shell != null) shell.SetLineColour(CurrentLine.Color);
+                BoardMaterials.SetLineColour(CurrentLine.Color);
+            }
 
             boardView.Configure(trackAssets);
             boardView.Interacted += OnBoardInteracted;
             boardView.Completed += OnBoardCompleted;
             boardView.BoardChanged += SaveProgress;
+            boardView.LineCleared += OnLineCleared;
 
             // Scenes baked before the train existed get the runner at runtime; Regenerate bakes it.
             if (trainRunner == null) trainRunner = TrainRunner.Create(transform, trainAssets);
@@ -291,7 +296,12 @@ namespace TrainSudoku.Game
             if (Flow == null) return;
             Flow.StateChanged -= OnStateChanged;
             Flow.LevelStarted -= OnLevelStarted;
-            if (boardView != null) boardView.BoardChanged -= SaveProgress;
+            if (boardView != null)
+            {
+                boardView.BoardChanged -= SaveProgress;
+                boardView.LineCleared -= OnLineCleared;
+            }
+
             if (trainRunner != null) trainRunner.Finished -= OnTrainFinished;
         }
 
@@ -323,7 +333,13 @@ namespace TrainSudoku.Game
         private void ApplyState(GameState state)
         {
             // The loop is deliberately unchanged from the uGUI version: show, then refresh what is showing.
-            if (shell != null && CurrentLine != null) shell.SetLineColour(CurrentLine.Color);
+            // The line's colour goes to both halves of the game: the shell tints the screens, the board tints its
+            // fixed pieces and forced markers.
+            if (CurrentLine != null)
+            {
+                if (shell != null) shell.SetLineColour(CurrentLine.Color);
+                BoardMaterials.SetLineColour(CurrentLine.Color);
+            }
 
             foreach (var screen in screens)
             {
@@ -334,7 +350,11 @@ namespace TrainSudoku.Game
 
             boardView.SetInteractable(state == GameState.Play);
 
-            if (state == GameState.TrainRun) trainRunner.Run(boardView.Board);
+            if (state == GameState.TrainRun)
+            {
+                trainRunner.SetDestination(CurrentLevel != null ? CurrentLevel.DisplayName : "");
+                trainRunner.Run(boardView.Board);
+            }
             else if (trainRunner.IsRunning) trainRunner.Stop();
         }
 
@@ -344,6 +364,12 @@ namespace TrainSudoku.Game
         }
 
         private void OnLevelStarted(int index, LevelProgress resume) => boardView.Load(Level(index), resume);
+
+        /// <summary>A satisfied row or column goes to the LED strip, which is the Play screen's to print.</summary>
+        private void OnLineCleared(bool isRow, int index)
+        {
+            if (_playScreen != null) _playScreen.AnnounceLineClear(isRow, index);
+        }
 
         private void OnBoardInteracted()
         {

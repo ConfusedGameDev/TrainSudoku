@@ -127,6 +127,14 @@ MonoBehaviour:
     m_Key: arrival.map
     m_Metadata:
       m_Items: []
+  - m_Id: 75892167532544
+    m_Key: play.row_clear
+    m_Metadata:
+      m_Items: []
+  - m_Id: 75892167532545
+    m_Key: play.column_clear
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

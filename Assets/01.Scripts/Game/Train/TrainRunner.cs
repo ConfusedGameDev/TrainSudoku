@@ -18,11 +18,19 @@ namespace TrainSudoku.Game
         private const float DefaultSpacing = 0.9f;
         private const float DefaultSpeed = 2.5f;
 
+        /// <summary>The destination plate: how high above the car it rides, how tall its text is, and the pitch it
+        /// is held at so it stays readable under the board camera.</summary>
+        private const float PlateHeight = 0.72f;
+        private const float PlateTextHeight = 0.22f;
+        private const float PlateReadingPitch = 60f;
+
         [SerializeField] private TrainAssets assets;
         [SerializeField] private Transform cars;
 
         private readonly List<Transform> _cars = new List<Transform>();
         private readonly List<Renderer[]> _renderers = new List<Renderer[]>();
+        private Transform _plate;
+        private string _destination = "";
         private TrackPath _path;
         private double _distance;
         private float _noRouteRemaining;
@@ -56,6 +64,12 @@ namespace TrainSudoku.Game
         private float Spacing => assets != null ? assets.CarSpacing : DefaultSpacing;
         private float Speed => assets != null ? assets.SpeedCellsPerSecond : DefaultSpeed;
 
+        /// <summary>
+        /// The station the train is bound for, shown on the locomotive's plate (D13). Set it before
+        /// <see cref="Run"/>; the name itself is an untranslated proper noun (D14).
+        /// </summary>
+        public void SetDestination(string station) => _destination = station ?? "";
+
         /// <summary>Starts the run. Without a connected route the runner waits briefly and then finishes.</summary>
         public void Run(Board board)
         {
@@ -82,6 +96,7 @@ namespace TrainSudoku.Game
             SceneObjects.Clear(cars);
             _cars.Clear();
             _renderers.Clear();
+            _plate = null;
         }
 
         private void Update()
@@ -125,6 +140,10 @@ namespace TrainSudoku.Game
                 var visible = s >= TunnelMouthDistance && s <= _path.Length - TunnelMouthDistance;
                 foreach (var renderer in _renderers[i]) renderer.enabled = visible;
             }
+
+            // The plate rides the locomotive but keeps the camera's pitch, like the tunnel letters: a destination
+            // board is there to be read, and one that turns with every curve would only be legible by luck.
+            if (_plate != null) _plate.rotation = Quaternion.Euler(PlateReadingPitch, 0f, 0f);
         }
 
         private void BuildCars()
@@ -138,9 +157,35 @@ namespace TrainSudoku.Game
                 car.transform.SetParent(cars, false);
                 car.transform.localScale = Vector3.one * (assets != null ? assets.ModelScale : 1f);
                 foreach (var collider in car.GetComponentsInChildren<Collider>()) Destroy(collider);
+                if (i == 0) FitDestinationPlate(car.transform);
                 _cars.Add(car.transform);
                 _renderers.Add(car.GetComponentsInChildren<Renderer>());
             }
+        }
+
+        /// <summary>
+        /// The destination board above the cab: the station name and the Japanese for "bound for". Environment art,
+        /// so it reads the same in every locale (D13); without a face that has the glyphs, no plate is fitted.
+        /// </summary>
+        private void FitDestinationPlate(Transform locomotive)
+        {
+            var font = assets != null ? assets.SignageFont : null;
+            if (font == null || string.IsNullOrEmpty(_destination)) return;
+
+            var go = new GameObject("Destination Plate");
+            go.transform.SetParent(locomotive, false);
+            go.transform.localPosition = new Vector3(0f, PlateHeight, 0f);
+
+            var text = go.AddComponent<TextMesh>();
+            text.font = font;
+            text.text = $"{_destination} {assets.DestinationSuffix}".Trim();
+            text.fontSize = 64;
+            text.characterSize = PlateTextHeight / 6.4f;
+            text.anchor = TextAnchor.MiddleCenter;
+            text.alignment = TextAlignment.Center;
+            text.color = Palette.Led;
+            go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+            _plate = go.transform;
         }
 
         /// <summary>Boxy stand-in cars until the kit models are assigned in <see cref="TrainAssets"/>.</summary>

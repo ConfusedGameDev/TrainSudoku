@@ -30,6 +30,13 @@ namespace TrainSudoku.Game
         [Tooltip("Height of the car origin above the track.")]
         [SerializeField] private float heightOffset = 0f;
 
+        [Header("Destination plate (D13)")]
+        [Tooltip("Face for the plate on the locomotive. This is environment art, so it carries Japanese in every locale - leave it empty and no plate is fitted.")]
+        [SerializeField] private Font signageFont = null;
+
+        [Tooltip("Follows the station name on the plate: 'bound for'. Untranslated, like the plate itself.")]
+        [SerializeField] private string destinationSuffix = "\u884c";   // 行, "bound for"
+
         public GameObject Locomotive => locomotive;
         public GameObject[] Wagons => wagons ?? new GameObject[0];
         public int CarCount => 1 + Wagons.Length;
@@ -38,5 +45,11 @@ namespace TrainSudoku.Game
         public float ModelYawOffset => modelYawOffset;
         public float ModelScale => modelScale <= 0f ? 1f : modelScale;
         public float HeightOffset => heightOffset;
+
+        /// <summary>The face for the destination plate, or null for a train without one (D13).</summary>
+        public Font SignageFont => signageFont;
+
+        /// <summary>What follows the station name on the plate.</summary>
+        public string DestinationSuffix => destinationSuffix;
     }
 }

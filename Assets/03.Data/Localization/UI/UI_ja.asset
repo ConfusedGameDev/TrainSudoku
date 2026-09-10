@@ -130,6 +130,14 @@ MonoBehaviour:
     m_Localized: "\u8DEF\u7DDA\u56F3"
     m_Metadata:
       m_Items: []
+  - m_Id: 75892167532544
+    m_Localized: "{0}\u884C \u5B8C\u4E86"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 75892167532545
+    m_Localized: "{0}\u5217 \u5B8C\u4E86"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

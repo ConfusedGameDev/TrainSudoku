@@ -14,6 +14,13 @@ namespace TrainSudoku.Game
         private NetworkMapElement _map;
         private VisualElement _legend;
 
+        /// <summary>
+        /// Which lines were open the last time this screen was looked at. A line that has opened since is drawn
+        /// opening (work order 9); on the first visit of a session there is no "since", so nothing plays and a
+        /// player returning to the map is not told again about a line they earned an hour ago.
+        /// </summary>
+        private bool[] _wereOpen;
+
         public override bool IsVisibleIn(GameState state) => state == GameState.Network;
 
         protected override void BuildTree(VisualElement root)
@@ -44,6 +51,7 @@ namespace TrainSudoku.Game
         {
             _map.SetNetwork(Game.Network, Flow.IsLineUnlocked);
             _map.Refresh();
+            PlayAnyOpening();
 
             _legend.Clear();
             var network = Game.Network;
@@ -86,6 +94,38 @@ namespace TrainSudoku.Game
 
                 _legend.Add(row);
             }
+        }
+
+        /// <summary>Finds a line that has opened since the last visit and runs it out from its interchange.</summary>
+        private void PlayAnyOpening()
+        {
+            var network = Game.Network;
+            if (network == null) return;
+
+            var open = new bool[network.LineCount];
+            for (var i = 0; i < network.LineCount; i++)
+            {
+                var line = network.Line(i);
+                open[i] = line != null && line.HasContent && Flow.IsLineUnlocked(i);
+            }
+
+            if (_wereOpen == null || _wereOpen.Length != open.Length)
+            {
+                _wereOpen = open;
+                return;
+            }
+
+            for (var i = 0; i < open.Length; i++)
+            {
+                if (!open[i] || _wereOpen[i]) continue;
+                AudioCuePlayer.Play(AudioCue.LineUnlocked);
+                _map.PlayOpening(i);
+                // Only this one is marked as seen, so a second line opening in the same breath still gets its turn.
+                _wereOpen[i] = true;
+                return;
+            }
+
+            _wereOpen = open;
         }
 
         private void OpenLine(int lineIndex)

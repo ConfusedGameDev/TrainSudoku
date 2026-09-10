@@ -20,5 +20,7 @@ MonoBehaviour:
   widthScale: 1
   sleeperWidthScale: 0.7
   trackMaterial: {fileID: -6538903991835684241, guid: e8a6896fc31ecd3459422300f5b4d5ac, type: 3}
-  fixedTrackMaterial: {fileID: -6538903991835684241, guid: e8a6896fc31ecd3459422300f5b4d5ac, type: 3}
+  fixedTrackMaterial: {fileID: 0}
   verticalOffset: 0
+  signageFont: {fileID: 12800000, guid: a1927b1f68409430abda6eccf22fc205, type: 3}
+  platformWarning: "\u304D\u3051\u3093"

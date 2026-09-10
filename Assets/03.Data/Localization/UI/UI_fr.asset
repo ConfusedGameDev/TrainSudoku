@@ -130,6 +130,14 @@ MonoBehaviour:
     m_Localized: PLAN DE LIGNE
     m_Metadata:
       m_Items: []
+  - m_Id: 75892167532544
+    m_Localized: "LIGNE {0} COMPL\xC8TE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 75892167532545
+    m_Localized: "COLONNE {0} COMPL\xC8TE"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

@@ -22,11 +22,33 @@ namespace TrainSudoku.Game
         private const float HoldMoveTolerancePixels = 40f;
         private const float MarkerInset = 0.36f;
 
+        /// <summary>How far the top of a slab is cut back, in world units. The mesh is generated to match the tile's
+        /// own proportions, so the chamfer is the same size on a wide board as on a small one.</summary>
+        private const float TileChamfer = 0.035f;
+
+        /// <summary>The erase ring's radii, in cells, and how long a clue's pop lasts (work order 9).</summary>
+        private const float HoldRingOuter = 0.42f;
+        private const float HoldRingInner = 0.31f;
+        private const float CluePopDuration = 0.16f;
+        private const float CluePopScale = 1.2f;
+
+        /// <summary>The raised lip along a platform edge, and the decals painted along it (D13).</summary>
+        private const float PlatformEdgeDepth = 0.22f;
+        private const float PlatformEdgeHeight = 0.05f;
+        private const float DecalSpacing = 2.2f;
+        private const float DecalHeight = 0.17f;
+
+        /// <summary>The tunnel portal's opening, as fractions of the mouth block (see ProceduralBoardMesh.ArchPortal).</summary>
+        private const float PortalHalfWidth = 0.32f;
+        private const float PortalSpringLine = -0.05f;
+        private const float PortalCrown = 0.34f;
+
         [SerializeField] private Transform tiles;
         [SerializeField] private Transform pieces;
         [SerializeField] private Transform tunnels;
         [SerializeField] private Transform clues;
         [SerializeField] private Transform markers;
+        [SerializeField] private Transform decor;
         [SerializeField] private BoardCamera boardCamera;
         [SerializeField] private TrackAssets trackAssets;
 
@@ -37,6 +59,9 @@ namespace TrainSudoku.Game
         private PlacementSession _session;
         private TrackMeshProfile _profile;
         private bool _interactable;
+        private bool[] _columnSatisfied;
+        private bool[] _rowSatisfied;
+        private Mesh _holdMesh;
 
         // Current press, for taps and long presses.
         private bool _pressing;
@@ -69,6 +94,13 @@ namespace TrainSudoku.Game
         /// <summary>A piece was placed or erased. Raised before the validator runs.</summary>
         public event Action BoardChanged;
 
+        /// <summary>
+        /// A row (true) or column (false) at that index has just gone from unsatisfied to satisfied through a player
+        /// action. The Play screen prints it on the LED strip (work order 9, clue satisfied). Loading a saved board
+        /// never raises it, for the same reason loading never announces a win.
+        /// </summary>
+        public event Action<bool, int> LineCleared;
+
         /// <summary>Creates the empty board root under <paramref name="parent"/>. Works in the Editor and at runtime.</summary>
         public static BoardView Create(Transform parent, BoardCamera camera, TrackAssets trackAssets)
         {
@@ -80,6 +112,7 @@ namespace TrainSudoku.Game
             view.tunnels = view.Group("Tunnels");
             view.clues = view.Group("Clues");
             view.markers = view.Group("Markers");
+            view.decor = view.Group("Decor");
             view.boardCamera = camera;
             view.trackAssets = trackAssets;
             return view;
@@ -90,6 +123,7 @@ namespace TrainSudoku.Game
         {
             if (assets != null) trackAssets = assets;
             if (markers == null) markers = Group("Markers");
+            if (decor == null) decor = Group("Decor");
         }
 
         private Transform Group(string name)
@@ -119,6 +153,7 @@ namespace TrainSudoku.Game
             if (resume != null) RestorePieces(resume);
             BuildTunnels();
             BuildClues();
+            BuildDecor();
 
             if (boardCamera != null) boardCamera.SetTarget(ContentBounds());
 
@@ -136,6 +171,8 @@ namespace TrainSudoku.Game
             var bounds = new Bounds(
                 new Vector3(0f, height / 2f, 0f),
                 new Vector3(2f * (float)BoardLayout.HalfWidth(Level.Width), height, 2f * (float)BoardLayout.HalfDepth(Level.Height)));
+            // Decor is deliberately absent: environment art must never be able to move the camera. Everything
+            // BuildDecor lays down sits inside the tunnel ring, which the minimum box above already covers.
             foreach (var group in new[] { tiles, pieces, tunnels, clues })
                 foreach (var renderer in group.GetComponentsInChildren<Renderer>())
                     bounds.Encapsulate(renderer.bounds);
@@ -172,7 +209,7 @@ namespace TrainSudoku.Game
         {
             if (Board == null) return;
             LastResult = WinChecker.Evaluate(Board);
-            ApplyClueColors(LastResult);
+            ApplyClueColors(LastResult, announceWin);
             if (announceWin && LastResult.IsWin) Completed?.Invoke();
         }
 
@@ -182,14 +219,32 @@ namespace TrainSudoku.Game
             Validate(true);
         }
 
-        /// <summary>Satisfied lines turn green, lines holding more pieces than their clue turn red.</summary>
-        private void ApplyClueColors(WinResult result)
+        /// <summary>
+        /// Satisfied lines turn green, lines holding more pieces than their clue turn red. A line that has just
+        /// become satisfied also pops its clue and is announced, but only when the change came from a player action.
+        /// </summary>
+        private void ApplyClueColors(WinResult result, bool announce)
         {
             if (_columnClues == null || result == null) return;
             for (var x = 0; x < _columnClues.Length; x++)
+            {
                 _columnClues[x].color = ClueColor(result.ColumnSatisfied[x], Board.ColumnCount(x) > Level.ColumnClues[x]);
+                if (announce && result.ColumnSatisfied[x] && !_columnSatisfied[x]) Cleared(_columnClues[x], false, x);
+                _columnSatisfied[x] = result.ColumnSatisfied[x];
+            }
+
             for (var y = 0; y < _rowClues.Length; y++)
+            {
                 _rowClues[y].color = ClueColor(result.RowSatisfied[y], Board.RowCount(y) > Level.RowClues[y]);
+                if (announce && result.RowSatisfied[y] && !_rowSatisfied[y]) Cleared(_rowClues[y], true, y);
+                _rowSatisfied[y] = result.RowSatisfied[y];
+            }
+        }
+
+        private void Cleared(TextMesh label, bool isRow, int index)
+        {
+            PopScale.Play(label.gameObject, CluePopScale, CluePopDuration);
+            LineCleared?.Invoke(isRow, index);
         }
 
         private static Color ClueColor(bool satisfied, bool exceeded) =>
@@ -199,13 +254,16 @@ namespace TrainSudoku.Game
 
         private void Clear()
         {
-            foreach (var group in new[] { tiles, pieces, tunnels, clues, markers })
+            foreach (var group in new[] { tiles, pieces, tunnels, clues, markers, decor })
                 if (group != null) SceneObjects.Clear(group);
             // The bent meshes belong to the level that just went away, and the next one may use a different profile.
             TrackMeshBender.Clear();
             _cells = null;
             _columnClues = null;
             _rowClues = null;
+            _columnSatisfied = null;
+            _rowSatisfied = null;
+            DestroyHoldMesh();
             _pieceViews.Clear();
             _holdIndicator = null;
             _session = null;
@@ -227,6 +285,9 @@ namespace TrainSudoku.Game
                 tile.transform.localPosition = new Vector3((float)wx, -TileHeight / 2f, (float)wz);
                 var size = (float)BoardLayout.CellSize - TileInset;
                 tile.transform.localScale = new Vector3(size, TileHeight, size);
+                // A slab, not a box: the cube's collider is kept for picking, its mesh swapped for a chamfered one
+                // of exactly the same extents (see ProceduralBoardMesh), so ContentBounds cannot move.
+                tile.GetComponent<MeshFilter>().sharedMesh = ProceduralBoardMesh.ChamferedTile(TileChamfer / size, TileChamfer / TileHeight);
                 tile.GetComponent<MeshRenderer>().sharedMaterial = TileMaterial(x, y);
 
                 var cell = tile.AddComponent<BoardCell>();
@@ -282,13 +343,19 @@ namespace TrainSudoku.Game
             // Face the board: +Z of the tunnel points opposite to the side it sits on.
             holder.transform.localRotation = Quaternion.Euler(0f, (float)BoardLayout.Yaw(tunnel.Side.Opposite()), 0f);
 
-            var mouth = Primitive(PrimitiveType.Cube, holder.transform, material, "Mouth", false);
+            // A swept arch rather than a box, spanning the same unit cube so the ring keeps its extents.
+            var mouth = new GameObject("Mouth");
+            mouth.transform.SetParent(holder.transform, false);
             mouth.transform.localPosition = new Vector3(0f, 0.35f, 0f);
             mouth.transform.localScale = new Vector3(0.8f, 0.7f, 0.5f);
+            mouth.AddComponent<MeshFilter>().sharedMesh = ProceduralBoardMesh.ArchPortal(PortalHalfWidth, PortalSpringLine, PortalCrown);
+            mouth.AddComponent<MeshRenderer>().sharedMaterial = material;
 
+            // The darkness the arch looks into. It has to be wider and taller than the opening, or the portal is a
+            // window onto the background rather than a tunnel.
             var hole = Primitive(PrimitiveType.Cube, holder.transform, BoardMaterials.FixedPiece, "Hole", false);
-            hole.transform.localPosition = new Vector3(0f, 0.25f, 0.2f);
-            hole.transform.localScale = new Vector3(0.5f, 0.5f, 0.15f);
+            hole.transform.localPosition = new Vector3(0f, 0.31f, 0.16f);
+            hole.transform.localScale = new Vector3(0.62f, 0.62f, 0.15f);
 
             var label = Label(holder.transform, letter, 0.6f, Color.white);
             label.transform.localPosition = new Vector3(0f, 1.05f, 0f);
@@ -297,6 +364,7 @@ namespace TrainSudoku.Game
         private void BuildClues()
         {
             _columnClues = new TextMesh[Level.Width];
+            _columnSatisfied = new bool[Level.Width];
             for (var x = 0; x < Level.Width; x++)
             {
                 var (wx, wz) = BoardLayout.ColumnClueAnchor(x, Level.Width, Level.Height);
@@ -306,6 +374,7 @@ namespace TrainSudoku.Game
             }
 
             _rowClues = new TextMesh[Level.Height];
+            _rowSatisfied = new bool[Level.Height];
             for (var y = 0; y < Level.Height; y++)
             {
                 var (wx, wz) = BoardLayout.RowClueAnchor(y, Level.Width, Level.Height);
@@ -313,6 +382,67 @@ namespace TrainSudoku.Game
                 _rowClues[y].transform.localPosition = new Vector3((float)wx, 0.05f, (float)wz);
                 _rowClues[y].name = $"Row clue {y}";
             }
+        }
+
+        /// <summary>
+        /// Environment art (D13): a raised yellow lip along each long platform edge, with the Japanese warning
+        /// painted along it the way a real platform carries one.
+        /// </summary>
+        /// <remarks>
+        /// This is the one place Japanese is allowed in every locale, because it is <b>geometry and a font atlas,
+        /// never a <c>VisualElement</c></b>. Without a signage face assigned in <see cref="TrackAssets"/> the lips
+        /// are still laid but the text is skipped — an unpainted platform edge is fine, a row of missing-glyph
+        /// boxes is not.
+        ///
+        /// Everything here sits between the board edge and the tunnel mouths, inside the ring the camera is already
+        /// told to keep in view, and the group is left out of <see cref="ContentBounds"/> so it can never move the
+        /// camera however it grows.
+        /// </remarks>
+        private void BuildDecor()
+        {
+            if (decor == null) return;
+
+            var halfDepth = Level.Height * (float)BoardLayout.CellSize / 2f;
+            var width = Level.Width * (float)BoardLayout.CellSize;
+            var font = trackAssets != null ? trackAssets.SignageFont : null;
+            var warning = trackAssets != null ? trackAssets.PlatformWarning : null;
+
+            foreach (var side in new[] { -1f, 1f })
+            {
+                var z = side * (halfDepth + PlatformEdgeDepth / 2f);
+                var lip = Primitive(PrimitiveType.Cube, decor, BoardMaterials.PlatformEdge, "Platform Edge", false);
+                lip.transform.localPosition = new Vector3(0f, 0f, z);
+                lip.transform.localScale = new Vector3(width + PlatformEdgeDepth * 2f, PlatformEdgeHeight, PlatformEdgeDepth);
+
+                if (font == null || string.IsNullOrEmpty(warning)) continue;
+
+                // Repeat the warning along the lip, evenly, at least once even on the narrowest board.
+                var count = Mathf.Max(1, Mathf.RoundToInt(width / DecalSpacing));
+                for (var i = 0; i < count; i++)
+                {
+                    var x = -width / 2f + width * (i + 0.5f) / count;
+                    var decal = Decal(font, warning, DecalHeight);
+                    decal.transform.localPosition = new Vector3(x, PlatformEdgeHeight / 2f + 0.005f, z);
+                }
+            }
+        }
+
+        /// <summary>Text painted flat on the ground, reading west to east, rather than turned to face the camera.</summary>
+        private TextMesh Decal(Font font, string text, float worldHeight)
+        {
+            var go = new GameObject($"Decal {text}");
+            go.transform.SetParent(decor, false);
+            var mesh = go.AddComponent<TextMesh>();
+            mesh.font = font;
+            mesh.text = text;
+            mesh.fontSize = 64;
+            mesh.characterSize = worldHeight / 6.4f;
+            mesh.anchor = TextAnchor.MiddleCenter;
+            mesh.alignment = TextAlignment.Center;
+            mesh.color = Palette.Ink;
+            go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+            go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            return mesh;
         }
 
         private static GameObject Primitive(PrimitiveType type, Transform parent, Material material, string name, bool keepCollider)
@@ -374,21 +504,28 @@ namespace TrainSudoku.Game
                 marker.transform.localPosition = new Vector3((float)(cx + dx * MarkerInset), 0.08f, (float)(cz + dz * MarkerInset));
                 marker.transform.localRotation = Quaternion.Euler(0f, (float)BoardLayout.Yaw(side), 0f);
                 marker.transform.localScale = new Vector3(0.18f, 0.06f, 0.26f);
-                marker.AddComponent<BoardMarker>().Set(side);
+                marker.AddComponent<BoardMarker>().Set(side, forced);
             }
         }
 
+        /// <summary>
+        /// The erase ring: a flat annulus that fills round the held cell over <see cref="HoldDuration"/>, linearly,
+        /// so the sweep is a readable countdown rather than a guess (work order 9).
+        /// </summary>
         private void ShowHoldProgress((int X, int Y) cell, float progress)
         {
             if (_holdIndicator == null)
             {
-                _holdIndicator = Primitive(PrimitiveType.Cylinder, markers, BoardMaterials.Hold, "Hold Ring", false);
+                _holdMesh = new Mesh { name = "Hold Ring" };
+                _holdIndicator = new GameObject("Hold Ring");
+                _holdIndicator.transform.SetParent(markers, false);
                 var (cx, cz) = BoardLayout.CellCenter(cell.X, cell.Y, Level.Width, Level.Height);
                 _holdIndicator.transform.localPosition = new Vector3((float)cx, 0.14f, (float)cz);
+                _holdIndicator.AddComponent<MeshFilter>().sharedMesh = _holdMesh;
+                _holdIndicator.AddComponent<MeshRenderer>().sharedMaterial = BoardMaterials.Hold;
             }
 
-            var d = 0.9f * Mathf.Clamp01(progress);
-            _holdIndicator.transform.localScale = new Vector3(d, 0.005f, d);
+            ProceduralBoardMesh.FillRing(_holdMesh, HoldRingInner, HoldRingOuter, Mathf.Clamp01(progress));
         }
 
         private void HideHoldProgress()
@@ -396,6 +533,16 @@ namespace TrainSudoku.Game
             if (_holdIndicator == null) return;
             Destroy(_holdIndicator);
             _holdIndicator = null;
+            DestroyHoldMesh();
+        }
+
+        /// <summary>The ring owns its mesh, so it has to be released with it; a generated mesh is not collected.</summary>
+        private void DestroyHoldMesh()
+        {
+            if (_holdMesh == null) return;
+            if (Application.isPlaying) Destroy(_holdMesh);
+            else DestroyImmediate(_holdMesh);
+            _holdMesh = null;
         }
 
         // ------------------------------------------------------------------ interaction

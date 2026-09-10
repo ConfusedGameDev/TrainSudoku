@@ -11,16 +11,17 @@ namespace TrainSudoku.Game
     /// Two disjoint sets live here and they must not be confused:
     /// <list type="bullet">
     /// <item>The station-signage tokens (<see cref="Paper"/> down to <see cref="Stop"/>) are the values from the
-    /// UI work order section 6. Nothing reads them yet; the shell picks them up as USS variables.</item>
-    /// <item>The board values (<see cref="BoardBackground"/> down to <see cref="ClueText"/>) are carried over from
-    /// the old uGUI palette unchanged, so the playfield renders exactly as it did before the move.</item>
+    /// UI work order section 6, mirrored by <c>Uss/tokens.uss</c> for the screens.</item>
+    /// <item>The board values (<see cref="BoardBackground"/> down to <see cref="ClueText"/>) are the platform: the
+    /// same tokens applied to a 3D scene, so ballast, concrete and steel are named here rather than in
+    /// <see cref="BoardMaterials"/>.</item>
     /// </list>
     /// The line colour is deliberately absent: it is a runtime value published as the USS variable
     /// <c>--line-current</c> from the active line, never a constant.
     /// </remarks>
     public static class Palette
     {
-        // ---- Station signage tokens (work order section 6). Not yet read by anything. ----
+        // ---- Station signage tokens (work order section 6). ----
 
         /// <summary>Screen ground. <c>--paper</c>.</summary>
         public static readonly Color Paper = new Color32(0xF4, 0xF5, 0xF2, 0xFF);
@@ -49,19 +50,31 @@ namespace TrainSudoku.Game
         /// <summary>Exit portal and error. <c>--stop</c>.</summary>
         public static readonly Color Stop = new Color32(0xD0, 0x34, 0x2C, 0xFF);
 
-        // ---- Board values, carried over unchanged. Re-tinted to the platform palette later. ----
+        // ---- The platform: the board's own colours, re-tinted to the station palette at M19 (5.4). ----
 
-        /// <summary>The camera's solid clear colour behind the board.</summary>
-        public static readonly Color BoardBackground = new Color(0.09f, 0.11f, 0.15f);
+        /// <summary>
+        /// The camera's solid clear colour behind the board: ballast, the crushed stone a track is laid on. Dark
+        /// enough that the concrete slabs and the amber markers read against it under the 60 degree pitch.
+        /// </summary>
+        public static readonly Color BoardBackground = new Color32(0x26, 0x2A, 0x28, 0xFF);
+
+        /// <summary>A platform slab. The board is a station platform seen from above, not a sheet of paper.</summary>
+        public static readonly Color Concrete = new Color32(0xC4, 0xC8, 0xC0, 0xFF);
+
+        /// <summary>The alternating slab, one shade down, so the grid reads without drawn gridlines.</summary>
+        public static readonly Color ConcreteAlt = new Color32(0xB6, 0xBB, 0xB3, 0xFF);
+
+        /// <summary>Rail steel: player track, and the stand-in train's chassis.</summary>
+        public static readonly Color Steel = new Color32(0x7C, 0x82, 0x85, 0xFF);
 
         /// <summary>A row or column clue whose count is satisfied.</summary>
         public static readonly Color Success = new Color(0.35f, 0.80f, 0.45f);
 
-        /// <summary>A row or column holding more pieces than its clue allows.</summary>
-        public static readonly Color ClueExceeded = new Color(0.95f, 0.40f, 0.35f);
+        /// <summary>A row or column holding more pieces than its clue allows. The signage <see cref="Stop"/> red.</summary>
+        public static readonly Color ClueExceeded = Stop;
 
-        /// <summary>A clue that is neither satisfied nor exceeded, and the tunnel letters.</summary>
-        public static readonly Color ClueText = new Color(0.96f, 0.96f, 0.97f);
+        /// <summary>A clue that is neither satisfied nor exceeded, and the tunnel letters. Signage <see cref="Paper"/>.</summary>
+        public static readonly Color ClueText = Paper;
 
         private static Font _font;
 

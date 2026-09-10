@@ -1,6 +1,6 @@
 TRAINSUDOKU · UI WORK ORDER
 v0.4 · 10 SEP 2026 · main @ 3947585
-STATUS: M18 next · M11–M17 of M11–M20 done · progress table in 11.0
+STATUS: M20 next · M11–M19 of M11–M20 done · progress table in 11.0
 
 # Station UI — implementation work order
 
@@ -510,7 +510,7 @@ next begins.
 | M16 | The seven screens | ☑ |
 | M17 | Board framing | ☑ |
 | M18 | Line Map Editor | ☑ |
-| M19 | Motion and board re-skin | ☐ |
+| M19 | Motion and board re-skin | ☑ |
 | M20 | Translation pass | ☐ |
 
 ---
@@ -988,19 +988,53 @@ carries the identity **before** building six more screens on top of it.
 **Goal:** the game feels like the mockup, not just looks like its wireframe.
 **Touches:** `Uss/`, `Ui/Screens/*.cs`, `Board/BoardMaterials.cs`, `Board/BoardView.cs`.
 
-- [ ] Every row of the section 9 motion table, on unscaled time
-- [ ] `BoardMaterials` re-tinted to the platform palette (5.4)
-- [ ] Japanese environment art: platform decals, train destination plate (D13)
-- [ ] *Optional:* chamfered tile mesh replacing `PrimitiveType.Cube`
-- [ ] *Optional:* swept-arch tunnel portal replacing the placeholder box
+- [x] Every row of the section 9 motion table, on unscaled time
+- [x] `BoardMaterials` re-tinted to the platform palette (5.4)
+- [x] Japanese environment art: platform decals, train destination plate (D13)
+- [x] *Optional:* chamfered tile mesh replacing `PrimitiveType.Cube`
+- [x] *Optional:* swept-arch tunnel portal replacing the placeholder box
 
 **Done when**
 
-- [ ] Every motion in section 9 is present and nothing blocks input longer than 200 ms
-- [ ] Motion still runs while paused (unscaled time)
-- [ ] `ContentBounds` is unchanged within 0.01 after any mesh work, so the camera fit doesn't shift
-- [ ] No Japanese appears in any `VisualElement` in `en`/`es`/`fr` (D13)
-- [ ] **Verified by human** ☐ &nbsp;&nbsp; date: ______
+- [x] Every motion in section 9 is present and nothing blocks input longer than 200 ms
+- [x] Motion still runs while paused (unscaled time)
+- [x] `ContentBounds` is unchanged within 0.01 after any mesh work, so the camera fit doesn't shift
+- [x] No Japanese appears in any `VisualElement` in `en`/`es`/`fr` (D13)
+- [x] **Verified by human** ☑ &nbsp;&nbsp; date: 10 SEP 2026
+
+**How each row of section 9 landed**
+
+| MOMENT | WHERE |
+|---|---|
+| Piece snap-in | `PieceView.PlayScaleIn` — 220 ms, overshoot 1.15, `Time.unscaledDeltaTime` |
+| Marker hop | `BoardMarker` — 900 ms loop; a forced side hops twice as high and wears the line colour |
+| Erase hold ring | `BoardView.ShowHoldProgress` → `ProceduralBoardMesh.FillRing`, a real annulus filling clockwise over `HoldDuration`, in `--warn`. Fixed piece: `PieceView.PlayShake`, 180 ms |
+| Clue satisfied | `BoardView.ApplyClueColors` → `PopScale` (160 ms, 1.2x) and the `LineCleared` event, which `GameManager` hands to `PlayScreen.AnnounceLineClear` for the strip |
+| Screen change | `UiScreen.SetVisible` — 260 ms in and out. `PlayScreen` opts out (`Animates`): it is the board's frame, not a screen, and the camera insets are measured off it |
+| Arrival | `ArrivalScreen.PlayArrival` — one tween drives the stamp and then the stars, so a second arrival cannot leave a star mid-pop |
+| Line opening | `NetworkMapElement.PlayOpening`, triggered by `NetworkScreen` when a line has opened since the last visit. Unobservable in v1 (D10) |
+
+> **Regression found in review, fixed.** The first cut of the screen change put every screen root back to
+> `PickingMode.Position` when it settled. A `UIDocument` root ships as `PickingMode.Ignore`, and that is precisely
+> what lets a tap fall through the transparent Play screen to the board — so the Play screen began swallowing every
+> tap and no piece could be placed, with nothing in the console. `UiScreen` now remembers each root's own picking
+> mode and restores that; a screen on its way out is stopped with `SetEnabled(false)` instead.
+
+**Three things the human should look at, and one to decide**
+
+1. **Fixed pieces.** `TrackAssets` had the *same* kit material on `trackMaterial` and `fixedTrackMaterial`, so a
+   pre-laid piece was indistinguishable from a placed one. `fixedTrackMaterial` is now cleared, which drops it to
+   the line colour that 5.4 asks for. It is a real change to how the board reads.
+2. **Winding.** The generated meshes emit their triangles the way the built-in primitives do. `ProceduralTrackMesh`
+   had them reversed since M4 — its placeholder track has always rendered inside out, unnoticed because
+   `TrackAssets` ships with the kit mesh assigned. Fixed here alongside the new meshes.
+3. **The platform decals** are small: `きけん` painted along a 0.22-deep lip. Legible under the pitch, but if it
+   reads as noise rather than signage, the lip and `DecalHeight` in `BoardView` are the two numbers to turn.
+4. **9.1 MB.** The decals and the destination plate are world-space `TextMesh`, which needs a legacy `Font`, so
+   `TrackAssets`/`TrainAssets` now reference `NotoSansJP-Variable.ttf` — and a dynamic legacy font ships its whole
+   file, in *every* locale, for four glyphs. Cheaper answers, for M20 when the build size is measured: bake a
+   static four-glyph atlas by setting the importer's character set, or clear `signageFont` on both assets and lose
+   the decals. Left as it is so M19 can be judged with the art present.
 
 ---
 
