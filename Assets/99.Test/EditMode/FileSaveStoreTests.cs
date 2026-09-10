@@ -38,6 +38,46 @@ namespace TrainSudoku.Tests
         }
 
         [Test]
+        public void StarsPersistAcrossInstances()
+        {
+            var store = Open();
+            store.SetBestTime("first", 42.5);
+            store.SetStars("first", 3);
+            Assert.IsTrue(File.Exists(_path));
+
+            var reopened = Open();
+            Assert.IsTrue(reopened.TryGetStars("first", out var stars));
+            Assert.AreEqual(3, stars);
+            Assert.IsTrue(reopened.TryGetBestTime("first", out var seconds));
+            Assert.AreEqual(42.5, seconds);
+            Assert.IsFalse(reopened.LoadedFromCorruptFile);
+            CollectionAssert.IsEmpty(_log);
+        }
+
+        [Test]
+        public void AVersionOneFileOnDiskStillLoadsAndIsRewrittenAsVersionTwo()
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_path));
+            File.WriteAllText(_path, "{\"version\":1,\"bestTimes\":{\"first\":42.5},\"inProgress\":{}}");
+
+            var store = Open();
+            Assert.IsFalse(store.LoadedFromCorruptFile, "a v1 file is valid, not corrupt");
+            Assert.IsTrue(store.TryGetBestTime("first", out var seconds));
+            Assert.AreEqual(42.5, seconds);
+            Assert.IsFalse(store.TryGetStars("first", out _), "v1 carried no stars");
+
+            // Any write migrates the file.
+            store.SetStars("first", 2);
+            StringAssert.Contains("\"version\": 2", File.ReadAllText(_path));
+
+            var reopened = Open();
+            Assert.IsTrue(reopened.TryGetStars("first", out var stars));
+            Assert.AreEqual(2, stars);
+            Assert.AreEqual(42.5, reopened.TryGetBestTime("first", out var kept) ? kept : -1d,
+                "the migration must not cost the best time");
+        }
+
+        [Test]
         public void PersistsAcrossInstances()
         {
             var store = Open();

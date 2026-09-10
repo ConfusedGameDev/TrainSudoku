@@ -47,6 +47,19 @@ namespace TrainSudoku.Core
             Save();
         }
 
+        public bool TryGetStars(string levelId, out int stars)
+        {
+            stars = 0;
+            return levelId != null && _data.Stars.TryGetValue(levelId, out stars);
+        }
+
+        public void SetStars(string levelId, int stars)
+        {
+            if (levelId == null) throw new ArgumentNullException(nameof(levelId));
+            _data.Stars[levelId] = stars;
+            Save();
+        }
+
         public bool TryGetProgress(string levelId, out LevelProgress progress)
         {
             progress = null;

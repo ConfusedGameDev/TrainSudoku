@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using TrainSudoku.Core;
 using UnityEngine;
 
@@ -41,10 +42,29 @@ namespace TrainSudoku.Game
         [SerializeField] private TunnelEntry entrance = new TunnelEntry { side = Direction.West, index = 0 };
         [SerializeField] private TunnelEntry exit = new TunnelEntry { side = Direction.East, index = 0 };
 
+        [Tooltip("Seconds: [0] earns three stars, [1] earns two. Anything slower earns one. Hand-authored from real " +
+                 "play, never derived from solver node count — that measures search-tree size, not how long a person takes.")]
+        [SerializeField] private float[] starTimes = new float[2];
+
         public string Id => id;
+
+        /// <summary>The station's name. An invented proper noun, untranslated, like any station on a real map (D14).</summary>
         public string DisplayName => displayName;
         public int Width => width;
         public int Height => height;
+
+        /// <summary>
+        /// Star thresholds in seconds, fastest first. Always two entries, so a half-authored asset still answers.
+        /// A zero threshold means "unauthored" and is treated as unreachable, which costs the player nothing.
+        /// </summary>
+        public IReadOnlyList<double> StarTimes => new[]
+        {
+            starTimes != null && starTimes.Length > 0 ? starTimes[0] : 0d,
+            starTimes != null && starTimes.Length > 1 ? starTimes[1] : 0d,
+        };
+
+        /// <summary>Sets both thresholds. Used by the level editor; the game only ever reads them.</summary>
+        public void SetStarTimes(float threeStars, float twoStars) => starTimes = new[] { threeStars, twoStars };
 
         /// <summary>Builds the Core representation. Tolerates a half-edited asset: sizes are clamped to at least 1 and short arrays are padded.</summary>
         public LevelData ToLevelData()
@@ -60,7 +80,11 @@ namespace TrainSudoku.Game
             return level;
         }
 
-        /// <summary>Overwrites every field from the Core representation. The id is kept unless a new one is supplied.</summary>
+        /// <summary>
+        /// Overwrites every field from the Core representation. The id is kept unless a new one is supplied, and
+        /// <b>the star thresholds are deliberately left alone</b>: they are hand-authored from real play and are not
+        /// part of <see cref="LevelData"/>, so re-saving a level from the editor must never wipe them.
+        /// </summary>
         public void SetFrom(LevelData level, string newId = null)
         {
             if (level == null) throw new ArgumentNullException(nameof(level));

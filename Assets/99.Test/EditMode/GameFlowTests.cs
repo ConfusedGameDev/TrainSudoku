@@ -163,15 +163,21 @@ namespace TrainSudoku.Tests
         }
 
         [Test]
-        public void NextIsRefusedOnTheLastLevel()
+        public void NextAtTheEndOfTheLineGoesToTheNetwork()
         {
+            // With no explicit layout every level is one line, so the last level is that line's terminus. Finishing it
+            // completes the line, and there is no next station to go to — the run returns to the network map, which is
+            // where a newly opened line is shown opening.
             _flow.UnlockAll = true;
             PlayLevel(2);
             _flow.CompleteLevel();
             _flow.FinishTrainRun();
             Assert.IsFalse(_flow.HasNextLevel);
-            Assert.Throws<InvalidOperationException>(() => _flow.NextLevel());
-            Assert.AreEqual(GameState.Win, _flow.State);
+            Assert.IsFalse(_flow.HasNextStation);
+            Assert.IsTrue(_flow.IsLineComplete);
+
+            _flow.NextLevel();
+            Assert.AreEqual(GameState.Network, _flow.State);
         }
 
         [Test]

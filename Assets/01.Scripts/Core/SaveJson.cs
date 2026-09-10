@@ -11,19 +11,27 @@ namespace TrainSudoku.Core
     /// </summary>
     public sealed class SaveData
     {
-        public const int CurrentVersion = 1;
+        public const int CurrentVersion = 2;
 
+        /// <summary>The version this file was read from. A v1 file is rewritten as v2 on the next save.</summary>
         public int Version { get; set; } = CurrentVersion;
         public Dictionary<string, double> BestTimes { get; } = new Dictionary<string, double>(StringComparer.Ordinal);
+
+        /// <summary>Stars per level id, 1 to 3. Added in version 2; a v1 file has none and they are awarded on load.</summary>
+        public Dictionary<string, int> Stars { get; } = new Dictionary<string, int>(StringComparer.Ordinal);
         public Dictionary<string, LevelProgress> InProgress { get; } = new Dictionary<string, LevelProgress>(StringComparer.Ordinal);
     }
 
     /// <summary>
     /// The save file format:
-    /// <c>{"version":1,"bestTimes":{"level-id":12.5},"inProgress":{"level-id":{"elapsed":40.25,"pieces":[{"x":1,"y":0,"key":"NE"}]}}}</c>.
+    /// <c>{"version":2,"bestTimes":{"level-id":12.5},"stars":{"level-id":3},"inProgress":{"level-id":{"elapsed":40.25,"pieces":[{"x":1,"y":0,"key":"NE"}]}}}</c>.
     /// A small hand-written reader and writer so Core stays free of UnityEngine; the reader accepts any well-formed JSON
-    /// and ignores unknown members. A malformed in-progress entry is skipped rather than failing the file, so a bad
-    /// snapshot never costs the best times.
+    /// and ignores unknown members. Both version 1 (no <c>stars</c>) and version 2 are read; a v1 file loads with no
+    /// stars and <see cref="ProgressTracker.AwardMissingStars"/> fills them in from each level's thresholds, after
+    /// which the next write produces v2.
+    ///
+    /// A malformed in-progress entry, and likewise a malformed star entry, is skipped rather than failing the file, so
+    /// neither can cost the player their best times.
     /// </summary>
     public static class SaveJson
     {
@@ -32,7 +40,8 @@ namespace TrainSudoku.Core
             if (data == null) throw new ArgumentNullException(nameof(data));
 
             var sb = new StringBuilder();
-            sb.Append("{\n  \"version\": ").Append(data.Version.ToString(CultureInfo.InvariantCulture));
+            // Always the current version: reading a v1 file and writing it back is the migration.
+            sb.Append("{\n  \"version\": ").Append(SaveData.CurrentVersion.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\n  \"bestTimes\": {");
             var first = true;
             var ids = new List<string>(data.BestTimes.Keys);
@@ -42,6 +51,20 @@ namespace TrainSudoku.Core
                 sb.Append(first ? "\n" : ",\n").Append("    ");
                 WriteString(sb, id);
                 sb.Append(": ").Append(data.BestTimes[id].ToString("R", CultureInfo.InvariantCulture));
+                first = false;
+            }
+
+            sb.Append(first ? "}" : "\n  }");
+
+            sb.Append(",\n  \"stars\": {");
+            first = true;
+            ids = new List<string>(data.Stars.Keys);
+            ids.Sort(StringComparer.Ordinal);
+            foreach (var id in ids)
+            {
+                sb.Append(first ? "\n" : ",\n").Append("    ");
+                WriteString(sb, id);
+                sb.Append(": ").Append(data.Stars[id].ToString(CultureInfo.InvariantCulture));
                 first = false;
             }
 
@@ -101,6 +124,18 @@ namespace TrainSudoku.Core
                     {
                         if (!(pair.Value is double seconds) || seconds < 0 || double.IsNaN(seconds) || double.IsInfinity(seconds)) return false;
                         result.BestTimes[pair.Key] = seconds;
+                    }
+                }
+
+                // Absent in version 1. Unlike bestTimes, a bad entry here is skipped rather than failing the file:
+                // a star rating is recoverable from the best time, a best time is not recoverable from anything.
+                if (obj.TryGetValue("stars", out var stars) && stars is Dictionary<string, object> starMap)
+                {
+                    foreach (var pair in starMap)
+                    {
+                        if (!(pair.Value is double count)) continue;
+                        if (count != Math.Floor(count) || count < 1 || count > 3) continue;
+                        result.Stars[pair.Key] = (int)count;
                     }
                 }
 

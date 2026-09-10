@@ -29,7 +29,7 @@ namespace TrainSudoku.Tests
             data.BestTimes["b"] = 2;
             data.BestTimes["a"] = 1.25;
             var json = SaveJson.Write(data);
-            Assert.AreEqual("{\n  \"version\": 1,\n  \"bestTimes\": {\n    \"a\": 1.25,\n    \"b\": 2\n  },\n  \"inProgress\": {}\n}\n", json);
+            Assert.AreEqual("{\n  \"version\": 2,\n  \"bestTimes\": {\n    \"a\": 1.25,\n    \"b\": 2\n  },\n  \"stars\": {},\n  \"inProgress\": {}\n}\n", json);
         }
 
         [Test]
@@ -40,7 +40,7 @@ namespace TrainSudoku.Tests
             data.InProgress["a"] = new LevelProgress(40.25, new[] { new PlacedPiece(1, 0, PieceKey.NE), new PlacedPiece(2, 5, PieceKey.SW) });
             var json = SaveJson.Write(data);
             Assert.AreEqual(
-                "{\n  \"version\": 1,\n  \"bestTimes\": {},\n  \"inProgress\": {\n" +
+                "{\n  \"version\": 2,\n  \"bestTimes\": {},\n  \"stars\": {},\n  \"inProgress\": {\n" +
                 "    \"a\": {\n      \"elapsed\": 40.25,\n      \"pieces\": [\n" +
                 "        { \"x\": 1, \"y\": 0, \"key\": \"NE\" },\n" +
                 "        { \"x\": 2, \"y\": 5, \"key\": \"SW\" }\n      ]\n    },\n" +
@@ -91,7 +91,7 @@ namespace TrainSudoku.Tests
         public void EmptyDataWritesAnEmptyObject()
         {
             var json = SaveJson.Write(new SaveData());
-            Assert.AreEqual("{\n  \"version\": 1,\n  \"bestTimes\": {},\n  \"inProgress\": {}\n}\n", json);
+            Assert.AreEqual("{\n  \"version\": 2,\n  \"bestTimes\": {},\n  \"stars\": {},\n  \"inProgress\": {}\n}\n", json);
             Assert.IsTrue(SaveJson.TryRead(json, out var back));
             Assert.IsEmpty(back.BestTimes);
             Assert.IsEmpty(back.InProgress);

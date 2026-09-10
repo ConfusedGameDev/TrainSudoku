@@ -1,6 +1,6 @@
 TRAINSUDOKU · UI WORK ORDER
 v0.4 · 10 SEP 2026 · main @ 3947585
-STATUS: M12 done · M13 next of M11–M20 · progress table in 11.0
+STATUS: M13 done · M14 next of M11–M20 · progress table in 11.0
 
 # Station UI — implementation work order
 
@@ -504,7 +504,7 @@ next begins.
 |---|---|---|
 | M11 | Foundations | ☑ |
 | M12 | Shell and tokens | ☑ |
-| M13 | Core: save v2, network, flow | ☐ |
+| M13 | Core: save v2, network, flow | ☑ |
 | M14 | Content pass | ☐ |
 | M15 | Elements, and the look test | ☐ |
 | M16 | The seven screens | ☐ |
@@ -616,24 +616,50 @@ next begins.
 **Touches:** `Core/SaveJson.cs`, `Core/ISaveStore.cs`, `Core/FileSaveStore.cs`, `Core/ProgressTracker.cs`,
 `Core/GameFlow.cs`, `Game/LevelDefinition.cs`, new `LineDefinition`/`NetworkDefinition`.
 
-- [ ] `ISaveStore` gains `TryGetStars` / `SetStars`; implement in `InMemorySaveStore` (5.5)
-- [ ] `SaveJson` writes `"version":2` with a `"stars"` map; reads v1 and v2; malformed `stars` skipped, never fatal
-- [ ] `FileSaveStore` passes the pair through; temp-file swap and `.corrupt` handling untouched
-- [ ] `ProgressTracker.RecordCompletion` takes `starTimes`; add `GetStars`, `StarsOnLine`, `IsLineUnlocked(prev, minStars)` with `minStars = 1` (D20)
-- [ ] `CompletionResult` gains `Stars`, `IsNewBestStars`
-- [ ] `LevelDefinition` gains `float[] starTimes` (length 2) and a `StarTimes` accessor; **`SetFrom` must not clear it**
-- [ ] Create `LineDefinition` and `NetworkDefinition` SOs (5.6); keep `Interchange[]` (D19)
-- [ ] Wrap the shipped `LevelCollection.asset` as the `TS` line inside a one-entry `NetworkDefinition`
-- [ ] `GameFlow`: add `Network` state, `ShowNetwork()`, `ShowLineMap(int)`, `CurrentLineIndex`/`CurrentStationIndex`, split `HasNextLevel` into `HasNextStation` + `IsLineComplete`, `IsLineUnlocked` (5.2)
+- [x] `ISaveStore` gains `TryGetStars` / `SetStars`; implement in `InMemorySaveStore` (5.5)
+- [x] `SaveJson` writes `"version":2` with a `"stars"` map; reads v1 and v2; malformed `stars` skipped, never fatal
+- [x] `FileSaveStore` passes the pair through; temp-file swap and `.corrupt` handling untouched
+- [x] `ProgressTracker.RecordCompletion` takes `starTimes`; add `GetStars`, `StarsOnLine`, `IsLineUnlocked(prev, minStars)` with `minStars = 1` (D20)
+- [x] `CompletionResult` gains `Stars`, `IsNewBestStars`
+- [x] `LevelDefinition` gains `float[] starTimes` (length 2) and a `StarTimes` accessor; **`SetFrom` must not clear it**
+- [x] Create `LineDefinition` and `NetworkDefinition` SOs (5.6); keep `Interchange[]` (D19)
+- [x] Wrap the shipped `LevelCollection.asset` as the `TS` line inside a one-entry `NetworkDefinition`
+- [x] `GameFlow`: add `Network` state, `ShowNetwork()`, `ShowLineMap(int)`, `CurrentLineIndex`/`CurrentStationIndex`, split `HasNextLevel` into `HasNextStation` + `IsLineComplete`, `IsLineUnlocked` (5.2)
 
 **Done when**
 
-- [ ] New tests pass: a v1 file migrates and awards correct stars; a v2 file round-trips; a malformed `stars` block is skipped
-- [ ] Existing `SaveJsonTests`, `FileSaveStoreTests` and `LevelCollectionTests` still pass
-- [ ] New `LevelCollectionTests` assert every station well formed, every id unique across the network, **and no board wider than 8** (D18)
-- [ ] New `GameFlowTests` cover each added transition, that illegal ones still throw, and that `NextLevel` at the end of a line routes to `Network`
-- [ ] `CurrentLevelIndex` is still the flat index and still the save-file identity
-- [ ] **Verified by human** ☐ &nbsp;&nbsp; date: ______
+- [x] New tests pass: a v1 file migrates and awards correct stars; a v2 file round-trips; a malformed `stars` block is skipped
+- [x] Existing `SaveJsonTests`, `FileSaveStoreTests` and `LevelCollectionTests` still pass *(three shape assertions updated to v2 — see notes)*
+- [x] New `LevelCollectionTests` assert every station well formed, every id unique across the network, **and no board wider than 8** (D18)
+- [x] New `GameFlowTests` cover each added transition, that illegal ones still throw, and that `NextLevel` at the end of a line routes to `Network`
+- [x] `CurrentLevelIndex` is still the flat index and still the save-file identity
+- [x] **Verified by human** ☑ &nbsp;&nbsp; date: 10 Sep 2026
+
+#### M13 notes
+
+- **`SaveJson` cannot award the stars itself** — it has no idea what a level's thresholds are. So the reader just
+  accepts a v1 file (no `stars`) and the writer always emits v2; the awarding is
+  `ProgressTracker.AwardMissingStars(levelId, starTimes)`, driven for the whole list by `GameFlow.AwardMissingStars()`.
+  It is idempotent and never overwrites a rating that already exists, so a slow best time cannot demote a star the
+  player earned. **M16 must call it once at startup** — nothing calls it yet.
+- **Two new seams on `GameFlow`, both because Core cannot see a ScriptableObject.** `StarTimesForLevel` is a
+  `Func<int, IReadOnlyList<double>>` the Unity layer sets from the level assets; unset, every completion is worth the
+  floor of one star. And the constructor takes an optional `NetworkLayout` — null means one line holding every level,
+  which is exactly the old behaviour, so the existing call in `GameManager` and every old test still work untouched.
+- **New Core type: `NetworkLayout`** (`Core/NetworkLayout.cs`), the flat-list-to-lines mapping. Its whole job is the
+  promise that **appending a line cannot renumber the ones before it**, which is what keeps the flat index the
+  save-file identity. `NetworkDefinition.ToLayout()` builds it, skipping content-free lines.
+- **`Hard` was removed from the shipped collection here, not at M14.** D18's width rule is only worth having if it is
+  enforced, and leaving `Hard` in would have meant shipping M13 with a knowingly red test. The line is temporarily
+  eight stations; **M14 still owns authoring the verified replacement finale**. `Hard.asset` is untouched on disk.
+- **Three existing `SaveJsonTests` asserted the literal v1 JSON** and were updated to v2. One `GameFlowTests` case,
+  `NextIsRefusedOnTheLastLevel`, asserted the old throw at the end of the list; it is now
+  `NextAtTheEndOfTheLineGoesToTheNetwork`, which is the behaviour 5.2 asks for.
+- **Nothing is visible yet and the running game is unchanged.** `GameManager` still builds `GameFlow` with the
+  default single-line layout and no star provider, exactly as before. `Network` is unreachable in the current UI
+  because `WinPanel` disables its Next button when `HasNextLevel` is false — worth remembering at M16, when wiring
+  the network is what makes that route live.
+- 275 EditMode tests pass, up from 235.
 
 ---
 
@@ -645,7 +671,7 @@ next begins.
 - [ ] Choose nine invented proper-noun station names (3.5)
 - [ ] Set them as `displayName` on each level; **`id` values and asset filenames unchanged**
 - [ ] Author a new verified 6×6 or 7×7 finale with a new `id` (section 8)
-- [ ] Remove `Hard` (12×11) from the shipped collection (D17)
+- [x] Remove `Hard` (12×11) from the shipped collection (D17) *(done at M13, so the width test is live rather than red-in-waiting; the asset is still on disk)*
 - [ ] Play all nine; read times from `save.json`
 - [ ] Author 18 star times: 3★ ≈ your time × 1.3, 2★ ≈ × 2.2 (D12)
 

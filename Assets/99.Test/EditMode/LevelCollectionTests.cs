@@ -11,6 +11,14 @@ namespace TrainSudoku.Tests
     public class LevelCollectionTests
     {
         private const string CollectionPath = "Assets/03.Data/Levels/LevelCollection.asset";
+        private const string NetworkPath = "Assets/03.Data/Levels/Network.asset";
+
+        /// <summary>
+        /// 8 cells is the hard cap on shipped board width (D18). Twelve columns in portrait gives roughly 84px tiles
+        /// before margins - about 11mm on a phone, at the floor for a target that must accept both a tap and a
+        /// long-press-to-erase.
+        /// </summary>
+        private const int MaxBoardCells = 8;
 
         /// <summary>Enough to finish every 6x6 and 8x8 level many times over; larger boards may not finish and are only checked for shape.</summary>
         private const long NodeBudget = 5_000_000;
@@ -62,6 +70,95 @@ namespace TrainSudoku.Tests
             }
 
             if (unverified.Count > 0) Debug.Log("Search budget exhausted, uniqueness not proven for: " + string.Join(", ", unverified));
+        }
+
+        // ---- the network (M13) ----
+
+        private static NetworkDefinition LoadNetwork()
+        {
+            var network = AssetDatabase.LoadAssetAtPath<NetworkDefinition>(NetworkPath);
+            Assert.IsNotNull(network, $"Missing {NetworkPath}");
+            return network;
+        }
+
+        [Test]
+        public void TheNetworkShipsAtLeastOneLineWithContent()
+        {
+            var network = LoadNetwork();
+            Assert.GreaterOrEqual(network.LineCount, 1);
+
+            var withContent = 0;
+            for (var i = 0; i < network.LineCount; i++)
+            {
+                var line = network.Line(i);
+                Assert.IsNotNull(line, $"Line {i} is empty");
+                Assert.IsNotEmpty(line.Id, $"{line.name} has no id");
+                Assert.IsNotEmpty(line.Code, $"{line.name} has no roundel code");
+                if (line.HasContent) withContent++;
+            }
+
+            Assert.GreaterOrEqual(withContent, 1, "the network map only draws lines that have content (D10)");
+        }
+
+        [Test]
+        public void EveryStationIsWellFormedAndEveryIdIsUniqueAcrossTheWholeNetwork()
+        {
+            var network = LoadNetwork();
+            var ids = new HashSet<string>();
+
+            for (var lineIndex = 0; lineIndex < network.LineCount; lineIndex++)
+            {
+                var line = network.Line(lineIndex);
+                if (line == null) continue;
+                for (var station = 0; station < line.StationCount; station++)
+                {
+                    var level = line.Station(station);
+                    Assert.IsNotNull(level, $"{line.name} station {station} is empty");
+                    Assert.IsNotEmpty(level.Id, $"{level.name} has no id");
+                    Assert.IsTrue(ids.Add(level.Id),
+                        $"Id '{level.Id}' appears twice in the network; the flat index is the save-file identity");
+                    Assert.IsEmpty(level.ToLevelData().Validate(), $"{level.name} is malformed");
+                }
+            }
+        }
+
+        [Test]
+        public void NoShippedBoardIsWiderOrTallerThanTheCap()
+        {
+            var network = LoadNetwork();
+            for (var lineIndex = 0; lineIndex < network.LineCount; lineIndex++)
+            {
+                var line = network.Line(lineIndex);
+                if (line == null) continue;
+                for (var station = 0; station < line.StationCount; station++)
+                {
+                    var level = line.Station(station);
+                    if (level == null) continue;
+                    Assert.LessOrEqual(level.Width, MaxBoardCells,
+                        $"{level.name} is {level.Width} wide; {MaxBoardCells} is the cap (D18)");
+                    Assert.LessOrEqual(level.Height, MaxBoardCells,
+                        $"{level.name} is {level.Height} tall; {MaxBoardCells} is the cap (D18)");
+                }
+            }
+        }
+
+        [Test]
+        public void TheFlatLevelListMatchesTheLayoutTheFlowIsGiven()
+        {
+            var network = LoadNetwork();
+            var flat = network.FlatLevels();
+            var layout = network.ToLayout();
+
+            Assert.AreEqual(flat.Count, layout.StationTotal,
+                "the flat list and the layout must agree, or the flow indexes the wrong level");
+
+            for (var flatIndex = 0; flatIndex < flat.Count; flatIndex++)
+            {
+                var line = layout.LineOf(flatIndex);
+                var station = layout.StationOf(flatIndex);
+                Assert.AreSame(flat[flatIndex], network.Line(line).Station(station),
+                    $"flat index {flatIndex} does not resolve back to line {line} station {station}");
+            }
         }
     }
 }
