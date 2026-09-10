@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: simple
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LevelDefinition
   id: simple
-  displayName: simple
+  displayName: Ashgate
   width: 6
   height: 6
   columnClues: 010000000100000001000000010000000100000001000000i
@@ -40,3 +40,6 @@ MonoBehaviour:
   exit:
     side: 1
     index: 0
+  starTimes:
+  - 18
+  - 36

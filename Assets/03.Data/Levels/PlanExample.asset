@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: PlanExample
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LevelDefinition
   id: plan-example
-  displayName: Plan Example
+  displayName: Halden
   width: 6
   height: 6
   columnClues: 020000000300000001000000010000000300000001000000i
@@ -31,3 +31,6 @@ MonoBehaviour:
   exit:
     side: 1
     index: 2
+  starTimes:
+  - 33
+  - 66

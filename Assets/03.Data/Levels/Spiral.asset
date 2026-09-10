@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Spiral
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LevelDefinition
   id: spiral
-  displayName: Spiral
+  displayName: Cinder Halt
   width: 6
   height: 6
   columnClues: 050000000200000003000000030000000400000006000000i
@@ -40,3 +40,6 @@ MonoBehaviour:
   exit:
     side: 1
     index: 5
+  starTimes:
+  - 69
+  - 138

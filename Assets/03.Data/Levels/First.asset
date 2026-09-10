@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: First
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LevelDefinition
   id: 1
-  displayName: First
+  displayName: Merrow Cross
   width: 6
   height: 6
   columnClues: 050000000600000005000000010000000300000002000000i
@@ -37,3 +37,6 @@ MonoBehaviour:
   exit:
     side: 1
     index: 1
+  starTimes:
+  - 66
+  - 132

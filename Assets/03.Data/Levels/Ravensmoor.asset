@@ -10,24 +10,42 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8068dec5dc340c41988bde57416d4dd3, type: 3}
-  m_Name: Corner
+  m_Name: Ravensmoor
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LevelDefinition
-  id: corner
-  displayName: Kettleburn
-  width: 6
-  height: 6
-  columnClues: 010000000100000001000000010000000500000000000000i
-  rowClues: 000000000500000001000000010000000100000001000000i
+  id: ravensmoor
+  displayName: Ravensmoor
+  width: 7
+  height: 7
+  columnClues: 03000000020000000600000005000000050000000600000006000000i
+  rowClues: 04000000050000000300000005000000070000000500000004000000i
   fixedPieces:
-  - x: 4
+  - x: 5
+    y: 3
+    key: 5
+  - x: 0
+    y: 6
+    key: 2
+  - x: 5
+    y: 5
+    key: 5
+  - x: 1
+    y: 3
+    key: 5
+  - x: 0
     y: 5
     key: 0
+  - x: 3
+    y: 5
+    key: 4
+  - x: 3
+    y: 1
+    key: 3
   entrance:
     side: 3
-    index: 1
+    index: 6
   exit:
-    side: 2
-    index: 4
+    side: 1
+    index: 0
   starTimes:
-  - 27
-  - 54
+  - 99
+  - 198

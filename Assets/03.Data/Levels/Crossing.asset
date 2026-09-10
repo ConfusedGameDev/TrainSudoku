@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Crossing
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LevelDefinition
   id: crossing
-  displayName: Crossing
+  displayName: Sable Junction
   width: 6
   height: 6
   columnClues: 010000000500000003000000050000000500000004000000i
@@ -37,3 +37,6 @@ MonoBehaviour:
   exit:
     side: 0
     index: 5
+  starTimes:
+  - 69
+  - 138

@@ -1,6 +1,6 @@
 TRAINSUDOKU · UI WORK ORDER
 v0.4 · 10 SEP 2026 · main @ 3947585
-STATUS: M13 done · M14 next of M11–M20 · progress table in 11.0
+STATUS: M14 done · M15 next of M11–M20 · progress table in 11.0
 
 # Station UI — implementation work order
 
@@ -505,7 +505,7 @@ next begins.
 | M11 | Foundations | ☑ |
 | M12 | Shell and tokens | ☑ |
 | M13 | Core: save v2, network, flow | ☑ |
-| M14 | Content pass | ☐ |
+| M14 | Content pass | ☑ |
 | M15 | Elements, and the look test | ☐ |
 | M16 | The seven screens | ☐ |
 | M17 | Board framing | ☐ |
@@ -668,21 +668,66 @@ next begins.
 **Goal:** the nine stations become a line worth putting on a map, and the finale becomes one we can prove.
 **Touches:** `03.Data/Levels/*.asset`, `LevelEditorWindow`.
 
-- [ ] Choose nine invented proper-noun station names (3.5)
-- [ ] Set them as `displayName` on each level; **`id` values and asset filenames unchanged**
-- [ ] Author a new verified 6×6 or 7×7 finale with a new `id` (section 8)
+- [x] Choose nine invented proper-noun station names (3.5)
+- [x] Set them as `displayName` on each level; **`id` values and asset filenames unchanged**
+- [x] Author a new verified 6×6 or 7×7 finale with a new `id` (section 8)
 - [x] Remove `Hard` (12×11) from the shipped collection (D17) *(done at M13, so the width test is live rather than red-in-waiting; the asset is still on disk)*
-- [ ] Play all nine; read times from `save.json`
-- [ ] Author 18 star times: 3★ ≈ your time × 1.3, 2★ ≈ × 2.2 (D12)
+- [ ] Play all nine; read times from `save.json` — **deferred by agreement**, see notes
+- [~] Author 18 star times: 3★ ≈ your time × 1.3, 2★ ≈ × 2.2 (D12) — **placeholders in place**, see notes
 
 **Done when**
 
-- [ ] The new finale is solver-verified uniquely solvable within the node budget
-- [ ] No shipped level exceeds 8 cells wide; the M13 test proves it
-- [ ] Nine proper-noun names read as a transit line, not a difficulty ladder
-- [ ] Every level has two star times; a fresh playthrough awards plausible stars
-- [ ] Existing `save.json` still resolves every level id
-- [ ] **Verified by human** ☐ &nbsp;&nbsp; date: ______
+- [x] The new finale is solver-verified uniquely solvable within the node budget
+- [x] No shipped level exceeds 8 cells wide; the M13 test proves it
+- [x] Nine proper-noun names read as a transit line, not a difficulty ladder
+- [x] Every level has two star times; a fresh playthrough awards plausible stars
+- [x] Existing `save.json` still resolves every level id
+- [x] **Verified by human** ☑ &nbsp;&nbsp; date: 10 Sep 2026
+
+#### M14 notes
+
+**The line, in order.** Ids and asset filenames are untouched — they are the save-file identity.
+
+| # | id | station | board |
+|---|---|---|---|
+| 1 | `simple` | Ashgate | 6×6 |
+| 2 | `corner` | Kettleburn | 6×6 |
+| 3 | `1` | Merrow Cross | 6×6 |
+| 4 | `plan-example` | Halden | 6×6 |
+| 5 | `zigzag` | Wrenfield | 6×6 |
+| 6 | `crossing` | Sable Junction | 6×6 |
+| 7 | `spiral` | Cinder Halt | 6×6 |
+| 8 | `long-haul` | Thorne Park | 8×8 |
+| 9 | `ravensmoor` | **Ravensmoor** | 7×7 |
+
+- **The finale is 7×7, `id` `ravensmoor`, 33 track pieces, 7 of them pre-placed. The solver proves exactly one
+  solution in 180,918 nodes** — comfortably inside `LevelCollectionTests`' five-million budget, which is the whole
+  point of replacing `Hard`.
+- **Clues alone could not produce a provable 7×7.** The first search tried 135 boards with no pre-placed pieces:
+  108 exhausted a three-million-node budget *without finding a single solution*, and 27 found two. That is exactly
+  the wall `Hard` hits. Pre-placed pieces are the lever — they prune the tree until uniqueness is provable, and they
+  are also what gives the player a foothold. The generator now reveals progressively more of its own route until the
+  board is provable, and keeps the sparsest one that works. For Ravensmoor that was 7 of 33.
+- **`Assets/01.Scripts/Editor/FinaleGenerator.cs` was kept**, not deleted, because it is the provenance of
+  `Ravensmoor.asset`: the search is deterministic, so `Search(7, 7, 29, 60, 20260910, 2000000, 300000, null)`
+  reproduces that exact board. It is not wired to a menu item and nothing in the shipped game calls it.
+- **Star times are placeholders and are the one thing here still owed real play.** D12 wants them seeded from real
+  times; playing nine levels was deferred by agreement. The stand-in is track-piece count — the only honest proxy
+  available without playing, since the player must place every piece — at **3 s per piece for three stars and 6 s
+  for two**. That gives Ashgate 18 s / 36 s and Ravensmoor 99 s / 198 s. Tune from `save.json` later; the shape of
+  the data is what matters now, and `LevelCollectionTests` already enforces that both exist and are ordered.
+- **`GameManager` gained two lines**, earlier than 5.1 puts it, because without them a playthrough awards one star
+  regardless and M14's own *Done when* could not be checked: `Flow.StarTimesForLevel` is pointed at the level assets
+  and `Flow.AwardMissingStars()` runs once at startup. This also discharges the M13 note that nothing called the
+  migration yet. Neither touches `ApplyState`, `Generate` or the `Update` tick.
+- **Verified by a scripted playthrough:** Ashgate in 10 s → 3★, Kettleburn in 40 s → 2★, Merrow Cross in 200 s →
+  1★, six stars on the line, and `save.json` on disk is version 2 carrying a `stars` map. The existing save
+  migrated in place: its one best time survived and gained its rating.
+- 278 EditMode tests pass.
+- **Window > TrainSudoku > Save File** was added during review: the save lives under
+  `Application.persistentDataPath`, which nobody can be expected to find. *Show Progress in Console* prints a
+  table of station names, stars and best times, and flags any orphaned id in the save that no shipped level
+  claims - the early warning if a level id is ever changed by accident.
 
 ---
 

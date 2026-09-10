@@ -143,6 +143,34 @@ namespace TrainSudoku.Tests
         }
 
         [Test]
+        public void EveryStationHasANameAndTwoUsableStarThresholds()
+        {
+            var network = LoadNetwork();
+            var names = new HashSet<string>();
+
+            for (var lineIndex = 0; lineIndex < network.LineCount; lineIndex++)
+            {
+                var line = network.Line(lineIndex);
+                if (line == null) continue;
+                for (var station = 0; station < line.StationCount; station++)
+                {
+                    var level = line.Station(station);
+                    if (level == null) continue;
+
+                    Assert.IsNotEmpty(level.DisplayName, $"{level.name} has no station name");
+                    Assert.IsTrue(names.Add(level.DisplayName),
+                        $"Station name '{level.DisplayName}' is used twice; a line cannot stop at the same place twice");
+
+                    var times = level.StarTimes;
+                    Assert.AreEqual(2, times.Count, $"{level.name} should carry exactly two thresholds");
+                    Assert.Greater(times[0], 0d, $"{level.name} has no three-star time");
+                    Assert.Greater(times[1], times[0],
+                        $"{level.name}: the two-star time must be slower than the three-star time, or three stars are unreachable");
+                }
+            }
+        }
+
+        [Test]
         public void TheFlatLevelListMatchesTheLayoutTheFlowIsGiven()
         {
             var network = LoadNetwork();

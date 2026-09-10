@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Zigzag
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LevelDefinition
   id: zigzag
-  displayName: Zigzag
+  displayName: Wrenfield
   width: 6
   height: 6
   columnClues: 040000000300000004000000040000000400000004000000i
@@ -43,3 +43,6 @@ MonoBehaviour:
   exit:
     side: 1
     index: 5
+  starTimes:
+  - 69
+  - 138

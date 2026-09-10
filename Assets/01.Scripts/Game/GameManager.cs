@@ -143,6 +143,13 @@ namespace TrainSudoku.Game
             Flow.UnlockAll = unlockAllLevelsInEditor;
 #endif
 
+            // Core cannot read a ScriptableObject, so the flow is handed a lookup for the star thresholds. Then any
+            // level carrying a best time but no rating - the shape a version 1 save leaves behind - has one worked
+            // out from those thresholds. Both are idempotent and neither can lower a rating already earned.
+            Flow.StarTimesForLevel = index =>
+                index >= 0 && index < levels.Count && levels[index] != null ? levels[index].StarTimes : null;
+            Flow.AwardMissingStars();
+
             foreach (var panel in panels)
             {
                 panel.Bind(this);

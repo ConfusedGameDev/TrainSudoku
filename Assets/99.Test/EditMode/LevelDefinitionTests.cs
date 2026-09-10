@@ -29,6 +29,35 @@ namespace TrainSudoku.Tests
         }
 
         [Test]
+        public void StarTimesAlwaysAnswerWithTwoEntries()
+        {
+            var times = _asset.StarTimes;
+            Assert.AreEqual(2, times.Count, "a half-authored asset must still answer");
+            Assert.AreEqual(0d, times[0], "zero means unauthored");
+            Assert.AreEqual(0d, times[1]);
+
+            _asset.SetStarTimes(30f, 60f);
+            Assert.AreEqual(30d, _asset.StarTimes[0]);
+            Assert.AreEqual(60d, _asset.StarTimes[1]);
+        }
+
+        [Test]
+        public void SetFromDoesNotClearTheStarTimes()
+        {
+            // They are hand-authored from real play and are not part of LevelData, so re-saving a level from the
+            // editor must never wipe them.
+            _asset.SetStarTimes(30f, 60f);
+
+            var level = new LevelData(6, 6) { Name = "Renamed" };
+            _asset.SetFrom(level, "new-id");
+
+            Assert.AreEqual("new-id", _asset.Id);
+            Assert.AreEqual("Renamed", _asset.DisplayName);
+            Assert.AreEqual(30d, _asset.StarTimes[0], "the thresholds survived the re-save");
+            Assert.AreEqual(60d, _asset.StarTimes[1]);
+        }
+
+        [Test]
         public void SetFromKeepsTheIdUnlessGivenANewOne()
         {
             _asset.SetFrom(TestLevels.PlanExample(), "keep-me");

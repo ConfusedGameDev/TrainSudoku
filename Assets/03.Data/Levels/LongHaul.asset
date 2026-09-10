@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: LongHaul
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LevelDefinition
   id: long-haul
-  displayName: Long Haul
+  displayName: Thorne Park
   width: 8
   height: 8
   columnClues: 0400000003000000040000000400000004000000040000000100000001000000i
@@ -46,3 +46,6 @@ MonoBehaviour:
   exit:
     side: 1
     index: 6
+  starTimes:
+  - 75
+  - 150
