@@ -14,10 +14,11 @@ namespace TrainSudoku.Game
     /// </remarks>
     public sealed class PlayScreen : UiScreen
     {
-        /// <summary>Sign bar and LED strip heights, in reference pixels. M17 feeds these to the camera.</summary>
+        /// <summary>Sign bar and LED strip heights, in reference pixels. What the camera gets is measured, not these.</summary>
         public const float TopBarHeight = 250f;
         public const float BottomBarHeight = 150f;
 
+        private VisualElement _view;
         private StationRoundel _roundel;
         private Label _stationName;
         private Label _clock;
@@ -65,8 +66,10 @@ namespace TrainSudoku.Game
             rule.AddToClassList(UiShell.LineBackgroundClass);
             root.Add(rule);
 
-            // The camera view. Nothing is drawn here; it only reserves the space.
-            root.Add(Signage.Spacer());
+            // The camera view. Nothing is drawn here; it only reserves the space -- and it is the space the camera
+            // is told about, so the two can never drift apart.
+            _view = Signage.Spacer();
+            root.Add(_view);
 
             _led = new LedStrip();
             _led.style.height = BottomBarHeight;
@@ -75,6 +78,9 @@ namespace TrainSudoku.Game
 
         protected override void Wire()
         {
+            // The strip's geometry is only known after the first layout, and it moves again on rotation and when the
+            // safe area lands (iOS reports it a frame late). Re-measure whenever it moves.
+            _view.RegisterCallback<GeometryChangedEvent>(_ => PushHudInsets());
         }
 
         public override void Refresh(GameState state)
@@ -85,6 +91,7 @@ namespace TrainSudoku.Game
             _roundel.State = StationState.Current;
             _pause.SetEnabled(state == GameState.Play);
             UpdateClock(Flow.Timer.Elapsed);
+            PushHudInsets();
 
             if (state != GameState.Play) return;
             _led.Clear();
@@ -93,5 +100,30 @@ namespace TrainSudoku.Game
 
         /// <summary>Called every frame in Play by <see cref="GameManager"/>. The clock is tabular so it cannot reflow.</summary>
         public void UpdateClock(double seconds) => _clock.text = ProgressTracker.FormatTime(seconds);
+
+        /// <summary>
+        /// Hands the camera the two bars as fractions of the screen height, so the board is framed in the strip
+        /// between them (work order 5.3, D9).
+        /// </summary>
+        /// <remarks>
+        /// The numbers are <b>measured off the laid-out strip</b>, not derived from <see cref="TopBarHeight"/> and
+        /// <see cref="BottomBarHeight"/>. That way the safe-area padding the shell puts on the root, and any bar that
+        /// ends up taller than its nominal height, are both already in them -- and a constant can never go stale
+        /// against the layout it is supposed to describe.
+        /// </remarks>
+        private void PushHudInsets()
+        {
+            var root = Root;
+            if (_view == null || root == null || Game == null) return;
+            var rig = Game.BoardCamera;
+            if (rig == null) return;
+
+            // worldBound is panel space, the same space as the panel's own visual tree, so the two divide cleanly.
+            var screen = root.panel != null ? root.panel.visualTree.layout.height : root.worldBound.height;
+            var strip = _view.worldBound;
+            if (screen <= 0f || strip.height <= 0f || float.IsNaN(strip.height)) return;
+
+            rig.SetHudInsets(strip.yMin / screen, (screen - strip.yMax) / screen);
+        }
     }
 }

@@ -992,7 +992,8 @@ MonoBehaviour:
   pitchDegrees: 60
   verticalFraction: 0.86
   horizontalFraction: 0.96
-  hudFraction: 0.1
+  hudTop: 0.13020833
+  hudBottom: 0.078125
 --- !u!1 &335331077
 GameObject:
   m_ObjectHideFlags: 0

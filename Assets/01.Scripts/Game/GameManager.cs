@@ -57,6 +57,10 @@ namespace TrainSudoku.Game
         public ISaveStore SaveStore { get; private set; }
         public LevelCollection Levels => levels;
         public IBoardView Board => boardView;
+
+        /// <summary>The rig that frames the board. The Play screen hands it the two bar heights (work order 5.3).</summary>
+        public BoardCamera BoardCamera => boardCamera;
+
         public UiShell Shell => shell;
         public NetworkDefinition Network => network;
 

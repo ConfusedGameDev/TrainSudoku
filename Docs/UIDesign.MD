@@ -1,6 +1,6 @@
 TRAINSUDOKU · UI WORK ORDER
 v0.4 · 10 SEP 2026 · main @ 3947585
-STATUS: M16 ready for review · M11–M16 of M11–M20 · progress table in 11.0
+STATUS: M18 next · M11–M17 of M11–M20 done · progress table in 11.0
 
 # Station UI — implementation work order
 
@@ -508,7 +508,7 @@ next begins.
 | M14 | Content pass | ☑ |
 | M15 | Elements, and the look test | ☑ |
 | M16 | The seven screens | ☑ |
-| M17 | Board framing | ☐ |
+| M17 | Board framing | ☑ |
 | M18 | Line Map Editor | ☐ |
 | M19 | Motion and board re-skin | ☐ |
 | M20 | Translation pass | ☐ |
@@ -861,17 +861,59 @@ carries the identity **before** building six more screens on top of it.
 **Goal:** the board sits correctly between the two bars, on every phone.
 **Touches:** `Board/BoardCamera.cs`, the Play screen.
 
-- [ ] Replace `SetHudFraction` with `SetHudInsets(float top, float bottom)` (5.3)
-- [ ] `strip = 1f - top - bottom`; `shift.m13 = bottom - top`; clamp each to `[0, 0.4]` and the sum below `0.9`
-- [ ] Play screen calls it once in `Refresh` with measured bar heights ÷ screen height
-- [ ] Add a `CameraFit` test asserting `SetHudInsets(x, 0)` equals the old `SetHudFraction(x)`
+- [x] Replace `SetHudFraction` with `SetHudInsets(float top, float bottom)` (5.3)
+- [x] `strip = 1f - top - bottom`; `shift.m13 = bottom - top`; clamp each to `[0, 0.4]` and the sum below `0.9`
+- [x] Play screen calls it once in `Refresh` with measured bar heights ÷ screen height
+- [x] Add a `CameraFit` test asserting `SetHudInsets(x, 0)` equals the old `SetHudFraction(x)`
 
 **Done when**
 
-- [ ] The board is optically centred between the 250 px sign bar and the 150 px LED strip at 9:16, 9:19.5 and 9:21
-- [ ] No board overlaps either bar at any aspect, including the 8×8 level
-- [ ] Existing `CameraFit` tests still pass
-- [ ] **Verified by human** ☐ &nbsp;&nbsp; date: ______
+- [x] The board is optically centred between the 250 px sign bar and the 150 px LED strip at 9:16, 9:19.5 and 9:21
+- [x] No board overlaps either bar at any aspect, including the 8×8 level
+- [x] Existing `CameraFit` tests still pass
+- [x] **Verified by human** ☑ &nbsp;&nbsp; date: 10 Sep 2026
+
+#### M17 notes
+
+- **There was no `SetHudFraction` to replace.** `hudFraction` was a serialized field with no setter — the camera was
+  framed from the Inspector and nothing ever told it what the UI was doing. So M17 is not a rename: it is the first
+  time the two halves are connected at all.
+- **The maths, and why the halves are where they are.** Clip *y* runs −1 to 1, so the viewport is **two** clip units
+  tall and a top inset of `t` viewport heights eats `2t` of them. The free strip therefore runs from `1 − 2t` down to
+  `−1 + 2b`, and its midpoint is `b − t` — which is what `shift.m13` gets. The factor of two is why `m13 = −0.052`
+  is a 50 px shift and not a 100 px one. `SetHudInsets(x, 0)` gives `strip = 1 − x` and `m13 = −x`, so the old
+  one-edge behaviour is a special case rather than an approximation of one, and the existing `CameraFit` tests never
+  had to move.
+- **The strip maths is a pure static, `BoardCamera.HudStrip(top, bottom)`**, returning `(Strip, Centre)`. That is what
+  the four new maths tests drive: a `MonoBehaviour` with a `Camera` is a poor place to assert arithmetic, and the
+  clamping rule is worth pinning down on its own. The component tests then check that the value actually reaches the
+  projection matrix — in `m13` for orthographic and, because a perspective matrix has `m33 = 0`, in `m12` for
+  perspective. **That asymmetry is the trap in this file**: reading `m13` on the perspective path finds a zero and
+  proves nothing.
+- **The sum clamp is unreachable and kept anyway.** Two insets capped at `0.4` already sum to `0.8`, below the `0.9`
+  limit the work order asks for. It is written as a proportional scale so that raising `MaxInset` later cannot
+  silently collapse the strip, and says so in a comment rather than looking like dead code.
+- **The Play screen measures the gap, not the bars.** 5.3 says "measured bar heights ÷ screen height"; what it
+  actually sends is the laid-out spacer between them — `strip.yMin / screen` and `(screen − strip.yMax) / screen`.
+  Same numbers, but the safe-area padding `UiShell` puts on the root is already inside them, and a bar that ends up
+  taller than its nominal height cannot lie about it. `TopBarHeight` and `BottomBarHeight` stay as the layout's own
+  constants and are no longer the camera's source of truth.
+- **`Refresh` is not enough on its own.** Geometry is unknown until the first layout, and it moves again on rotation
+  and when iOS reports its safe area a frame late, so the push is also on the spacer's `GeometryChangedEvent`. When
+  the screen is hidden the strip collapses to zero and the guard drops the measurement, so an overlay cannot reframe
+  the board.
+- **The serialized defaults are 250/1920 and 150/1920**, not the old `0.1`. That makes the Editor frame the board
+  correctly without entering play mode, and it means the one frame between the screen appearing and its first layout
+  is already showing the right framing — no pop. `SampleScene.unity`'s `hudFraction: 0.1` was replaced in place with
+  the two new fields. **`Board/` still does not reference the UI**: the defaults are written as literals with a
+  comment, not read from `PlayScreen`.
+- **`GameManager.BoardCamera` is new**, one line, so the Play screen can reach the rig the same way it reaches the
+  board — through the manager, never by finding it in the scene.
+- 288 EditMode tests pass, up from 278.
+- **Run against an APFS clone of the project.** The Editor was open, `-batchmode` refuses the project lock, and MCP
+  refuses `TestRunnerApi.RegisterCallbacks` ("User interactions are not supported for MCP tool calls"). `cp -Rc` of
+  `Assets`/`Packages`/`ProjectSettings`/`Library` into the scratchpad is near-instant on APFS and gives batchmode an
+  unlocked project without closing anything. **This is the way to run the suite without interrupting the Editor.**
 
 ---
 
