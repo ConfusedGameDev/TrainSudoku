@@ -50,15 +50,17 @@ Closed loops that are not on the S→E path are legal if condition 3 holds; leve
 
 ## 4. Player interaction
 
-1. **Tap an empty cell**: it becomes selected. Arrow markers appear at the midpoints of its legal sides. Forced sides are pre-highlighted.
-2. **Tap a marker**: first connection chosen. Remaining legal markers stay; the rest disappear.
-3. **Tap a second marker**: piece is placed with a short scale-in animation. Board validation runs.
-4. **Auto-place**: if exactly two directions are legal when the cell is selected, the piece is placed immediately with no marker step.
-5. **Cancel**: tapping the selected cell again or anywhere outside the grid clears the selection.
+1. **Tap an empty cell**: it becomes selected, and its four **neighbours** are marked with how that side reads — green where the player may connect (3.3 open), red where they may not (3.3 forbidden, which includes a board edge with no tunnel), the line colour where they must (3.3 forced). A side that leaves the board has no neighbouring cell to mark, so it shows a marker at the cell's edge instead: that is where the S/E tunnel and a plain wall appear.
+2. **Tap a green or line-coloured neighbour**: first connection chosen. It turns the selected cell's own yellow, the neighbours that can still partner it stay marked, and the rest turn red.
+3. **Tap a second one**: piece is placed with a short scale-in animation. Board validation runs.
+4. **Auto-place**: if exactly two directions are legal when the cell is selected, the piece is placed immediately with no marking step.
+5. **Cancel**: tapping the selected cell again or anywhere outside the grid clears the selection. Tapping a red neighbour is not a connection, so it simply moves the selection there.
 6. **Erase**: long press (0.5 s, with a fill-ring indicator) on a player piece removes it. Long press on a fixed piece does nothing beyond a small shake. Mouse uses the same hold on the left button.
-7. Tapping a placed piece (short tap) does nothing.
+7. Tapping a placed piece (short tap) does nothing — unless it is a marked neighbour of the selected cell, where it is a connection as in step 2.
 
 Input is raycast against per-cell colliders through the Input System, so touch and mouse share one path.
+
+The **entrance and exit cells never start empty**: both are forced towards their tunnel, so each ships with a fixed piece taken from the level's own solution (baked by the editor's Bake Tunnel Pieces, PRD 9.1). A puzzle therefore opens anchored at both ends.
 
 ## 5. Screens and flow
 

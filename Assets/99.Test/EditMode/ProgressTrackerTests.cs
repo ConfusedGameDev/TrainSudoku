@@ -71,14 +71,15 @@ namespace TrainSudoku.Tests
             Assert.AreEqual(12.5, stored);
         }
 
-        [TestCase(0, "0:00.0")]
-        [TestCase(0.04, "0:00.0")]
-        [TestCase(0.1, "0:00.1")]
-        [TestCase(5.96, "0:05.9")]
-        [TestCase(65.3, "1:05.3")]
-        [TestCase(3725.0, "62:05.0")]
-        [TestCase(-3, "0:00.0")]
-        public void FormatsMinutesSecondsAndTenths(double seconds, string expected)
+        [TestCase(0, "00:00")]
+        [TestCase(0.04, "00:00")]
+        [TestCase(5.96, "00:05", Description = "whole seconds are floored, never rounded up")]
+        [TestCase(59.999, "00:59", Description = "the minute boundary")]
+        [TestCase(60, "01:00")]
+        [TestCase(65.3, "01:05")]
+        [TestCase(3725.0, "62:05", Description = "hours roll into the minutes")]
+        [TestCase(-3, "00:00")]
+        public void FormatsAStationClockInMinutesAndSeconds(double seconds, string expected)
         {
             Assert.AreEqual(expected, ProgressTracker.FormatTime(seconds));
         }

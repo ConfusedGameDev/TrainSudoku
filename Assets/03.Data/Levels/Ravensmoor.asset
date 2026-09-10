@@ -40,6 +40,9 @@ MonoBehaviour:
   - x: 3
     y: 1
     key: 3
+  - x: 6
+    y: 0
+    key: 1
   entrance:
     side: 3
     index: 6

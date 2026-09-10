@@ -155,14 +155,18 @@ namespace TrainSudoku.Core
             _store.ClearProgress(levelId);
         }
 
-        /// <summary>Formats seconds as m:ss.t, for example 1:05.3. Hours roll into the minutes.</summary>
+        /// <summary>
+        /// Formats seconds as a station clock, mm:ss — for example 01:05. Hours roll into the minutes rather than
+        /// adding a third field, and the whole seconds are <b>floored</b>: a clock that showed a second the timer has
+        /// not reached would be lying, and the star thresholds are compared against the raw seconds anyway, never
+        /// against this string, so what is shown and what is scored cannot disagree.
+        /// </summary>
         public static string FormatTime(double seconds)
         {
             if (seconds < 0) seconds = 0;
-            var tenths = (long)Math.Floor(seconds * 10 + 1e-9);
-            var minutes = tenths / 600;
-            var rest = tenths % 600;
-            return $"{minutes}:{rest / 10:00}.{rest % 10}";
+            // The nudge only catches accumulated float error: a value within 1e-9 under a whole second is that second.
+            var whole = (long)Math.Floor(seconds + 1e-9);
+            return $"{whole / 60:00}:{whole % 60:00}";
         }
     }
 }

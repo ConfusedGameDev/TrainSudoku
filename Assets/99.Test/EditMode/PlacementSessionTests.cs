@@ -123,5 +123,78 @@ namespace TrainSudoku.Tests
             Assert.AreEqual(ChooseOutcome.Placed, _session.Choose(Direction.East), "west is forced, so east alone completes EW");
             Assert.AreEqual(PieceKey.EW, _board[1, 1]?.Key);
         }
+
+        // ---- how each side reads to the player: the view marks the neighbours from these ----
+
+        [Test]
+        public void EachSideOfASelectionReadsAsForcedOpenOrBlocked()
+        {
+            // (1,0) sits on the top edge: north is a wall, the other three are empty neighbours.
+            Assert.AreEqual(SelectOutcome.Selected, _session.Select(1, 0));
+            Assert.AreEqual(SideMark.Blocked, _session.MarkOf(Direction.North), "the board edge is a wall");
+            Assert.AreEqual(SideMark.Open, _session.MarkOf(Direction.East));
+            Assert.AreEqual(SideMark.Open, _session.MarkOf(Direction.South));
+            Assert.AreEqual(SideMark.Open, _session.MarkOf(Direction.West));
+
+            // (0,1) faces the entrance tunnel, which the piece has to connect to.
+            Assert.AreEqual(SelectOutcome.Selected, _session.Select(0, 1));
+            Assert.AreEqual(SideMark.Forced, _session.MarkOf(Direction.West), "the tunnel forces the west side");
+            Assert.AreEqual(SideMark.Open, _session.MarkOf(Direction.North));
+        }
+
+        [Test]
+        public void TheFirstChoiceReadsAsChosenAndTheSidesItRulesOutAsBlocked()
+        {
+            _session.Select(0, 1);
+            Assert.AreEqual(ChooseOutcome.Narrowed, _session.Choose(Direction.West));
+
+            Assert.AreEqual(SideMark.Chosen, _session.MarkOf(Direction.West), "the connection already made");
+            Assert.AreEqual(SideMark.Open, _session.MarkOf(Direction.East), "EW is still on offer");
+
+            // A wall stays blocked whatever has been chosen.
+            _session.Select(1, 0);
+            _session.Choose(Direction.South);
+            Assert.AreEqual(SideMark.Chosen, _session.MarkOf(Direction.South));
+            Assert.AreEqual(SideMark.Blocked, _session.MarkOf(Direction.North));
+        }
+
+        [Test]
+        public void TappingTheChosenSideAgainReleasesIt()
+        {
+            _session.Select(0, 1);
+            Assert.AreEqual(ChooseOutcome.Narrowed, _session.Choose(Direction.West));
+            Assert.AreEqual(SideMark.Chosen, _session.MarkOf(Direction.West));
+
+            Assert.AreEqual(ChooseOutcome.Reverted, _session.Choose(Direction.West), "the same side again takes it back");
+            Assert.IsNull(_session.First);
+            Assert.IsTrue(_session.IsActive, "the cell stays selected");
+            CollectionAssert.AreEquivalent(DirectionExtensions.All, _session.Available, "every side is on offer again");
+            Assert.AreEqual(SideMark.Forced, _session.MarkOf(Direction.West), "the tunnel reads as forced once more");
+            Assert.IsNull(_board[0, 1], "nothing was placed on the way there and back");
+        }
+
+        [Test]
+        public void TheSelectedCellStillCancelsAfterAFirstChoice()
+        {
+            _session.Select(0, 1);
+            _session.Choose(Direction.West);
+            Assert.AreEqual(SelectOutcome.Cancelled, _session.Select(0, 1));
+            Assert.IsFalse(_session.IsActive);
+            Assert.IsNull(_session.First);
+            Assert.IsEmpty(_session.Available);
+            Assert.IsNull(_board[0, 1]);
+        }
+
+        [Test]
+        public void EverySideIsBlockedWithNothingSelected()
+        {
+            foreach (var side in DirectionExtensions.All)
+                Assert.AreEqual(SideMark.Blocked, _session.MarkOf(side), $"{side} with no selection");
+
+            _session.Select(0, 1);
+            _session.Cancel();
+            foreach (var side in DirectionExtensions.All)
+                Assert.AreEqual(SideMark.Blocked, _session.MarkOf(side), $"{side} after cancelling");
+        }
     }
 }

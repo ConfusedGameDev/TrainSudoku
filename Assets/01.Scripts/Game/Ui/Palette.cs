@@ -76,6 +76,15 @@ namespace TrainSudoku.Game
         /// <summary>A clue that is neither satisfied nor exceeded, and the tunnel letters. Signage <see cref="Paper"/>.</summary>
         public static readonly Color ClueText = Paper;
 
+        /// <summary>
+        /// A neighbouring slab the selected cell may connect to. Muted against <see cref="Success"/>, because this is a
+        /// whole slab rather than a glyph and a full-strength green would shout over the track sitting on it.
+        /// </summary>
+        public static readonly Color NeighbourOpen = new Color32(0x7C, 0xB8, 0x8A, 0xFF);
+
+        /// <summary>A neighbouring slab the selected cell may not connect to. The muted counterpart of <see cref="Stop"/>.</summary>
+        public static readonly Color NeighbourBlocked = new Color32(0xB8, 0x7C, 0x7C, 0xFF);
+
         private static Font _font;
 
         /// <summary>

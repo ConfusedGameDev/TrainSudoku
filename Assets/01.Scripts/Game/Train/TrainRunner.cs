@@ -11,9 +11,15 @@ namespace TrainSudoku.Game
     /// Raises <see cref="Finished"/> when the last car has left through the exit, or after a short wait when the board
     /// has no route (the editor's debug win).
     /// </summary>
+    /// <remarks>
+    /// The hiding is a renderer toggle, not geometry: a train of eight cars at 0.9 apart is over six cells long and no
+    /// tunnel that fits inside the board's one-cell padding could ever swallow it. The tunnel only has to cover the
+    /// moment a car winks in or out, which is what <see cref="RevealDistance"/> keeps lined up with it.
+    /// </remarks>
     public sealed class TrainRunner : MonoBehaviour
     {
-        private const double TunnelMouthDistance = 0.5;
+        /// <summary>Where cars appear when nothing has told the runner how deep the tunnels are: the tunnel centre.</summary>
+        private const double DefaultRevealDistance = 0.5;
         private const float NoRouteDuration = 1.5f;
         private const float DefaultSpacing = 0.9f;
         private const float DefaultSpeed = 2.5f;
@@ -37,6 +43,13 @@ namespace TrainSudoku.Game
         private bool _running;
 
         public bool IsRunning => _running;
+
+        /// <summary>
+        /// How far along the route a car becomes visible, measured from the far end of the entrance tunnel (and the
+        /// same distance back from the exit). The board sets it from the tunnel it actually built, so a car always
+        /// appears inside the tube rather than in open air; see <see cref="BoardView.TunnelRevealDistance"/>.
+        /// </summary>
+        public double RevealDistance { get; set; } = DefaultRevealDistance;
 
         public event Action Finished;
 
@@ -84,8 +97,8 @@ namespace TrainSudoku.Game
             }
 
             BuildCars();
-            // Start with the locomotive just inside the entrance tunnel so it emerges on the first frame.
-            _distance = TunnelMouthDistance - 0.05;
+            // Start with the locomotive just short of the reveal point so it emerges from the tunnel, not into it.
+            _distance = RevealDistance - 0.05;
             PlaceCars();
         }
 
@@ -114,7 +127,7 @@ namespace TrainSudoku.Game
             PlaceCars();
 
             var lastCar = _distance - (_cars.Count - 1) * Spacing;
-            if (lastCar > _path.Length - TunnelMouthDistance + 0.1) Finish();
+            if (lastCar > _path.Length - RevealDistance + 0.1) Finish();
         }
 
         private void Finish()
@@ -136,8 +149,8 @@ namespace TrainSudoku.Game
                 var forward = new Vector3((float)sample.TangentX, 0f, (float)sample.TangentZ);
                 car.localRotation = Quaternion.LookRotation(forward, Vector3.up) * Quaternion.Euler(0f, yaw, 0f);
 
-                // Hidden while inside either tunnel, so it appears at the entrance mouth and vanishes at the exit mouth.
-                var visible = s >= TunnelMouthDistance && s <= _path.Length - TunnelMouthDistance;
+                // Hidden while deep in either tunnel, so it appears inside the entrance tube and vanishes inside the exit one.
+                var visible = s >= RevealDistance && s <= _path.Length - RevealDistance;
                 foreach (var renderer in _renderers[i]) renderer.enabled = visible;
             }
 

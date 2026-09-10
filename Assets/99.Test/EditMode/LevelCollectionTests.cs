@@ -72,6 +72,31 @@ namespace TrainSudoku.Tests
             if (unverified.Count > 0) Debug.Log("Search budget exhausted, uniqueness not proven for: " + string.Join(", ", unverified));
         }
 
+        /// <summary>
+        /// Both tunnel cells open with a piece already laid, so a puzzle is anchored at both ends. The piece is baked
+        /// from the level's own solution by Window > TrainSudoku > Bake Tunnel Pieces, so it must also point out
+        /// through its tunnel - a piece there that ignored the tunnel would be an unsolvable start.
+        /// </summary>
+        [Test]
+        public void EveryLevelStartsWithAPieceAtBothTunnels()
+        {
+            var collection = LoadCollection();
+            for (var i = 0; i < collection.Count; i++)
+            {
+                var level = collection[i];
+                var data = level.ToLevelData();
+                foreach (var (tunnel, role) in new[] { (data.Entrance, "entrance"), (data.Exit, "exit") })
+                {
+                    var x = tunnel.CellX(data.Width);
+                    var y = tunnel.CellY(data.Height);
+                    Assert.IsTrue(data.TryGetFixedPiece(x, y, out var piece),
+                        $"{level.name}: the {role} cell ({x},{y}) has no fixed piece");
+                    Assert.IsTrue(PieceKeys.Has(piece.Key, tunnel.Side),
+                        $"{level.name}: the {role} piece {piece.Key} at ({x},{y}) does not connect to its {tunnel.Side} tunnel");
+                }
+            }
+        }
+
         // ---- the network (M13) ----
 
         private static NetworkDefinition LoadNetwork()

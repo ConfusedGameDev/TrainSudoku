@@ -41,6 +41,16 @@ namespace TrainSudoku.Game
         [Tooltip("Lifts the track above the tile surface.")]
         [SerializeField] private float verticalOffset = 0f;
 
+        [Header("Tunnels")]
+        [Tooltip("The tunnel the train runs in and out of, modelled along local Z. Instantiated whole with its own materials and stretched to Tunnel Length. Leave empty for the procedural arch portal.")]
+        [SerializeField] private GameObject tunnelModel = null;
+
+        [Tooltip("How far the tunnel runs out from the board edge, in cells. Must stay at or under BoardLayout.Padding (1.0): the camera frames the tunnel ring, so a longer tunnel shrinks the board on screen.")]
+        [Range(0.2f, 1f)] [SerializeField] private float tunnelLength = 0.95f;
+
+        [Tooltip("Scales the tunnel across and up. 1 makes the bore one cell wide; the train is much narrower than that.")]
+        [SerializeField] private Vector2 tunnelBore = new Vector2(0.8f, 0.8f);
+
         [Header("Platform (D13)")]
         [Tooltip("Face for the environment decals painted on the platform. This is art, not UI, so it carries Japanese in every locale - assign a face that has the glyphs or the decals are skipped.")]
         [SerializeField] private Font signageFont = null;
@@ -49,6 +59,15 @@ namespace TrainSudoku.Game
         [SerializeField] private string platformWarning = "\u304d\u3051\u3093";   // きけん, "danger"
 
         public Mesh SegmentMesh => segmentMesh;
+
+        /// <summary>The tunnel model, or null to fall back to the procedural arch portal.</summary>
+        public GameObject TunnelModel => tunnelModel;
+
+        /// <summary>How far the tunnel runs out from the board edge, in cells.</summary>
+        public float TunnelLength => tunnelLength;
+
+        /// <summary>Width and height the tunnel is scaled to, in cells.</summary>
+        public Vector2 TunnelBore => tunnelBore;
 
         /// <summary>The face for the platform decals, or null to leave the platform unpainted (D13).</summary>
         public Font SignageFont => signageFont;

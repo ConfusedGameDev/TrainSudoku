@@ -38,10 +38,29 @@ namespace TrainSudoku.Game
         private const float DecalSpacing = 2.2f;
         private const float DecalHeight = 0.17f;
 
-        /// <summary>The tunnel portal's opening, as fractions of the mouth block (see ProceduralBoardMesh.ArchPortal).</summary>
+        /// <summary>The tunnel portal's opening, as fractions of the mouth block (see ProceduralBoardMesh.ArchPortal).
+        /// Only the fallback mouth uses these, for a project with no tunnel model assigned.</summary>
         private const float PortalHalfWidth = 0.32f;
         private const float PortalSpringLine = -0.05f;
         private const float PortalCrown = 0.34f;
+
+        /// <summary>
+        /// The kit connector as modelled: a rectangular liner 0.9 wide and 0.9 tall over a 0.2 depth, sitting on the
+        /// ground and centred on its other two axes, with a 0.7 by 0.7 bore through it and so a 0.1 wall all round.
+        /// Stretching Z by <c>length / ConnectorDepth</c> turns that ring into the tube the train runs through.
+        /// </summary>
+        private const float ConnectorDepth = 0.2f;
+        private const float ConnectorWall = 0.1f;
+        private static readonly Vector2 ConnectorBore = new Vector2(0.7f, 0.7f);
+
+        /// <summary>How thick the plug at the tunnel's far end is.</summary>
+        private const float CapDepth = 0.04f;
+
+        /// <summary>How high the S and E letters ride above the tunnel, under <see cref="BoardLayout.Height"/>.</summary>
+        private const float LabelHeight = 1.05f;
+
+        /// <summary>How far into the tunnel a car is revealed, as a share of the tunnel's length.</summary>
+        private const float TunnelRevealFraction = 0.35f;
 
         [SerializeField] private Transform tiles;
         [SerializeField] private Transform pieces;
@@ -62,6 +81,7 @@ namespace TrainSudoku.Game
         private bool[] _columnSatisfied;
         private bool[] _rowSatisfied;
         private Mesh _holdMesh;
+        private float _eraseRingScale = 1f;
 
         // Current press, for taps and long presses.
         private bool _pressing;
@@ -326,6 +346,22 @@ namespace TrainSudoku.Game
             Destroy(view.gameObject);
         }
 
+        /// <summary>
+        /// How far a tunnel runs out from the board edge, in cells. Capped at <see cref="BoardLayout.Padding"/>: that
+        /// ring is what <see cref="ContentBounds"/> already reserves, so a tunnel inside it cannot move the camera fit.
+        /// </summary>
+        private float TunnelLength =>
+            trackAssets == null ? 0f : Mathf.Clamp(trackAssets.TunnelLength, 0.1f, (float)BoardLayout.Padding);
+
+        /// <summary>
+        /// Where along the route the train should become visible: a third of the way into the tunnel, so a car is
+        /// revealed inside the tube rather than in the open. Without a tunnel model this is the old arch's mid-plane.
+        /// </summary>
+        public double TunnelRevealDistance =>
+            trackAssets == null || trackAssets.TunnelModel == null
+                ? 0.5
+                : TrackPath.TunnelExtension - TunnelLength * TunnelRevealFraction;
+
         private void BuildTunnels()
         {
             BuildTunnel(Level.Entrance, "Entrance", "S", BoardMaterials.Entrance);
@@ -343,9 +379,55 @@ namespace TrainSudoku.Game
             // Face the board: +Z of the tunnel points opposite to the side it sits on.
             holder.transform.localRotation = Quaternion.Euler(0f, (float)BoardLayout.Yaw(tunnel.Side.Opposite()), 0f);
 
-            // A swept arch rather than a box, spanning the same unit cube so the ring keeps its extents.
+            var model = trackAssets != null ? trackAssets.TunnelModel : null;
+            if (model != null) BuildTunnelTube(holder.transform, model, material);
+            else BuildTunnelArch(holder.transform, material);
+
+            var label = Label(holder.transform, letter, 0.6f, Palette.ClueText);
+            label.transform.localPosition = new Vector3(0f, LabelHeight, 0f);
+        }
+
+        /// <summary>
+        /// The tunnel proper: the kit connector stretched along its length into a tube the train runs through. It grows
+        /// <b>outward</b> from the board edge — the holder sits half a cell outside it, so the edge is local z +0.5 —
+        /// and <see cref="TunnelLength"/> is capped at <see cref="BoardLayout.Padding"/>, which is the ring the camera
+        /// already frames. A tube inside that ring cannot move the fit; a longer one would quietly shrink the board.
+        /// </summary>
+        private void BuildTunnelTube(Transform holder, GameObject model, Material interior)
+        {
+            var length = TunnelLength;
+            var bore = trackAssets.TunnelBore;
+
+            var tube = Instantiate(model, holder);
+            tube.name = "Tube";
+            // Nothing in a tunnel is tappable: a collider here would swallow taps meant for the board.
+            foreach (var collider in tube.GetComponentsInChildren<Collider>())
+            {
+                if (Application.isPlaying) Destroy(collider);
+                else DestroyImmediate(collider);
+            }
+
+            // Sunk by its own floor slab so the bore's floor, not the model's underside, lands on the rails: the train
+            // runs at the tile surface and would otherwise clip straight through the lip on its way in.
+            var floor = ConnectorWall * bore.y;
+            tube.transform.localPosition = new Vector3(0f, trackAssets.VerticalOffset - floor, (float)(0.5 - length / 2.0));
+            tube.transform.localRotation = Quaternion.identity;
+            tube.transform.localScale = new Vector3(bore.x, bore.y, (float)(length / ConnectorDepth));
+
+            // The tube looks out onto the background at its far end, which would make it a window rather than a hole.
+            // The plug is what carries the S/E colouring now that both mouths wear the same kit material.
+            var boreWidth = ConnectorBore.x * bore.x;
+            var boreHeight = ConnectorBore.y * bore.y;
+            var cap = Primitive(PrimitiveType.Cube, holder, interior, "Cap", false);
+            cap.transform.localPosition = new Vector3(0f, trackAssets.VerticalOffset + boreHeight / 2f, (float)(0.5 - length) + CapDepth);
+            cap.transform.localScale = new Vector3(boreWidth, boreHeight, CapDepth);
+        }
+
+        /// <summary>The fallback mouth for a project with no tunnel model: a swept arch spanning the same unit cube.</summary>
+        private void BuildTunnelArch(Transform holder, Material material)
+        {
             var mouth = new GameObject("Mouth");
-            mouth.transform.SetParent(holder.transform, false);
+            mouth.transform.SetParent(holder, false);
             mouth.transform.localPosition = new Vector3(0f, 0.35f, 0f);
             mouth.transform.localScale = new Vector3(0.8f, 0.7f, 0.5f);
             mouth.AddComponent<MeshFilter>().sharedMesh = ProceduralBoardMesh.ArchPortal(PortalHalfWidth, PortalSpringLine, PortalCrown);
@@ -353,12 +435,9 @@ namespace TrainSudoku.Game
 
             // The darkness the arch looks into. It has to be wider and taller than the opening, or the portal is a
             // window onto the background rather than a tunnel.
-            var hole = Primitive(PrimitiveType.Cube, holder.transform, BoardMaterials.FixedPiece, "Hole", false);
+            var hole = Primitive(PrimitiveType.Cube, holder, BoardMaterials.FixedPiece, "Hole", false);
             hole.transform.localPosition = new Vector3(0f, 0.31f, 0.16f);
             hole.transform.localScale = new Vector3(0.62f, 0.62f, 0.15f);
-
-            var label = Label(holder.transform, letter, 0.6f, Color.white);
-            label.transform.localPosition = new Vector3(0f, 1.05f, 0f);
         }
 
         private void BuildClues()
@@ -481,7 +560,13 @@ namespace TrainSudoku.Game
 
         // ------------------------------------------------------------------ selection visuals
 
-        /// <summary>Rebuilds the markers and the tile tint from the session state.</summary>
+        /// <summary>
+        /// Rebuilds the tile tints and the edge markers from the session state (PRD section 4). The selected cell wears
+        /// the platform yellow and each of its four neighbours is marked with how that side reads: green where the
+        /// player may connect, red where they may not, the line colour where they must. A side that leaves the board
+        /// has no neighbouring slab to tint, so it keeps a marker slab at the cell's edge instead — that is where the
+        /// S/E tunnel and a plain board wall show up.
+        /// </summary>
         private void RefreshSelection()
         {
             if (markers != null) SceneObjects.Clear(markers);
@@ -496,16 +581,48 @@ namespace TrainSudoku.Game
 
             _cells[_session.X, _session.Y].GetComponent<MeshRenderer>().sharedMaterial = BoardMaterials.TileSelected;
             var (cx, cz) = BoardLayout.CellCenter(_session.X, _session.Y, Level.Width, Level.Height);
-            foreach (var side in _session.Available)
+            foreach (var side in DirectionExtensions.All)
             {
-                var forced = _session.IsForced(side);
-                var marker = Primitive(PrimitiveType.Cube, markers, forced ? BoardMaterials.MarkerForced : BoardMaterials.Marker, $"Marker {side}", true);
+                var mark = _session.MarkOf(side);
+                var material = MarkMaterial(mark);
+                var nx = _session.X + side.Dx();
+                var ny = _session.Y + side.Dy();
+                if (Board.InBounds(nx, ny))
+                {
+                    _cells[nx, ny].GetComponent<MeshRenderer>().sharedMaterial = material;
+                    continue;
+                }
+
+                var marker = Primitive(PrimitiveType.Cube, markers, material, $"Marker {side}", true);
                 var (dx, dz) = BoardLayout.Step(side);
                 marker.transform.localPosition = new Vector3((float)(cx + dx * MarkerInset), 0.08f, (float)(cz + dz * MarkerInset));
                 marker.transform.localRotation = Quaternion.Euler(0f, (float)BoardLayout.Yaw(side), 0f);
                 marker.transform.localScale = new Vector3(0.18f, 0.06f, 0.26f);
-                marker.AddComponent<BoardMarker>().Set(side, forced);
+                marker.AddComponent<BoardMarker>().Set(side, mark);
             }
+        }
+
+        /// <summary>The slab colour for one side of the selected cell. Chosen wears the selected cell's own yellow, so
+        /// a made connection reads as part of the piece being built rather than as another offer.</summary>
+        private static Material MarkMaterial(SideMark mark)
+        {
+            switch (mark)
+            {
+                case SideMark.Open: return BoardMaterials.TileOpen;
+                case SideMark.Forced: return BoardMaterials.TileForced;
+                case SideMark.Chosen: return BoardMaterials.TileSelected;
+                default: return BoardMaterials.TileBlocked;
+            }
+        }
+
+        /// <summary>
+        /// The erase ring's colour and how far its radii are scaled, from the Game Manager's inspector. The colour
+        /// goes straight to the shared material, so it applies to a ring already on screen.
+        /// </summary>
+        public void SetEraseRing(Color colour, float scale)
+        {
+            BoardMaterials.SetHoldColour(colour);
+            _eraseRingScale = Mathf.Max(0.05f, scale);
         }
 
         /// <summary>
@@ -525,7 +642,8 @@ namespace TrainSudoku.Game
                 _holdIndicator.AddComponent<MeshRenderer>().sharedMaterial = BoardMaterials.Hold;
             }
 
-            ProceduralBoardMesh.FillRing(_holdMesh, HoldRingInner, HoldRingOuter, Mathf.Clamp01(progress));
+            ProceduralBoardMesh.FillRing(_holdMesh, HoldRingInner * _eraseRingScale, HoldRingOuter * _eraseRingScale,
+                Mathf.Clamp01(progress));
         }
 
         private void HideHoldProgress()
@@ -581,7 +699,9 @@ namespace TrainSudoku.Game
             var ray = camera.ScreenPointToRay(pointer.Position);
             if (!Physics.Raycast(ray, out var hit, RayLength)) return;
 
-            if (hit.collider.TryGetComponent<BoardMarker>(out var marker))
+            // An edge marker stands for a side that leaves the board. A blocked one is a wall, so it is not a target:
+            // let the press fall through rather than consume it.
+            if (hit.collider.TryGetComponent<BoardMarker>(out var marker) && _session.MarkOf(marker.Side) != SideMark.Blocked)
             {
                 _pressConsumed = true;
                 ApplyChoose(_session.Choose(marker.Side));
@@ -653,6 +773,14 @@ namespace TrainSudoku.Game
                 return;
             }
 
+            // While a cell is selected, its marked neighbours are the choice: tapping one makes a connection instead of
+            // moving the selection. A blocked neighbour falls through and selects normally, so red stays informational.
+            if (_session.IsActive && TryNeighbourSide(cell.Value, out var side) && _session.MarkOf(side) != SideMark.Blocked)
+            {
+                ApplyChoose(_session.Choose(side));
+                return;
+            }
+
             // A short tap on a placed piece does nothing (PRD 4.7); Select rejects occupied cells silently.
             var occupied = Board[cell.Value.X, cell.Value.Y].HasValue;
             var outcome = _session.Select(cell.Value.X, cell.Value.Y);
@@ -669,6 +797,20 @@ namespace TrainSudoku.Game
                     RefreshSelection();
                     break;
             }
+        }
+
+        /// <summary>True when the tapped cell is orthogonally adjacent to the selected one, and on which side it lies.</summary>
+        private bool TryNeighbourSide((int X, int Y) cell, out Direction side)
+        {
+            foreach (var candidate in DirectionExtensions.All)
+                if (_session.X + candidate.Dx() == cell.X && _session.Y + candidate.Dy() == cell.Y)
+                {
+                    side = candidate;
+                    return true;
+                }
+
+            side = Direction.North;
+            return false;
         }
 
         private void ApplyChoose(ChooseOutcome outcome)

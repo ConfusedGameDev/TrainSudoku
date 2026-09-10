@@ -25,6 +25,12 @@ MonoBehaviour:
   - x: 4
     y: 4
     key: 2
+  - x: 0
+    y: 3
+    key: 2
+  - x: 5
+    y: 2
+    key: 1
   entrance:
     side: 3
     index: 3

@@ -459,7 +459,8 @@ All unscaled time, so it survives the pause. Nothing blocks input for more than 
 | MOMENT | DURATION | BEHAVIOUR |
 |---|---|---|
 | Piece snap-in | 220 ms | Overshoot to 1.15, settle. Already stubbed as `PieceView.PlayScaleIn` |
-| Marker hop | 900 ms loop | Forced side hops 6 px higher, in `--line-current` |
+| Neighbour marking | on selection | The four neighbours take green (open), red (blocked) or `--line-current` (forced); the chosen one turns the selected cell's own `--warn` |
+| Marker hop | 900 ms loop | Only for a side that leaves the board: the S/E tunnel or a wall. Forced side hops 6 px higher, in `--line-current`; a wall does not hop |
 | Erase hold ring | 500 ms | Linear fill, matching `BoardView.HoldDuration`. Fixed piece: 180 ms shake via `PieceView.PlayShake` |
 | Clue satisfied | 160 ms | Token pops to 1.2; LED strip prints the line |
 | Screen change | 260 ms | Incoming slides up from beneath the LED strip, outgoing drops 40 px and fades |
@@ -1007,8 +1008,9 @@ carries the identity **before** building six more screens on top of it.
 | MOMENT | WHERE |
 |---|---|
 | Piece snap-in | `PieceView.PlayScaleIn` — 220 ms, overshoot 1.15, `Time.unscaledDeltaTime` |
-| Marker hop | `BoardMarker` — 900 ms loop; a forced side hops twice as high and wears the line colour |
-| Erase hold ring | `BoardView.ShowHoldProgress` → `ProceduralBoardMesh.FillRing`, a real annulus filling clockwise over `HoldDuration`, in `--warn`. Fixed piece: `PieceView.PlayShake`, 180 ms |
+| Neighbour marking | `BoardView.RefreshSelection` → `PlacementSession.MarkOf`; the neighbouring slab's material is swapped, no tween. `BoardMaterials.TileForced` is the one board material `SetLineColour` still tints |
+| Marker hop | `BoardMarker` — 900 ms loop, and now only for the sides with no neighbouring slab to mark; a forced side hops twice as high and wears the line colour, a blocked one sits still |
+| Erase hold ring | `BoardView.ShowHoldProgress` → `ProceduralBoardMesh.FillRing`, a real annulus filling clockwise over `HoldDuration`, in `--warn` unless the Game Manager's Erase cue fields override the colour or scale the radii. Fixed piece: `PieceView.PlayShake`, 180 ms |
 | Clue satisfied | `BoardView.ApplyClueColors` → `PopScale` (160 ms, 1.2x) and the `LineCleared` event, which `GameManager` hands to `PlayScreen.AnnounceLineClear` for the strip |
 | Screen change | `UiScreen.SetVisible` — 260 ms in and out. `PlayScreen` opts out (`Animates`): it is the board's frame, not a screen, and the camera insets are measured off it |
 | Arrival | `ArrivalScreen.PlayArrival` — one tween drives the stamp and then the stars, so a second arrival cannot leave a star mid-pop |

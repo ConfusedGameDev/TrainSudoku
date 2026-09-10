@@ -6556,6 +6556,8 @@ MonoBehaviour:
   trackAssets: {fileID: 11400000, guid: 847a2bad6fef7129273ec8edecc95225, type: 2}
   trainAssets: {fileID: 11400000, guid: dd8f5904bbe9a055f436b2b701c9254a, type: 2}
   unlockAllLevelsInEditor: 1
+  eraseRingColour: {r: 0.9056604, g: 0.1918721, b: 0.15806337, a: 1}
+  eraseRingScale: 2
   shell: {fileID: 808086891}
   eventSystem: {fileID: 2141526637}
   audioPlayer: {fileID: 1222513257}

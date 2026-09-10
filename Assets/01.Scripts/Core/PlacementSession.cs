@@ -23,12 +23,28 @@ namespace TrainSudoku.Core
         Narrowed,
         /// <summary>A piece was placed and the selection cleared.</summary>
         Placed,
+        /// <summary>The first connection was released; the cell stays selected with its full set of sides back on offer.</summary>
+        Reverted,
+    }
+
+    /// <summary>How a side of the selected cell reads to the player, for <see cref="PlacementSession.MarkOf"/>.</summary>
+    public enum SideMark
+    {
+        /// <summary>Not on offer: forbidden by the rules, or narrowed out by the first choice.</summary>
+        Blocked,
+        /// <summary>The player may connect this way.</summary>
+        Open,
+        /// <summary>The player must connect this way: a neighbour points at this cell, or the side is the S/E tunnel.</summary>
+        Forced,
+        /// <summary>Already taken as the first connection; the piece is waiting on its second side.</summary>
+        Chosen,
     }
 
     /// <summary>
-    /// The tap-to-place interaction of PRD section 4 on top of <see cref="Legality"/>: select a cell, see the legal
-    /// sides, pick two. Placement goes through <see cref="Board.TryPlace"/>. Auto-places when only one key is legal
-    /// on selection, and when the first chosen side leaves a single possible second side.
+    /// The tap-to-place interaction of PRD section 4 on top of <see cref="Legality"/>: select a cell, see how each of
+    /// its four sides reads through <see cref="MarkOf"/>, pick two. Placement goes through <see cref="Board.TryPlace"/>.
+    /// Auto-places when only one key is legal on selection, and when the first chosen side leaves a single possible
+    /// second side.
     /// </summary>
     public sealed class PlacementSession
     {
@@ -48,7 +64,7 @@ namespace TrainSudoku.Core
         /// <summary>The first side chosen, or null while waiting for the first tap on a marker.</summary>
         public Direction? First { get; private set; }
 
-        /// <summary>Sides that currently show a marker.</summary>
+        /// <summary>Sides the player may still tap.</summary>
         public IReadOnlyList<Direction> Available => _available;
 
         /// <summary>The key and cell of the most recent placement made through this session.</summary>
@@ -56,6 +72,19 @@ namespace TrainSudoku.Core
         public (int X, int Y) LastPlacedCell { get; private set; }
 
         public bool IsForced(Direction side) => IsActive && _classes[(int)side] == DirectionClass.Forced;
+
+        /// <summary>
+        /// How one side of the selected cell should read: the view marks the neighbour that way and lets a tap on a
+        /// non-<see cref="SideMark.Blocked"/> one through to <see cref="Choose"/>. Everything is
+        /// <see cref="SideMark.Blocked"/> while nothing is selected.
+        /// </summary>
+        public SideMark MarkOf(Direction side)
+        {
+            if (!IsActive) return SideMark.Blocked;
+            if (First == side) return SideMark.Chosen;
+            if (!_available.Contains(side)) return SideMark.Blocked;
+            return IsForced(side) ? SideMark.Forced : SideMark.Open;
+        }
 
         public SelectOutcome Select(int x, int y)
         {
@@ -82,6 +111,15 @@ namespace TrainSudoku.Core
             Y = y;
             First = null;
             _classes = Legality.Classify(_board, x, y);
+            Offer(keys);
+
+            return SelectOutcome.Selected;
+        }
+
+        /// <summary>Every side carried by any of the legal keys, in N, E, S, W order so the view marks them predictably.</summary>
+        private void Offer(IReadOnlyList<PieceKey> keys)
+        {
+            _available.Clear();
             foreach (var side in DirectionExtensions.All)
                 foreach (var key in keys)
                     if (PieceKeys.Has(key, side))
@@ -89,13 +127,22 @@ namespace TrainSudoku.Core
                         _available.Add(side);
                         break;
                     }
-
-            return SelectOutcome.Selected;
         }
 
         public ChooseOutcome Choose(Direction side)
         {
-            if (!IsActive || !_available.Contains(side)) return ChooseOutcome.Ignored;
+            if (!IsActive) return ChooseOutcome.Ignored;
+
+            // Tapping the side already chosen takes it back: the player is saying "not that way" and gets the cell as
+            // it looked on selection. Nothing has been placed since, so the legal keys are still the ones Select found.
+            if (First == side)
+            {
+                First = null;
+                Offer(Legality.LegalKeys(_board, X, Y));
+                return ChooseOutcome.Reverted;
+            }
+
+            if (!_available.Contains(side)) return ChooseOutcome.Ignored;
 
             if (First.HasValue)
             {

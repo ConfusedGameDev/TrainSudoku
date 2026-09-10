@@ -33,6 +33,13 @@ namespace TrainSudoku.Game
         [Tooltip("Editor only: every level counts as unlocked in Level Select (PRD section 5).")]
         [SerializeField] private bool unlockAllLevelsInEditor = false;
 
+        [Header("Erase cue")]
+        [Tooltip("The ring that fills while a piece is held down to erase it. Leave fully transparent to keep the palette's own yellow.")]
+        [SerializeField] private Color eraseRingColour = Palette.Warn;
+
+        [Tooltip("Scales the ring's radii. The cell is one unit across, so much above 1.15 laps onto the neighbouring slabs.")]
+        [Range(0.2f, 2f)] [SerializeField] private float eraseRingScale = 1f;
+
         [Header("Generated scene objects")]
         [SerializeField] private UiShell shell = null;
         [SerializeField] private EventSystem eventSystem = null;
@@ -270,6 +277,7 @@ namespace TrainSudoku.Game
             }
 
             boardView.Configure(trackAssets);
+            boardView.SetEraseRing(eraseRingColour, eraseRingScale);
             boardView.Interacted += OnBoardInteracted;
             boardView.Completed += OnBoardCompleted;
             boardView.BoardChanged += SaveProgress;
@@ -353,6 +361,8 @@ namespace TrainSudoku.Game
             if (state == GameState.TrainRun)
             {
                 trainRunner.SetDestination(CurrentLevel != null ? CurrentLevel.DisplayName : "");
+                // The board knows how deep the tunnels it built are; the runner hides its cars to match.
+                trainRunner.RevealDistance = boardView.TunnelRevealDistance;
                 trainRunner.Run(boardView.Board);
             }
             else if (trainRunner.IsRunning) trainRunner.Stop();

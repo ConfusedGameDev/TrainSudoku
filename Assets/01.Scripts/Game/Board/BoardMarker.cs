@@ -4,12 +4,14 @@ using UnityEngine;
 namespace TrainSudoku.Game
 {
     /// <summary>
-    /// A tappable arrow at the midpoint of a selected cell's side, hopping on the spot so it reads as an invitation
-    /// rather than a decal (work order 9: 900 ms loop, forced side 6 px higher).
+    /// A marker at the midpoint of a selected cell's side, for the sides that leave the board and so have no
+    /// neighbouring slab to mark: the S/E tunnel, and a plain board wall. It hops on the spot so it reads as an
+    /// invitation rather than a decal (work order 9: 900 ms loop, forced side 6 px higher).
     /// </summary>
     /// <remarks>
     /// A forced side — the one legal choice left — hops higher and wears the line colour, which is the same signal
-    /// twice over: the game is telling the player where the track has to go next.
+    /// twice over: the game is telling the player where the track has to go next. A blocked side is a wall, so it sits
+    /// still: only what can be tapped moves.
     ///
     /// The hop runs on <b>unscaled</b> time. Nothing pauses the board mid-selection today, but every motion in the
     /// work order is specified that way and one that silently depends on <c>Time.timeScale</c> would be the one that
@@ -35,12 +37,15 @@ namespace TrainSudoku.Game
 
         public Direction Side { get; private set; }
 
-        /// <summary>Sets the side this marker stands for and how high it hops; a forced side hops twice as high.</summary>
-        public void Set(Direction side, bool forced)
+        /// <summary>
+        /// Sets the side this marker stands for and how high it hops: a forced side hops twice as high, a blocked one
+        /// not at all.
+        /// </summary>
+        public void Set(Direction side, SideMark mark)
         {
             Side = side;
             _restPosition = transform.localPosition;
-            _height = forced ? HopHeight * 2f : HopHeight;
+            _height = mark == SideMark.Forced ? HopHeight * 2f : mark == SideMark.Blocked ? 0f : HopHeight;
             // Every marker of one selection hops together, so they read as one prompt rather than a queue.
             _phase = 0f;
         }

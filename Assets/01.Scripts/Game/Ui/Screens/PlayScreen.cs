@@ -22,6 +22,7 @@ namespace TrainSudoku.Game
         private StationRoundel _roundel;
         private Label _stationName;
         private Label _clock;
+        private string _clockText;
         private Button _pause;
         private LedStrip _led;
 
@@ -62,7 +63,8 @@ namespace TrainSudoku.Game
             _stationName.style.flexShrink = 1f;
             bar.Add(_stationName);
 
-            _clock = Signage.Numerals("0:00.0", 52);
+            _clock = Signage.Numerals("00:00", 52);
+            _clockText = null;   // a fresh label: whatever the cache held belongs to the old one
             _clock.style.color = Palette.Led;
             _clock.style.minWidth = 220;
             bar.Add(_clock);
@@ -111,8 +113,18 @@ namespace TrainSudoku.Game
         public void AnnounceLineClear(bool isRow, int index) =>
             _led.Announce(isRow ? "play.row_clear" : "play.column_clear", index + 1);
 
-        /// <summary>Called every frame in Play by <see cref="GameManager"/>. The clock is tabular so it cannot reflow.</summary>
-        public void UpdateClock(double seconds) => _clock.text = ProgressTracker.FormatTime(seconds);
+        /// <summary>
+        /// Called every frame in Play by <see cref="GameManager"/>. The clock is tabular so it cannot reflow, and it
+        /// reads in whole seconds, so the text is only assigned on the frame it actually changes — writing it every
+        /// frame would queue a layout pass sixty times a second to say the same thing.
+        /// </summary>
+        public void UpdateClock(double seconds)
+        {
+            var text = ProgressTracker.FormatTime(seconds);
+            if (text == _clockText) return;
+            _clockText = text;
+            _clock.text = text;
+        }
 
         /// <summary>
         /// Hands the camera the two bars as fractions of the screen height, so the board is framed in the strip

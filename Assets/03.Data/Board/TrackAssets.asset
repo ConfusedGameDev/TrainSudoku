@@ -22,5 +22,8 @@ MonoBehaviour:
   trackMaterial: {fileID: -6538903991835684241, guid: e8a6896fc31ecd3459422300f5b4d5ac, type: 3}
   fixedTrackMaterial: {fileID: 0}
   verticalOffset: 0
+  tunnelModel: {fileID: 919132149155446097, guid: 21b46b3d87758bc4ca3a2f7caaf9b9f8, type: 3}
+  tunnelLength: 0.95
+  tunnelBore: {x: 0.8, y: 0.8}
   signageFont: {fileID: 12800000, guid: f64494546d22473d8a404528208a76f6, type: 3}
   platformWarning: "\u304D\u3051\u3093"
