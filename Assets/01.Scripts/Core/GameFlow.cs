@@ -76,6 +76,22 @@ namespace TrainSudoku.Core
         /// </summary>
         public Func<int, IReadOnlyList<double>> StarTimesForLevel { get; set; }
 
+        /// <summary>
+        /// Editor-only testing aid: forces individual lines open, on top of whatever the save file has earned. The
+        /// Unity layer sets this from a list on the Game object, because Core cannot see a <c>MonoBehaviour</c> —
+        /// the same seam <see cref="StarTimesForLevel"/> uses and for the same reason.
+        /// </summary>
+        /// <remarks>
+        /// It can only ever <b>open</b> a line, never close one: a line the player has genuinely earned stays open
+        /// whatever this says, so the aid cannot fake a regression the real game has no way to produce.
+        ///
+        /// Unlocking is a chain — line <i>n</i> opens off line <i>n-1</i> — and the network map draws the open lines
+        /// plus the first closed one, so it stops at the first gap. Forcing line 9 open while 5 is shut therefore
+        /// shows four lines and a padlock, not nine. That is the real behaviour, not a fault in the override; to
+        /// look at a later stage, open everything up to it.
+        /// </remarks>
+        public Func<int, bool> LineUnlockOverride { get; set; }
+
         /// <summary>Outcome of the most recent completed run; null until a level has been won.</summary>
         public CompletionResult? LastResult { get; private set; }
 
@@ -107,6 +123,7 @@ namespace TrainSudoku.Core
         {
             if (lineIndex < 0 || lineIndex >= _layout.LineCount) return false;
             if (UnlockAll || lineIndex == 0) return true;
+            if (LineUnlockOverride != null && LineUnlockOverride(lineIndex)) return true;
             return Progress.IsLineUnlocked(_layout.LineIds(_levelIds, lineIndex - 1), MinStarsToOpenNextLine);
         }
 

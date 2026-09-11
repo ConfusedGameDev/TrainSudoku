@@ -33,6 +33,12 @@ namespace TrainSudoku.Game
         [Tooltip("Editor only: every level counts as unlocked in Level Select (PRD section 5).")]
         [SerializeField] private bool unlockAllLevelsInEditor = false;
 
+        [Tooltip("Editor only: forces individual lines open so the network map can be seen at each stage of " +
+                 "progress. One entry per line, in network order. Unlocking is a chain and the map stops at the " +
+                 "first closed line, so tick these in order — the Game inspector draws them by name and says what " +
+                 "the map will actually reveal.")]
+        [SerializeField] private bool[] debugUnlockedLines = System.Array.Empty<bool>();
+
         [Header("Erase cue")]
         [Tooltip("The ring that fills while a piece is held down to erase it. Leave fully transparent to keep the palette's own yellow.")]
         [SerializeField] private Color eraseRingColour = Palette.Warn;
@@ -177,6 +183,19 @@ namespace TrainSudoku.Game
             }
         }
 
+#if UNITY_EDITOR
+        /// <summary>
+        /// Editor only: redraws whatever is on screen. The debug line unlocks are read live, but a screen only
+        /// refreshes when the state changes, so without this a box ticked mid-play does nothing visible until the
+        /// player navigates away and back.
+        /// </summary>
+        public void RefreshCurrentScreen()
+        {
+            if (!Application.isPlaying || Flow == null) return;
+            ApplyState(Flow.State);
+        }
+#endif
+
         // ------------------------------------------------------------------ generation
 
         /// <summary>Creates the UI shell and its screens, the board root, the audio player and the event system.</summary>
@@ -273,6 +292,10 @@ namespace TrainSudoku.Game
             Flow = new GameFlow(ids, SaveStore, network != null ? network.ToLayout() : null);
 #if UNITY_EDITOR
             Flow.UnlockAll = unlockAllLevelsInEditor;
+            // Read through a lambda rather than copied, so ticking a box mid-play takes effect on the next redraw
+            // instead of needing a restart.
+            Flow.LineUnlockOverride = line =>
+                debugUnlockedLines != null && line >= 0 && line < debugUnlockedLines.Length && debugUnlockedLines[line];
 #endif
 
             // Core cannot read a ScriptableObject, so the flow is handed a lookup for the star thresholds. Then any

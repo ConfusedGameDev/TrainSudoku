@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44bef7433e8684b49bfcbae8cb1179c1, type: 3}
+  m_Name: Line_GH
+  m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LineDefinition
+  id: gh
+  code: GH
+  displayName: Goldhollow
+  color: {r: 0.7882353, g: 0.63529414, b: 0.15294118, a: 1}
+  levels: {fileID: 11400000, guid: 95aa6083f6d1a40078ff31d2f5a61f60, type: 2}
+  unlockRule:
+    minStarsPerStation: 1
+  mapShape: 0
+  mapNodes:
+  - {x: 990, y: 780}
+  - {x: 1380, y: 780}
+  - {x: 1500, y: 900}
+  - {x: 1650, y: 1050}
+  - {x: 1800, y: 1050}
+  - {x: 1950, y: 900}
+  - {x: 1950, y: 750}
+  - {x: 1800, y: 750}
+  - {x: 1650, y: 900}
+  stationNodeIndices: 000000000100000002000000030000000400000005000000060000000700000008000000i

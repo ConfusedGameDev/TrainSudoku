@@ -1398,11 +1398,90 @@ replacement finale gets a new one.
 
 Not open questions — decided, and decided as "later".
 
-- **Lines 2–5** (MR, KB, SG, NT) and the content behind them. The schema supports them from M13; the
-  `NetworkDefinition` ships with one entry (D10).
+- ~~**Lines 2–5** (MR, KB, SG, NT) and the content behind them.~~ **Done, and then some.** The network carries
+  **24 lines of 9 stations — 216 levels**. Lines 1–3 (`CW` Calderwyke, `RM` Rosemere, `EF` Emberfell) were
+  generated at M14's content pass; lines 4–23 came later from `NetworkExpansion`, with the map placed by
+  `NetworkMapLayout`. The planned codes MR/KB/SG/NT and their colours in section 6 were never used — see 0.1.
 - **Tightening the line gate** from 1★-all to 2★-all or an aggregate threshold, once there is telemetry (D20).
 - **Livery economy** — how many at launch and whether they appear on the map and arrival screen. Liveries are
   rewards, never products (D11).
 - **A station-PA voice** — recorded chimes and a two-tone departure jingle would carry the identity further than
   any visual. Costed separately. Text-to-speech announcements are out of scope permanently.
-- **Monetisation of any kind.** Revisit only when five lines exist.
+- **Monetisation of any kind.** Revisit only when five lines exist. *(Twenty-four now do; the decision stands and is now overdue a look.)*
+
+---
+
+## 13 · The twenty-four line network
+
+Added after M21, outside the M11–M21 work order. Two things: twenty more lines of nine stations, and a network
+map that **frames only what the player has earned**, panning out as they earn more.
+
+### 13.1 The map is the progress bar
+
+Before this, `NetworkScreen` drew every content-bearing line at once, fitted to all of them, with locked lines
+washed 25 % toward `--paper`. The whole world was visible on first launch and unlocking a line changed its tint.
+That is fine for four lines and says nothing for twenty-four.
+
+Now `NetworkMapElement.RevealedLines()` returns **the lines the player has earned plus the first they have not**,
+and the fit is over exactly those. Unlocking runs in array order (`GameFlow.IsLineUnlocked` opens line *n* off
+line *n−1*), so the open lines are always a prefix and the reveal stops at the first closed one — which means
+**exactly one lock badge is ever on screen**: here is what you have, here is what is next.
+
+Earning a line grows the set, so the view pans out over **1.2 s**, and `PlayOpening`'s existing 1.8 s line-draw
+runs from that tween's completion. The player watches the world widen and *then* the new line reach into the
+space that appeared. From the opening framing to the whole network is about a **four-fold** pan-out.
+
+Four things it depends on, each of which reads as a bug if changed back:
+
+| | |
+|---|---|
+| Stroke widths are **map measurements scaled by the fit** (`DesignStroke = 54`), not fractions of the element | The old `min(w,h) * 0.042` gave ~45 px, right against a 112 px node pitch at four lines. Held at 45 px while the pitch falls to 36 px, twenty-four lines render as a blob |
+| Scale interpolates as a **ratio**, the map centre in **map space**, offset derived from both | A linear lerp across a four-fold zoom spends its time near the far end and reads as stopping early; interpolating the pixel offset separately makes the map swim sideways |
+| The element is **`overflow: hidden`** | Mid-pan the new set is drawn through a transform still partway from the old fit, so the incoming line is briefly outside the element and would paint over the signage band |
+| `Settle()` on `DetachFromPanelEvent` | `Motion.Play` runs on the element's scheduler, which stops when it leaves the panel. A screen rebuilt mid-pan would leave a line pending and never draw it again |
+
+The legend lists only the revealed lines, in a `ScrollView` capped at 360 px — twenty-four 72 px rows do not fit
+a portrait screen. It duplicates what the map says and is a scroll gesture under a tappable map; a two-row
+contextual legend (the line you are on, the one you are working towards) is the obvious next move if it annoys.
+
+### 13.2 Difficulty is the deduction budget
+
+**8 cells is still the hard cap (D18)**, so twenty more lines cannot ramp by growing. What ramps is
+`rails − pre-laid`: how much of the route the player is actually asked to work out.
+
+The obvious lever does not work. Asking for a longer route moves that number **almost at random**, because how
+much pre-laid track a route needs to be *provably* unique depends on the route rather than its length — at 8×8
+with a 36-cell route the budget ranged **15 to 33** across fourteen seeds. So `NetworkExpansion.Target` names the
+budget it wants and searches seeds until a board has it, which is affordable because one search costs a fraction
+of a second.
+
+The bands **start where the four shipped lines already sit** (≈13 at 6×6, 20 at 7×7, 22 at 8×8, measured off
+their own assets). Starting lower — the first attempt did — made lines 4–7 *easier* than the line before them and
+kept them that way for thirty-six stations. As shipped, Havenbrook opens at 13.7 / 20.7 / 21.7 against
+Emberfell's 13.3 / 20.3 / 21.7, and Larkspur Vale closes at 20.7 / 27.7 / 33.3.
+
+`FinaleGenerator.SearchMinimal` is what makes the lever cheap: **uniqueness is monotone in the reveal count**, so
+the fewest pre-laid pieces a route can be proved unique with is a bisection (~6 solves) with no ladder ceiling.
+`Search` is untouched — it is `Ravensmoor.asset`'s provenance and still reproduces it exactly.
+
+**Star times remain placeholders** (`rails × 4` / `× 2`). D12 wants them from real play; that debt was 36
+stations and is now **216**.
+
+### 13.3 The map cannot be laid out by hand
+
+`LineMapValidation` rejects overlapping strokes, coincident nodes with no interchange, and a node claimed twice.
+Twenty freehand polylines in one plane trip all three. `NetworkMapLayout` makes most of it impossible instead:
+each line gets its own cell of a disjoint grid, so two bodies cannot collide; the only geometry left to check is
+the *stem* out to the cell. Each line claims one unclaimed parent node, so the network is a **tree** and every
+line has an anchor for `PlayOpening`. Cells are issued **nearest-first**, which is what makes the pan-out grow
+outward rather than jump about.
+
+`NetworkMapLayoutTests` asserts the whole 24-line network comes back clean from `ValidateNetwork`. That test is
+the acceptance criterion for the layout, and it runs in milliseconds.
+
+### 13.4 Still open
+
+- **216 unplayed boards.** The difficulty curve is measured, not played. So are the star times.
+- **The colours** are picked on a rule (mid lightness, real saturation, hue spread) but not verified pairwise
+  against `--closed` or against each other for the colour-blind.
+- **The legend** — see 13.1.

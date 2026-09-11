@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44bef7433e8684b49bfcbae8cb1179c1, type: 3}
+  m_Name: Line_KG
+  m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LineDefinition
+  id: kg
+  code: KG
+  displayName: Kestrelgate
+  color: {r: 0.18039216, g: 0.60784316, b: 0.8392157, a: 1}
+  levels: {fileID: 11400000, guid: 2362faec236f5430abda3277baa3a0a7, type: 2}
+  unlockRule:
+    minStarsPerStation: 1
+  mapShape: 0
+  mapNodes:
+  - {x: 450, y: 1800}
+  - {x: -150, y: 1800}
+  - {x: -300, y: 1950}
+  - {x: -150, y: 2100}
+  - {x: 0, y: 2250}
+  - {x: 150, y: 2100}
+  - {x: 300, y: 1950}
+  - {x: 150, y: 1950}
+  - {x: 0, y: 1950}
+  stationNodeIndices: 000000000100000002000000030000000400000005000000060000000700000008000000i

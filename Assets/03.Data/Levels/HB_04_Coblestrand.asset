@@ -1,0 +1,79 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8068dec5dc340c41988bde57416d4dd3, type: 3}
+  m_Name: HB_04_Coblestrand
+  m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LevelDefinition
+  id: coblestrand
+  displayName: Coblestrand
+  width: 7
+  height: 7
+  columnClues: 06000000050000000200000006000000050000000600000006000000i
+  rowClues: 06000000060000000500000005000000060000000600000002000000i
+  fixedPieces:
+  - x: 2
+    y: 0
+    key: 4
+  - x: 6
+    y: 4
+    key: 0
+  - x: 6
+    y: 0
+    key: 5
+  - x: 1
+    y: 0
+    key: 5
+  - x: 0
+    y: 2
+    key: 0
+  - x: 5
+    y: 0
+    key: 4
+  - x: 0
+    y: 4
+    key: 3
+  - x: 3
+    y: 0
+    key: 5
+  - x: 5
+    y: 3
+    key: 4
+  - x: 3
+    y: 2
+    key: 5
+  - x: 3
+    y: 1
+    key: 2
+  - x: 4
+    y: 2
+    key: 1
+  - x: 6
+    y: 1
+    key: 0
+  - x: 3
+    y: 4
+    key: 5
+  - x: 5
+    y: 5
+    key: 1
+  - x: 0
+    y: 5
+    key: 4
+  entrance:
+    side: 3
+    index: 5
+  exit:
+    side: 1
+    index: 0
+  starTimes:
+  - 144
+  - 288
+  isTutorial: 0

@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f07eaaad3577a68c2c402ea77f588c80, type: 3}
+  m_Name: LevelCollection_MG
+  m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LevelCollection
+  levels:
+  - {fileID: 11400000, guid: 4d3919e11f7914b9a8c3c204b2a1a7da, type: 2}
+  - {fileID: 11400000, guid: cb25bac2ce248454097ea28af7e06bba, type: 2}
+  - {fileID: 11400000, guid: e99f59469477b4df1a7160f8b01fa124, type: 2}
+  - {fileID: 11400000, guid: 2a597bd62cb21404bb44c2bcb5829998, type: 2}
+  - {fileID: 11400000, guid: bcf2dab0316ca406bbd2dfec227d5ba4, type: 2}
+  - {fileID: 11400000, guid: 93be82131c66b453aa135990afdafdfa, type: 2}
+  - {fileID: 11400000, guid: 7076ac34a49884c82995e949ebafd051, type: 2}
+  - {fileID: 11400000, guid: 3fb393a738b1f4b8bbb9e5e990138026, type: 2}
+  - {fileID: 11400000, guid: eff361b46905e4deba0ca61e20d07538, type: 2}

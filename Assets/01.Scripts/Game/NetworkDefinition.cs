@@ -80,6 +80,13 @@ namespace TrainSudoku.Game
 
 #if UNITY_EDITOR
         public void SetLines(LineDefinition[] newLines) => lines = newLines ?? Array.Empty<LineDefinition>();
+
+        /// <summary>
+        /// Editor-only. A line placed by a tool brings its own interchange with it — the node it hangs off is decided
+        /// by the same pass that decides where the line goes, so the two have to be written together.
+        /// </summary>
+        public void SetInterchanges(Interchange[] newInterchanges) =>
+            interchanges = newInterchanges ?? Array.Empty<Interchange>();
 #endif
     }
 }

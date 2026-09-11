@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8068dec5dc340c41988bde57416d4dd3, type: 3}
+  m_Name: ZM_04_Squallfield
+  m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LevelDefinition
+  id: squallfield
+  displayName: Squallfield
+  width: 7
+  height: 7
+  columnClues: 03000000050000000500000004000000070000000400000003000000i
+  rowClues: 06000000040000000600000004000000030000000400000004000000i
+  fixedPieces:
+  - x: 1
+    y: 2
+    key: 3
+  - x: 4
+    y: 1
+    key: 5
+  - x: 5
+    y: 1
+    key: 4
+  - x: 0
+    y: 6
+    key: 2
+  - x: 6
+    y: 2
+    key: 3
+  entrance:
+    side: 3
+    index: 6
+  exit:
+    side: 1
+    index: 2
+  starTimes:
+  - 124
+  - 248
+  isTutorial: 0

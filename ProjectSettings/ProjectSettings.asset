@@ -315,10 +315,47 @@ PlayerSettings:
   androidAdaptiveIconVectorDrawableMonochrome: {fileID: 0}
   androidAdaptiveBannerVectorDrawableBackground: {fileID: 0}
   androidAdaptiveBannerVectorDrawableForeground: {fileID: 0}
-  m_BuildTargetIcons: []
+  m_BuildTargetIcons:
+  - m_BuildTarget: 
+    m_Icons:
+    - serializedVersion: 2
+      m_Icon: {fileID: 2800000, guid: 2c99ee8c6e95344a38af618ff66eb712, type: 3}
+      m_Width: 128
+      m_Height: 128
+      m_Kind: 0
   m_BuildTargetPlatformIcons:
   - m_BuildTarget: iPhone
     m_Icons:
+    - m_Textures:
+      - {fileID: 2800000, guid: 2beef6016055e4ac695c0480fa7606f9, type: 3}
+      m_Width: 60
+      m_Height: 60
+      m_Kind: 2
+      m_SubKind: iPhone
+    - m_Textures:
+      - {fileID: 2800000, guid: 749e20d318d194dd78df81f138c05461, type: 3}
+      m_Width: 40
+      m_Height: 40
+      m_Kind: 2
+      m_SubKind: iPhone
+    - m_Textures:
+      - {fileID: 2800000, guid: 749e20d318d194dd78df81f138c05461, type: 3}
+      m_Width: 40
+      m_Height: 40
+      m_Kind: 2
+      m_SubKind: iPad
+    - m_Textures:
+      - {fileID: 2800000, guid: d24b5ffdd09df41ecaf42ce5b1e43786, type: 3}
+      m_Width: 20
+      m_Height: 20
+      m_Kind: 2
+      m_SubKind: iPad
+    - m_Textures:
+      - {fileID: 2800000, guid: ca14bf079c1b742eea8bd17d6338359c, type: 3}
+      m_Width: 1024
+      m_Height: 1024
+      m_Kind: 4
+      m_SubKind: App Store
     - m_Textures:
       - {fileID: 2800000, guid: 3af1d8f850452424c8e0e9158357aa4a, type: 3}
       m_Width: 180
@@ -403,36 +440,6 @@ PlayerSettings:
       m_Height: 29
       m_Kind: 1
       m_SubKind: iPad
-    - m_Textures:
-      - {fileID: 2800000, guid: 2beef6016055e4ac695c0480fa7606f9, type: 3}
-      m_Width: 60
-      m_Height: 60
-      m_Kind: 2
-      m_SubKind: iPhone
-    - m_Textures:
-      - {fileID: 2800000, guid: 749e20d318d194dd78df81f138c05461, type: 3}
-      m_Width: 40
-      m_Height: 40
-      m_Kind: 2
-      m_SubKind: iPhone
-    - m_Textures:
-      - {fileID: 2800000, guid: 749e20d318d194dd78df81f138c05461, type: 3}
-      m_Width: 40
-      m_Height: 40
-      m_Kind: 2
-      m_SubKind: iPad
-    - m_Textures:
-      - {fileID: 2800000, guid: d24b5ffdd09df41ecaf42ce5b1e43786, type: 3}
-      m_Width: 20
-      m_Height: 20
-      m_Kind: 2
-      m_SubKind: iPad
-    - m_Textures:
-      - {fileID: 2800000, guid: ca14bf079c1b742eea8bd17d6338359c, type: 3}
-      m_Width: 1024
-      m_Height: 1024
-      m_Kind: 4
-      m_SubKind: App Store
   - m_BuildTarget: Android
     m_Icons:
     - m_Textures: []

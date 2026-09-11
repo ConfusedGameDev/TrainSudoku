@@ -138,6 +138,40 @@ namespace TrainSudoku.Tests
             Assert.IsFalse(_flow.IsLineUnlocked(2), "but it cannot invent a line that does not exist");
         }
 
+        /// <summary>
+        /// The per-line testing aid behind the Game inspector's "Debug: line unlocks", which is how the network map
+        /// is looked at at a later stage of progress without playing every board up to it.
+        /// </summary>
+        [Test]
+        public void TheLineUnlockOverrideOpensJustTheLinesItNames()
+        {
+            Assert.IsFalse(_flow.IsLineUnlocked(1));
+            _flow.LineUnlockOverride = line => line == 1;
+            Assert.IsTrue(_flow.IsLineUnlocked(1));
+            Assert.IsFalse(_flow.IsLineUnlocked(2), "it cannot invent a line that does not exist");
+        }
+
+        /// <summary>
+        /// It may only ever open a line. A line the player has genuinely earned stays open however the override
+        /// answers, so the aid cannot fake a regression the real game has no way to produce.
+        /// </summary>
+        [Test]
+        public void TheLineUnlockOverrideCannotCloseAnEarnedLine()
+        {
+            // Star every station of line 0, the way the screens do it.
+            _flow.ShowNetwork();
+            _flow.ShowLineMap(0);
+            _flow.StartLevel(0);
+            _flow.CompleteLevel();
+            _flow.FinishTrainRun();
+            _flow.NextLevel();
+            _flow.CompleteLevel();
+            Assert.IsTrue(_flow.IsLineUnlocked(1), "earned by starring every station of line 0");
+
+            _flow.LineUnlockOverride = _ => false;
+            Assert.IsTrue(_flow.IsLineUnlocked(1), "the override adds unlocks; it must not take one away");
+        }
+
         [Test]
         public void CompletingALevelAwardsStarsFromItsThresholds()
         {

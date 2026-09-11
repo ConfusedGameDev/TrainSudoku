@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44bef7433e8684b49bfcbae8cb1179c1, type: 3}
+  m_Name: Line_PM
+  m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LineDefinition
+  id: pm
+  code: PM
+  displayName: Pellamar
+  color: {r: 0.8862745, g: 0.39607844, b: 0.29411766, a: 1}
+  levels: {fileID: 11400000, guid: 52070dd78cd11455dbf2377919c2b4e7, type: 2}
+  unlockRule:
+    minStarsPerStation: 1
+  mapShape: 0
+  mapNodes:
+  - {x: 750, y: 2100}
+  - {x: 900, y: 2100}
+  - {x: 1050, y: 1950}
+  - {x: 1050, y: 2100}
+  - {x: 1050, y: 2250}
+  - {x: 1200, y: 2250}
+  - {x: 1200, y: 2100}
+  - {x: 1200, y: 1950}
+  - {x: 1350, y: 1950}
+  stationNodeIndices: 000000000100000002000000030000000400000005000000060000000700000008000000i

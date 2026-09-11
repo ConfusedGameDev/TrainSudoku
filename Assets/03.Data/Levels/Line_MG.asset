@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44bef7433e8684b49bfcbae8cb1179c1, type: 3}
+  m_Name: Line_MG
+  m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LineDefinition
+  id: mg
+  code: MG
+  displayName: Maltongrove
+  color: {r: 0.47843137, g: 0.54509807, b: 0.16862746, a: 1}
+  levels: {fileID: 11400000, guid: ba1f54b0f5182437e8a87b07b9fea6f1, type: 2}
+  unlockRule:
+    minStarsPerStation: 1
+  mapShape: 0
+  mapNodes:
+  - {x: 600, y: -300}
+  - {x: 900, y: -300}
+  - {x: 1050, y: -450}
+  - {x: 1200, y: -450}
+  - {x: 1350, y: -450}
+  - {x: 1350, y: -300}
+  - {x: 1200, y: -300}
+  - {x: 1050, y: -300}
+  - {x: 1050, y: -150}
+  stationNodeIndices: 000000000100000002000000030000000400000005000000060000000700000008000000i

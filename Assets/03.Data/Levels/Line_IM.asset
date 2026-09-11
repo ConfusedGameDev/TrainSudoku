@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44bef7433e8684b49bfcbae8cb1179c1, type: 3}
+  m_Name: Line_IM
+  m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LineDefinition
+  id: im
+  code: IM
+  displayName: Ironmere
+  color: {r: 0.3529412, g: 0.4509804, b: 0.5686275, a: 1}
+  levels: {fileID: 11400000, guid: 9eb5606de2d334dd7a5b72717ce248f3, type: 2}
+  unlockRule:
+    minStarsPerStation: 1
+  mapShape: 0
+  mapNodes:
+  - {x: 600, y: 2250}
+  - {x: 450, y: 2400}
+  - {x: 600, y: 2400}
+  - {x: 750, y: 2550}
+  - {x: 750, y: 2700}
+  - {x: 600, y: 2850}
+  - {x: 450, y: 2850}
+  - {x: 450, y: 2700}
+  - {x: 450, y: 2550}
+  stationNodeIndices: 000000000100000002000000030000000400000005000000060000000700000008000000i

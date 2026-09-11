@@ -11,6 +11,9 @@ namespace TrainSudoku.Game
     /// </summary>
     public sealed class NetworkScreen : UiScreen
     {
+        /// <summary>Five 72 px rows. Past that the legend scrolls instead of growing.</summary>
+        private const float LegendMaxHeight = 360f;
+
         private NetworkMapElement _map;
         private VisualElement _legend;
 
@@ -34,9 +37,16 @@ namespace TrainSudoku.Game
             _map.LineClicked += OpenLine;
             root.Add(_map);
 
+            // The legend used to be a short fixed column because the network was four lines long. It now lists only
+            // what the map is showing, which grows as lines open, and a full network's worth of 72 px rows is taller
+            // than the screen — so it scrolls inside a capped box rather than pushing Back off the bottom.
             _legend = Signage.Column();
-            Signage.Inset(_legend, 0f, 16f);
-            root.Add(_legend);
+            var legendScroll = new ScrollView(ScrollViewMode.Vertical);
+            legendScroll.style.maxHeight = LegendMaxHeight;
+            legendScroll.style.flexShrink = 0f;
+            legendScroll.Add(_legend);
+            Signage.Inset(legendScroll, 0f, 16f);
+            root.Add(legendScroll);
 
             var back = Signage.LocalizedButton("common.back", AudioCue.UiBack, () => Flow.ShowMainMenu());
             Signage.Inset(back, 0f, 24f);
@@ -57,10 +67,12 @@ namespace TrainSudoku.Game
             var network = Game.Network;
             if (network == null) return;
 
-            for (var i = 0; i < network.LineCount; i++)
+            // Only the lines the map is drawing (D10, plus the reveal rule): the legend is a key to the picture, so
+            // naming a line that is not on it would give away a network the player has not reached.
+            foreach (var i in _map.VisibleLines)
             {
                 var line = network.Line(i);
-                if (line == null || !line.HasContent) continue;   // D10
+                if (line == null) continue;
 
                 var open = Flow.IsLineUnlocked(i);
                 var row = Signage.Row();

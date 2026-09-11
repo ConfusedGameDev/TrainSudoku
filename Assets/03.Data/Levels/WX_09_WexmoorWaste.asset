@@ -1,0 +1,88 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8068dec5dc340c41988bde57416d4dd3, type: 3}
+  m_Name: WX_09_WexmoorWaste
+  m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LevelDefinition
+  id: wexmoor-waste
+  displayName: Wexmoor Waste
+  width: 8
+  height: 8
+  columnClues: 0400000007000000060000000800000006000000060000000700000008000000i
+  rowClues: 0700000005000000060000000500000006000000080000000800000007000000i
+  fixedPieces:
+  - x: 2
+    y: 3
+    key: 5
+  - x: 6
+    y: 1
+    key: 0
+  - x: 6
+    y: 2
+    key: 2
+  - x: 0
+    y: 3
+    key: 5
+  - x: 7
+    y: 4
+    key: 0
+  - x: 7
+    y: 0
+    key: 5
+  - x: 6
+    y: 7
+    key: 1
+  - x: 1
+    y: 5
+    key: 5
+  - x: 4
+    y: 6
+    key: 1
+  - x: 1
+    y: 2
+    key: 0
+  - x: 3
+    y: 3
+    key: 2
+  - x: 1
+    y: 6
+    key: 0
+  - x: 3
+    y: 6
+    key: 1
+  - x: 3
+    y: 1
+    key: 5
+  - x: 4
+    y: 1
+    key: 4
+  - x: 5
+    y: 0
+    key: 1
+  - x: 2
+    y: 7
+    key: 1
+  - x: 7
+    y: 5
+    key: 0
+  - x: 0
+    y: 6
+    key: 2
+  entrance:
+    side: 3
+    index: 6
+  exit:
+    side: 1
+    index: 0
+  starTimes:
+  - 208
+  - 416
+  isTutorial: 0

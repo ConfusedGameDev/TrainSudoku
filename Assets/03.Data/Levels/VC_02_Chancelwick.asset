@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8068dec5dc340c41988bde57416d4dd3, type: 3}
+  m_Name: VC_02_Chancelwick
+  m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LevelDefinition
+  id: chancelwick
+  displayName: Chancelwick
+  width: 6
+  height: 6
+  columnClues: 030000000500000005000000030000000400000003000000i
+  rowClues: 050000000500000004000000040000000300000002000000i
+  fixedPieces:
+  - x: 4
+    y: 2
+    key: 0
+  - x: 4
+    y: 3
+    key: 2
+  - x: 0
+    y: 5
+    key: 3
+  - x: 2
+    y: 1
+    key: 5
+  - x: 3
+    y: 1
+    key: 1
+  - x: 0
+    y: 3
+    key: 4
+  - x: 5
+    y: 2
+    key: 3
+  entrance:
+    side: 3
+    index: 3
+  exit:
+    side: 1
+    index: 2
+  starTimes:
+  - 92
+  - 184
+  isTutorial: 0

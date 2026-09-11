@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8068dec5dc340c41988bde57416d4dd3, type: 3}
+  m_Name: HB_06_Saltcombe
+  m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LevelDefinition
+  id: saltcombe
+  displayName: Saltcombe
+  width: 7
+  height: 7
+  columnClues: 03000000040000000600000007000000040000000400000002000000i
+  rowClues: 06000000060000000600000004000000040000000200000002000000i
+  fixedPieces:
+  - x: 4
+    y: 0
+    key: 1
+  - x: 0
+    y: 4
+    key: 3
+  - x: 2
+    y: 2
+    key: 1
+  - x: 4
+    y: 3
+    key: 1
+  - x: 3
+    y: 2
+    key: 1
+  - x: 3
+    y: 1
+    key: 2
+  - x: 6
+    y: 1
+    key: 3
+  - x: 2
+    y: 5
+    key: 0
+  - x: 0
+    y: 2
+    key: 4
+  entrance:
+    side: 3
+    index: 2
+  exit:
+    side: 1
+    index: 1
+  starTimes:
+  - 120
+  - 240
+  isTutorial: 0

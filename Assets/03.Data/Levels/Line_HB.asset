@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44bef7433e8684b49bfcbae8cb1179c1, type: 3}
+  m_Name: Line_HB
+  m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LineDefinition
+  id: hb
+  code: HB
+  displayName: Havenbrook
+  color: {r: 0.11764706, g: 0.56078434, b: 0.5254902, a: 1}
+  levels: {fileID: 11400000, guid: d91f85ad286104feba43cab7a4625915, type: 2}
+  unlockRule:
+    minStarsPerStation: 1
+  mapShape: 0
+  mapNodes:
+  - {x: 130, y: 930}
+  - {x: -570, y: 930}
+  - {x: -750, y: 750}
+  - {x: -600, y: 750}
+  - {x: -450, y: 750}
+  - {x: -450, y: 900}
+  - {x: -600, y: 900}
+  - {x: -750, y: 900}
+  - {x: -750, y: 1050}
+  stationNodeIndices: 000000000100000002000000030000000400000005000000060000000700000008000000i

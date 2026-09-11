@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44bef7433e8684b49bfcbae8cb1179c1, type: 3}
+  m_Name: Line_LV
+  m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LineDefinition
+  id: lv
+  code: LV
+  displayName: Larkspur Vale
+  color: {r: 0.7058824, g: 0.2509804, b: 0.60784316, a: 1}
+  levels: {fileID: 11400000, guid: 1e6874665537340cbb7d7b1231bf71c4, type: 2}
+  unlockRule:
+    minStarsPerStation: 1
+  mapShape: 0
+  mapNodes:
+  - {x: 1950, y: 900}
+  - {x: 2100, y: 900}
+  - {x: 2250, y: 1050}
+  - {x: 2400, y: 1050}
+  - {x: 2550, y: 900}
+  - {x: 2550, y: 750}
+  - {x: 2400, y: 750}
+  - {x: 2250, y: 900}
+  - {x: 2100, y: 1050}
+  stationNodeIndices: 000000000100000002000000030000000400000005000000060000000700000008000000i

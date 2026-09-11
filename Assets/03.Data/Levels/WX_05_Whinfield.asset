@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8068dec5dc340c41988bde57416d4dd3, type: 3}
+  m_Name: WX_05_Whinfield
+  m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.LevelDefinition
+  id: whinfield
+  displayName: Whinfield
+  width: 7
+  height: 7
+  columnClues: 06000000060000000500000007000000040000000200000005000000i
+  rowClues: 03000000050000000500000007000000070000000400000004000000i
+  fixedPieces:
+  - x: 1
+    y: 3
+    key: 2
+  - x: 1
+    y: 1
+    key: 1
+  - x: 6
+    y: 2
+    key: 0
+  - x: 0
+    y: 6
+    key: 2
+  - x: 3
+    y: 4
+    key: 3
+  - x: 1
+    y: 4
+    key: 1
+  - x: 6
+    y: 0
+    key: 5
+  entrance:
+    side: 3
+    index: 6
+  exit:
+    side: 1
+    index: 0
+  starTimes:
+  - 140
+  - 280
+  isTutorial: 0

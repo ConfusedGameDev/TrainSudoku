@@ -95,6 +95,17 @@ namespace TrainSudoku.Editor
             return problems;
         }
 
+        /// <summary>
+        /// True when two segments are collinear and share more than a point — the thing <see cref="ValidateNetwork"/>
+        /// rejects. Exposed so a layout tool can ask the question <i>before</i> it commits a line, rather than
+        /// authoring a map and then being told it is illegal; one implementation, used by both.
+        /// </summary>
+        public static bool SegmentsOverlap(Vector2 firstA, Vector2 firstB, Vector2 secondA, Vector2 secondB) =>
+            Overlaps(new Segment(firstA, firstB, 0), new Segment(secondA, secondB, 0));
+
+        /// <summary>Two points this close are the same point, as far as the network is concerned.</summary>
+        public static bool SamePoint(Vector2 a, Vector2 b) => Vector2.Distance(a, b) <= Coincident;
+
         /// <summary>How a line is named in a problem: its code, then its id, then its place in the network.</summary>
         public static string LineLabel(LineDefinition line, int index) =>
             !string.IsNullOrEmpty(line.Code) ? line.Code : !string.IsNullOrEmpty(line.Id) ? line.Id : $"Line {index}";

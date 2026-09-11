@@ -44,9 +44,41 @@ namespace TrainSudoku.Editor
         /// that admits exactly one solution wins.
         /// </remarks>
         public static Candidate Search(int width, int height, int minRouteLength, int attempts, int seed,
-            long solverBudget, long walkBudget, StringBuilder log, int[] fixedCounts = null)
+            long solverBudget, long walkBudget, StringBuilder log, int[] fixedCounts = null) =>
+            Core(width, height, minRouteLength, attempts, seed, solverBudget, walkBudget, log,
+                fixedCounts ?? new[] { 0, 3, 5, 7, 9, 11 });
+
+        /// <summary>
+        /// The same search, but reporting the <b>fewest</b> pre-laid pieces this route can be proved unique with,
+        /// rather than the first rung of a ladder that happens to work.
+        /// </summary>
+        /// <remarks>
+        /// <b>Uniqueness is monotone in the reveal count</b>, which is what makes a search possible at all. The cells
+        /// are revealed in a fixed shuffled order, so each count is a superset of the one below it; a board that
+        /// satisfies the clues and the first k+1 revealed pieces also satisfies the clues and the first k, so the
+        /// solution set only ever shrinks as k rises. Once one solution remains, it remains for every larger k. So
+        /// the smallest k that admits exactly one can be found by bisection in about six solves instead of walking a
+        /// ladder, and there is no ceiling to fall off the end of: the whole route is always unique with itself.
+        ///
+        /// That number is the difficulty lever. <c>rails - FixedCount</c> is how much of the board the player is
+        /// actually asked to work out, and a ladder that stops at 11 cannot report it.
+        ///
+        /// A solve that runs out of budget is read as "not unique yet" and pushes the search higher, where the tree
+        /// is smaller and the solver can finish. That is the safe direction to be wrong in: it costs the player a
+        /// pre-laid piece, never a second solution.
+        /// </remarks>
+        public static Candidate SearchMinimal(int width, int height, int minRouteLength, int attempts, int seed,
+            long solverBudget, long walkBudget, StringBuilder log) =>
+            Core(width, height, minRouteLength, attempts, seed, solverBudget, walkBudget, log, null);
+
+        /// <summary>
+        /// Shared body. <paramref name="fixedCounts"/> null means bisect for the minimum; otherwise walk that ladder.
+        /// Neither strategy draws on the random source, so both see exactly the same routes for a given seed and
+        /// <see cref="Search"/> still reproduces the boards it is the provenance of.
+        /// </summary>
+        private static Candidate Core(int width, int height, int minRouteLength, int attempts, int seed,
+            long solverBudget, long walkBudget, StringBuilder log, int[] fixedCounts)
         {
-            fixedCounts = fixedCounts ?? new[] { 0, 3, 5, 7, 9, 11 };
             var rng = new System.Random(seed);
             var solution = new List<FixedPiece>();
 
@@ -91,25 +123,71 @@ namespace TrainSudoku.Editor
                     reveal[j] = swap;
                 }
 
-                foreach (var fixedCount in fixedCounts)
+                bool Unique(int fixedCount, out long nodes)
                 {
-                    if (fixedCount > solution.Count) break;
                     level.FixedPieces.Clear();
                     for (var i = 0; i < fixedCount; i++) level.FixedPieces.Add(solution[reveal[i]]);
 
-                    var solve = Solver.Solve(level, 2, solverBudget);
+                    var attemptSolve = Solver.Solve(level, 2, solverBudget);
+                    nodes = attemptSolve.Nodes;
                     log?.AppendLine($"attempt {attempt}: route {solution.Count} cells, W{entrance.Index}->E{exit.Index}, " +
-                                    $"fixed {fixedCount} -> solutions {solve.Count}, exhausted {solve.Exhausted}, nodes {solve.Nodes:N0}");
+                                    $"fixed {fixedCount} -> solutions {attemptSolve.Count}, exhausted {attemptSolve.Exhausted}, " +
+                                    $"nodes {attemptSolve.Nodes:N0}");
+                    return !attemptSolve.Exhausted && attemptSolve.Count == 1;
+                }
 
-                    if (solve.Exhausted || solve.Count != 1) continue;
+                var found = -1;
+                var foundNodes = 0L;
+
+                if (fixedCounts != null)
+                {
+                    foreach (var fixedCount in fixedCounts)
+                    {
+                        if (fixedCount > solution.Count) break;
+                        if (!Unique(fixedCount, out var nodes)) continue;
+                        found = fixedCount;
+                        foundNodes = nodes;
+                        break;
+                    }
+                }
+                else
+                {
+                    // Revealing the whole route admits only itself, so the top of the range is always an answer and
+                    // the bisection cannot come back empty-handed.
+                    var low = 0;
+                    var high = solution.Count;
+                    while (low < high)
+                    {
+                        var mid = (low + high) / 2;
+                        if (Unique(mid, out var nodes))
+                        {
+                            high = mid;
+                            foundNodes = nodes;
+                        }
+                        else
+                        {
+                            low = mid + 1;
+                        }
+                    }
+
+                    // The last probe was not necessarily the answer, so solve once more at it: Nodes should
+                    // describe the board actually kept.
+                    Unique(low, out foundNodes);
+                    found = low;
+                }
+
+                if (found >= 0)
+                {
+                    level.FixedPieces.Clear();
+                    for (var i = 0; i < found; i++) level.FixedPieces.Add(solution[reveal[i]]);
 
                     return new Candidate
                     {
                         Level = level,
                         Solution = new List<FixedPiece>(solution),
-                        Nodes = solve.Nodes,
+                        Nodes = foundNodes,
                         Attempt = attempt,
-                        FixedCount = fixedCount,
+                        FixedCount = found,
                     };
                 }
             }
