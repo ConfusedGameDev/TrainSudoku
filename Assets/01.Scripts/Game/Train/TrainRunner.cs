@@ -100,10 +100,18 @@ namespace TrainSudoku.Game
             // Start with the locomotive just short of the reveal point so it emerges from the tunnel, not into it.
             _distance = RevealDistance - 0.05;
             PlaceCars();
+
+            // Only on a real route: the no-route branch above has already returned, so the debug win stays silent
+            // rather than whistling at a train that is not there.
+            AudioCuePlayer.Play(AudioCue.TrainStart);
+            AudioCuePlayer.PlayLoop(AudioCue.TrainMoving);
         }
 
         public void Stop()
         {
+            // Idempotent, which matters: ApplyState stops the runner on every state that is not TrainRun, whether or
+            // not a run was happening.
+            AudioCuePlayer.StopLoop(AudioCue.TrainMoving);
             _running = false;
             _path = null;
             SceneObjects.Clear(cars);

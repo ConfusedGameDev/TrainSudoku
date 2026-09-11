@@ -40,7 +40,6 @@ namespace TrainSudoku.Game
         /// <summary>Larger than the name it replaced, because five letters have to hold the same board.</summary>
         private const int TitleSize = 96;
 
-        private const string MutedKey = "audio.muted";
 
         private Label _lineName;
         private Label _terminusFrom;
@@ -254,14 +253,11 @@ namespace TrainSudoku.Game
             return row;
         }
 
-        /// <summary>Mutes every cue and the train, and remembers it across launches.</summary>
+        /// <summary>Mutes the music, every cue and the train, and remembers it across launches.</summary>
         private void ToggleSound()
         {
-            var muted = !AudioListener.pause;
-            AudioListener.pause = muted;
-            PlayerPrefs.SetInt(MutedKey, muted ? 1 : 0);
-            PlayerPrefs.Save();
-            ShowSoundState(muted);
+            AudioMute.Set(!AudioMute.Muted);
+            ShowSoundState(AudioMute.Muted);
         }
 
         private void ShowSoundState(bool muted)
@@ -328,7 +324,8 @@ namespace TrainSudoku.Game
 
         protected override void Wire()
         {
-            AudioListener.pause = PlayerPrefs.GetInt(MutedKey, 0) == 1;
+            // The setting is loaded in GameManager.Awake, before any screen binds, so there is nothing to restore
+            // here; the icon is drawn from it in Refresh.
         }
 
         public override void Refresh(GameState state)
@@ -369,7 +366,7 @@ namespace TrainSudoku.Game
                 : "";
 
             _board.SetEnabled(Game.NextStationIndex() >= 0);
-            ShowSoundState(AudioListener.pause);
+            ShowSoundState(AudioMute.Muted);
             // The whole point of the strip is to name where the player is going, so the station goes through as the
             // message's argument rather than the strip announcing a bare heading.
             _led.Clear();

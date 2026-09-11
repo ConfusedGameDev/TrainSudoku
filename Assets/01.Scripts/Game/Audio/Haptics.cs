@@ -83,8 +83,20 @@ namespace TrainSudoku.Game
             AudioCue.Place => HapticFeel.Light,
             AudioCue.Erase => HapticFeel.Medium,
             AudioCue.Error => HapticFeel.Failure,
-            AudioCue.Win => HapticFeel.Success,
+            AudioCue.FinalPiece => HapticFeel.Success,
             AudioCue.TrainStart => HapticFeel.Soft,
+            AudioCue.CellSelect => HapticFeel.Selection,
+            AudioCue.SideChosen => HapticFeel.Selection,
+            AudioCue.LineCleared => HapticFeel.Light,
+
+            // The loops. A looping cue is started once, so this would fire once rather than every frame — but a loop
+            // that buzzes at all is wrong, and AudioCuePlayer.PlayLoop does not call Haptics anyway.
+            AudioCue.TrainMoving => HapticFeel.None,
+            AudioCue.EraseHold => HapticFeel.None,
+
+            AudioCue.WinFanfareOne => HapticFeel.Success,
+            AudioCue.WinFanfareTwo => HapticFeel.Success,
+            AudioCue.WinFanfareThree => HapticFeel.Success,
 
             // Station UI: the faintest tick there is, so a menu never buzzes.
             AudioCue.UiClick => HapticFeel.Selection,

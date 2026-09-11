@@ -153,8 +153,17 @@ namespace TrainSudoku.Game
         /// The stamp, then the stars. One tween drives the whole beat rather than a chain of delayed calls, so a
         /// second arrival landing on the first cannot leave a star mid-pop.
         /// </summary>
+        /// <summary>One fanfare per star count. A run always earns at least one star, so there is no silent case.</summary>
+        private static AudioCue FanfareFor(int stars) => stars >= 3 ? AudioCue.WinFanfareThree
+            : stars == 2 ? AudioCue.WinFanfareTwo
+            : AudioCue.WinFanfareOne;
+
         private void PlayArrival(VisualElement starRow, int earned, bool cueEachStar)
         {
+            // At the top of the beat, so the fanfare underlays the whole stamp-and-stars sequence rather than landing
+            // after it. The per-star pops still ride on top.
+            AudioCuePlayer.Play(FanfareFor(earned));
+
             var icons = new List<VisualElement>(starRow.Children());
             foreach (var icon in icons)
             {

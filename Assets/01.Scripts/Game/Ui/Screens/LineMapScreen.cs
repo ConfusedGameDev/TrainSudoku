@@ -41,7 +41,13 @@ namespace TrainSudoku.Game
 
             _map = new LineMapElement { style = { flexGrow = 1f, flexShrink = 1f } };
             _map.AddToClassList(UiShell.LineTextClass);
-            _map.StationClicked += Select;
+            // On the handler, not inside Select: Refresh calls Select too, and a cue in there would sound every time
+            // the screen opened.
+            _map.StationClicked += station =>
+            {
+                AudioCuePlayer.Play(AudioCue.StationSelect);
+                Select(station);
+            };
             root.Add(_map);
 
             root.Add(BuildCard());

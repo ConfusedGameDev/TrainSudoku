@@ -1,6 +1,6 @@
 TSUGI · UI WORK ORDER
 v0.4 · 10 SEP 2026 · main @ 3947585
-STATUS: M20 next · M11–M19 of M11–M20 done · progress table in 11.0
+STATUS: M22 awaiting human verification · M11–M21 done · progress table in 11.0
 
 # Station UI — implementation work order
 
@@ -41,6 +41,10 @@ Settled by interview on 10 Sep 2026. Closed. Do not re-open one without asking f
 | D19 | The network branches; `Interchange[]` stays in the schema | Branch→island later is an empty array; island→branch is a migration |
 | D20 | Line gate is lenient: **1★ on every station** opens the next line | Unobservable in v1; tighten with telemetry before line 2 |
 | D21 | Pause and Train Run are **derived**, not designed | The mockup never drew them; they recombine existing components |
+| D22 | Music follows `GameState`, and **the win fades it out**: `TrainRun` and `Win` have no track | The train loop and the arrival fanfare carry that beat; the map track returns at the map. Five tracks, not seven |
+| D23 | Mute is a mixer (or global) **volume** cut, never `AudioListener.pause` | `pause` freezes the DSP, which would silence the pause menu's own clicks and the tap that unmutes |
+| D24 | Every audio slot a human fills lives on a **ScriptableObject**, never on a generated scene object | `GameManager.Generate()` destroys and rebuilds its children, so a group dragged onto one is lost on re-bake |
+| D25 | An **unauthored** star ladder holds the three-star track | `StarsFor` returns the floor of 1 there — right for scoring, wrong for music that would open on its bleakest cue |
 
 ### 0.1 What D5 costs, stated plainly
 
@@ -547,6 +551,7 @@ scope — nothing in M11–M21 may grow a dependency on one.
 | M19 | Motion and board re-skin | ☑ |
 | M20 | Translation pass | ☑ |
 | M21 | Tutorial station | ☑ |
+| M22 | Audio layer | ☐ |
 
 **Optional, not scheduled** — planned in 11.1, built only if and when it is called for.
 
@@ -1266,6 +1271,90 @@ take one back off.
 > eye had to travel, and the player had to work out which square the sentence meant. Anchoring the words to the
 > cell removes both problems at once, and is the difference between a tutorial that explains the rules and one
 > that walks you to a finished board. The band is gone.
+
+---
+
+### M22 · Audio layer
+
+**Goal:** a real audio layer under the cue layer — music that follows the game and the clock, SFX that a
+screen change can cut, pause that pauses — with **every slot left empty** for content authored later.
+**Touches:** `Core/MusicPlan.cs`, `Core/StarLadder.cs`, `Core/GameFlow.cs`, `Game/Audio/*`, `GameManager.cs`,
+`Board/BoardView.cs`, `Train/TrainRunner.cs`, `Screens/ArrivalScreen.cs`, `Screens/LineMapScreen.cs`,
+`Screens/ConcourseScreen.cs`, `03.Data/Audio/`.
+
+- [x] `MusicPlan.For(state, tier)` — the whole state→track rule, in Core (D22)
+- [x] `StarLadder` — the live star tier, one-way, thresholds read once per level start (D25)
+- [x] `GameFlow.StarTier` + `StarTierChanged`, driven from `Tick` and seeded in `Begin`
+- [x] `MusicLibrary` + `MusicPlayer` — one `AudioSource` per track on its own group, equal-power crossfade on
+      unscaled time, pause at position, 0.3 s resume ramp
+- [x] `AudioCuePlayer` becomes an eight-voice pool: `CancelInFlight`, `PlayLoop`/`StopLoop`/`SetLoopPitch`/
+      `SetLoopsPaused`; `Play(AudioCue)` and its haptic ordering unchanged
+- [x] `AudioCue` gains 12–19; `Win` (6) is renamed `FinalPiece` in place
+- [x] `AudioMute` replaces `AudioListener.pause` (D23); same `audio.muted` key
+- [x] `Music.asset` with five empty rows; `UiAudioCues.asset` with eight empty rows and the hold flags set (D24)
+- [x] `05.Audio/Music/` for the tracks
+
+**Done when**
+
+- [x] 390 EditMode tests pass, 29 of them new (`AudioLayerTests`, `AudioAssetTests`)
+- [ ] The whole flow runs **silently** with every slot empty: nothing throws, nothing warns, every button clicks
+- [ ] With placeholders wired: the play tracks step down as the clock passes each threshold
+- [ ] Pause stops the music mid-bar, Resume picks it up at the same point, the pause menu still clicks
+- [ ] The button that causes a transition is heard in full; a rapid double-tap cuts the first click, not the second
+- [ ] A rail that satisfies a row and a column dings once; the winning rail does not ding at all
+- [ ] The beat from the final piece, through the train, to the stamp reads as one thing
+- [ ] Mute round-trips through a relaunch
+- [ ] **Verified by human** ☐ &nbsp;&nbsp; date:
+
+#### M22 notes
+
+- **`PlayOneShot` could not do this.** A `PlayOneShot` voice has no handle; the only lever is `Stop()` on the
+  source, which kills every cue at once. "Cancel any click fx when transitioning" therefore needed a voice pool,
+  and so did the loops.
+- **The cancel spares the click that caused it.** `Signage.Button` plays its cue *then* invokes the action that
+  transitions — same frame — so `CancelInFlight` skips any voice started on the current frame. Cancellation is a
+  60 ms fade, never a `Stop()`, which would pop. It is called from `GameManager.OnStateChanged`, not
+  `ApplyState`: the editor-only `RefreshCurrentScreen` calls `ApplyState` too, and a redraw is not a transition.
+- **"Line complete" is a row or column reaching its clue**, not a nine-station line. `LineCleared` fires from
+  inside the validator, can fire twice on one placement (a row *and* a column), and fires on the winning move —
+  so the cue is latched once per placement in `GameManager.OnBoardChanged`, which `BoardChanged` runs
+  immediately before `Validate`, and stands aside when `LastResult.IsWin`.
+- **`musicPlayer` is not part of `IsGenerated`.** Adding it would have made every scene baked before M22 fail
+  the check and regenerate its entire UI on first launch. It uses the `TrainRunner` pattern instead: created in
+  `Awake` if the scene lacks it, baked on the next *Generate Scene Objects*.
+- **The mixer is built by hand.** Unity has no public API to create a `.mixer` or add groups to one, and a
+  hand-written YAML would be unverifiable internal serialization. A null group routes to the default group and
+  an un-exposed parameter drops mute to `AudioListener.volume` — neither is an error. The mixer needs no slot of
+  its own: `AudioMixerGroup.audioMixer` gives it back from whichever group was dragged in.
+- **Two cues changed meaning without changing number.** `Win` (6) was already played at the winning placement,
+  so it became `FinalPiece`; the library stores the int, so the rename is serialization-safe. `TrainStart` (7)
+  was wired to a clip and never played by anything — it is now the departure whistle. Their old clips are
+  stand-ins until re-pointed.
+- **The final placement sounds `Place` and `FinalPiece`, layered** — the rail lands, then the board resolves. If
+  that reads cluttered by ear, suppressing `Place` on the winning move is a one-line follow-up.
+- **Station taps on the line map were the only silent interactive element in the game.** The cue is on the
+  `StationClicked` handler, not inside `Select`, which `Refresh` also calls.
+- **The erase hold's ramp stops in `HideHoldProgress`**, the one method every way out of a hold already passes
+  through — completed, refused, slid away, or interrupted by `SetInteractable`.
+- **Not in scope, and expected on the first device build:** Unity's default iOS audio session honours the
+  hardware mute switch and stops the player's own music. Continuous audio is what makes both visible.
+
+**Setting it up in the Editor**
+
+1. `05.Audio/` → Create → Audio Mixer → **`Tsugi`**, with this tree:
+   ```
+   Master
+   ├─ Music ─ MusicMainMenu · MusicMap · MusicPlay3 · MusicPlay2 · MusicPlay1
+   └─ Sfx   ─ SfxUi · SfxGame
+   ```
+2. Expose the volumes of `Master`, `Music` and `Sfx` as **`MasterVolume`**, **`MusicVolume`**, **`SfxVolume`**
+   (right-click Volume in the Inspector → *Expose to script*, then rename in the Exposed Parameters list). Only
+   `MasterVolume` is read today.
+3. `UiAudioCues.asset`: **Output** = `SfxUi`, **Loop Output** = `SfxGame`; the eight new clips; optionally a
+   per-cue **Output** = `SfxGame` on the board cues. Re-point cue 6 (`FinalPiece`) and cue 10 (`LineUnlocked`).
+4. `Music.asset`: five clips and their five groups. **Import them as Streaming with Preload off** — all five
+   sources exist at once.
+5. Drag `Music.asset` into the `Game` object's **Music** field, click **Generate Scene Objects**, save the scene.
 
 ---
 

@@ -95,6 +95,15 @@ namespace TrainSudoku.Core
         /// <summary>Outcome of the most recent completed run; null until a level has been won.</summary>
         public CompletionResult? LastResult { get; private set; }
 
+        private readonly StarLadder _ladder = new StarLadder();
+
+        /// <summary>
+        /// The live star tier of the run in progress, 1 to 3 — the stars still reachable if the player finished now.
+        /// It is a fact derived from the clock, and the clock is the flow's, which is why it lives here rather than
+        /// being re-derived every frame by the Unity layer.
+        /// </summary>
+        public int StarTier => _ladder.Tier;
+
         /// <summary>Raised after every state change with (previous, current).</summary>
         public event Action<GameState, GameState> StateChanged;
 
@@ -103,6 +112,9 @@ namespace TrainSudoku.Core
         /// progress to continue from, or null to show only the fixed pieces.
         /// </summary>
         public event Action<int, LevelProgress> LevelStarted;
+
+        /// <summary>Raised with the new tier on the tick the run drops out of reach of a star. Never raised upwards.</summary>
+        public event Action<int> StarTierChanged;
 
         /// <param name="layout">
         /// How the flat list divides into lines. Null means one line holding every level, which is the shape the game
@@ -141,7 +153,13 @@ namespace TrainSudoku.Core
         /// <summary>True when the level was left unfinished and selecting it will continue that attempt.</summary>
         public bool HasInProgress(int index) => index >= 0 && index < LevelCount && Progress.TryGetInProgress(_levelIds[index], out _);
 
-        public void Tick(double deltaSeconds) => Timer.Tick(deltaSeconds);
+        public void Tick(double deltaSeconds)
+        {
+            Timer.Tick(deltaSeconds);
+            // IsRunning is the whole guard: the ladder does not move while the board is untouched (Idle), paused, or
+            // finished, and does nothing at all on the menu screens.
+            if (Timer.IsRunning && _ladder.Tick(Timer.Elapsed)) StarTierChanged?.Invoke(_ladder.Tier);
+        }
 
         // ---- Main menu
 
@@ -298,6 +316,10 @@ namespace TrainSudoku.Core
             Timer.Reset();
             LevelProgress progress = null;
             if (resume && Progress.TryGetInProgress(CurrentLevelId, out progress)) Timer.Restore(progress.Elapsed);
+            // Once per level start, which is also the one place the thresholds are read: StarTimesForLevel reaches a
+            // LevelDefinition whose getter allocates, so nothing per frame may go near it. Retry resets the ladder
+            // for free, because retrying comes through here too.
+            _ladder.Begin(StarTimes(index), Timer.Elapsed);
             Transition(GameState.Play);
             LevelStarted?.Invoke(index, progress);
         }

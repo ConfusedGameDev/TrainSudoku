@@ -19,6 +19,9 @@ namespace TrainSudoku.Game
         private const float TileInset = 0.04f;
         private const float RayLength = 200f;
         private const float HoldDuration = 0.5f;
+
+        /// <summary>Where the erase hold's tone ends up by the time the ring is full.</summary>
+        private const float EraseHoldTopPitch = 1.6f;
         private const float HoldMoveTolerancePixels = 40f;
         private const float MarkerInset = 0.36f;
 
@@ -871,6 +874,10 @@ namespace TrainSudoku.Game
 
         private void HideHoldProgress()
         {
+            // Every path out of a hold comes through here — completed, refused, slid away, or interrupted by
+            // SetInteractable — so the ramp stops here rather than at each of them. Above the early-out, because a
+            // hold that never drew a ring can still have started the tone.
+            AudioCuePlayer.StopLoop(AudioCue.EraseHold);
             if (_holdIndicator == null) return;
             Destroy(_holdIndicator);
             _holdIndicator = null;
@@ -972,6 +979,9 @@ namespace TrainSudoku.Game
 
             var progress = (Time.unscaledTime - _pressTime) / HoldDuration;
             ShowHoldProgress(cell, progress);
+            // The hold is the one mechanic nothing on screen affords, so it gets a rising tone under its ring.
+            AudioCuePlayer.PlayLoop(AudioCue.EraseHold);
+            AudioCuePlayer.SetLoopPitch(AudioCue.EraseHold, Mathf.Lerp(1f, EraseHoldTopPitch, (float)progress));
             if (progress < 1f) return;
 
             _holdTriggered = true;
@@ -1034,7 +1044,7 @@ namespace TrainSudoku.Game
                     RefreshSelection();
                     break;
                 case SelectOutcome.Selected:
-                    Haptics.Play(HapticFeel.Selection);
+                    AudioCuePlayer.Play(AudioCue.CellSelect);
                     RefreshSelection();
                     Acted?.Invoke(BoardAction.Selected);
                     break;
@@ -1068,7 +1078,7 @@ namespace TrainSudoku.Game
             }
 
             // Narrowing to the first side, or letting it go again, is a change of selection rather than a placement.
-            if (outcome != ChooseOutcome.Ignored) Haptics.Play(HapticFeel.Selection);
+            if (outcome != ChooseOutcome.Ignored) AudioCuePlayer.Play(AudioCue.SideChosen);
             RefreshSelection();
 
             // Reverting puts the cell back to how it looked on selection, so it reads to the coach as a fresh one.

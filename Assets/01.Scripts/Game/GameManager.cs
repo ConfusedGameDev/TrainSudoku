@@ -27,6 +27,10 @@ namespace TrainSudoku.Game
         [SerializeField] private LevelCollection levels = null;
         [SerializeField] private InputActionAsset inputActions = null;
         [SerializeField] private AudioCueLibrary audioCues = null;
+
+        [Tooltip("Main menu, map, and the three in-game variations. A track with no clip is silent, so the game runs " +
+                 "correctly with this unset.")]
+        [SerializeField] private MusicLibrary music = null;
         [SerializeField] private TrackAssets trackAssets = null;
         [SerializeField] private TrainAssets trainAssets = null;
 
@@ -50,6 +54,7 @@ namespace TrainSudoku.Game
         [SerializeField] private UiShell shell = null;
         [SerializeField] private EventSystem eventSystem = null;
         [SerializeField] private AudioCuePlayer audioPlayer = null;
+        [SerializeField] private MusicPlayer musicPlayer = null;
         [SerializeField] private BoardCamera boardCamera = null;
         [SerializeField] private BoardView boardView = null;
         [SerializeField] private TrainRunner trainRunner = null;
@@ -74,6 +79,7 @@ namespace TrainSudoku.Game
         /// straight away would have the news wiped by the very placement that earned it.
         /// </summary>
         private bool _lineSatisfied;
+        private bool _lineFanfarePlayed;
 
         /// <summary>
         /// The rules have been read this session. Kept in memory rather than in the save file: it is three taps,
@@ -210,6 +216,7 @@ namespace TrainSudoku.Game
             if (boardCamera == null) Debug.LogWarning("GameManager: no camera in the scene, the board will not be visible.", this);
 
             audioPlayer = AudioCuePlayer.Create(transform, audioCues);
+            musicPlayer = MusicPlayer.Create(transform, music);
             // UI Toolkit still routes runtime pointer events through the EventSystem, so this stays.
             eventSystem = SceneObjects.EnsureEventSystem(inputActions, transform);
             shell = UiShell.Create(transform, panelSettings, tokenSheet, componentSheet);
@@ -233,12 +240,14 @@ namespace TrainSudoku.Game
         {
             if (shell != null) SceneObjects.Destroy(shell.gameObject);
             if (audioPlayer != null) SceneObjects.Destroy(audioPlayer.gameObject);
+            if (musicPlayer != null) SceneObjects.Destroy(musicPlayer.gameObject);
             if (boardView != null) SceneObjects.Destroy(boardView.gameObject);
             if (trainRunner != null) SceneObjects.Destroy(trainRunner.gameObject);
             // Only remove the event system if it is ours; the scene may have had one already.
             if (eventSystem != null && eventSystem.transform.parent == transform) SceneObjects.Destroy(eventSystem.gameObject);
             shell = null;
             audioPlayer = null;
+            musicPlayer = null;
             boardView = null;
             trainRunner = null;
             eventSystem = null;
@@ -332,8 +341,19 @@ namespace TrainSudoku.Game
             trainRunner.Configure(trainAssets);
             trainRunner.Finished += OnTrainFinished;
 
+            // Same for the music. It is deliberately not part of IsGenerated: that would make every scene baked before
+            // the audio layer fail the check and silently regenerate its whole UI on first launch.
+            if (musicPlayer == null) musicPlayer = MusicPlayer.Create(transform, music);
+            musicPlayer.Configure(music);
+            if (audioPlayer != null) audioPlayer.Configure(audioCues);
+
+            // Before any screen binds, so a muted player is silent from the first frame rather than from whenever the
+            // concourse happens to wire itself.
+            AudioMute.Load();
+
             Flow.StateChanged += OnStateChanged;
             Flow.LevelStarted += OnLevelStarted;
+            Flow.StarTierChanged += OnStarTierChanged;
             ApplyState(Flow.State);
         }
 
@@ -355,6 +375,7 @@ namespace TrainSudoku.Game
             if (Flow == null) return;
             Flow.StateChanged -= OnStateChanged;
             Flow.LevelStarted -= OnLevelStarted;
+            Flow.StarTierChanged -= OnStarTierChanged;
             if (boardView != null)
             {
                 boardView.BoardChanged -= SaveProgress;
@@ -379,8 +400,19 @@ namespace TrainSudoku.Game
 
         private void OnStateChanged(GameState previous, GameState current)
         {
+            // A screen is changing, so the click that is still ringing from the last one goes with it. It lives here
+            // rather than in ApplyState because the editor-only RefreshCurrentScreen calls that too, and a redraw is
+            // not a transition.
+            AudioCuePlayer.CancelInFlight();
             if (previous == GameState.Play && current == GameState.Pause) SaveProgress();
             ApplyState(current);
+        }
+
+        /// <summary>The run dropped out of reach of a star: the in-game music steps down to the next variation.</summary>
+        private void OnStarTierChanged(int tier)
+        {
+            // No state guard: MusicPlan ignores the tier outside Play and Pause, and Play no-ops on an unchanged track.
+            if (musicPlayer != null) musicPlayer.Play(MusicPlan.For(Flow.State, tier));
         }
 
         /// <summary>Writes the current attempt to the save file. Safe to call in any state; only Play and Pause have one.</summary>
@@ -419,6 +451,17 @@ namespace TrainSudoku.Game
                 trainRunner.Run(boardView.Board);
             }
             else if (trainRunner.IsRunning) trainRunner.Stop();
+
+            // SetPaused before Play, and the order is load-bearing: Retry from the pause menu resets the ladder to
+            // three stars and re-enters Play, so the sources have to be un-paused before the crossfade to the
+            // three-star track starts, or it would be running on paused sources.
+            if (musicPlayer != null)
+            {
+                musicPlayer.SetPaused(state == GameState.Pause);
+                musicPlayer.Play(MusicPlan.For(state, Flow.StarTier));
+            }
+
+            AudioCuePlayer.SetLoopsPaused(state == GameState.Pause);
         }
 
         private void OnTrainFinished()
@@ -471,12 +514,33 @@ namespace TrainSudoku.Game
         private void OnBoardChanged()
         {
             if (_playScreen != null) _playScreen.UpdateProgress();
+            // BoardChanged fires immediately before Validate, which is what raises LineCleared — so this is the reset
+            // point for a once-per-placement latch, the same reasoning that puts _lineSatisfied where it is.
+            _lineFanfarePlayed = false;
         }
 
         private void OnLineCleared(bool isRow, int index)
         {
             _lineSatisfied = true;
             if (_playScreen != null) _playScreen.AnnounceLineClear(isRow, index);
+            PlayLineClearedCue();
+        }
+
+        /// <summary>
+        /// The clue-satisfied sound, at most once per placement and never on the winning one.
+        /// </summary>
+        /// <remarks>
+        /// Both guards are needed. A single rail can complete a row <i>and</i> a column, which raises
+        /// <c>LineCleared</c> twice in one placement and would sound as two overlapping dings. And the winning
+        /// placement satisfies its last line too, underneath the final-piece sting and the departure — the win owns
+        /// that moment, so the ding stands aside. <c>LastResult</c> is already assigned by the time this runs.
+        /// </remarks>
+        private void PlayLineClearedCue()
+        {
+            if (_lineFanfarePlayed) return;
+            if (boardView != null && boardView.LastResult != null && boardView.LastResult.IsWin) return;
+            _lineFanfarePlayed = true;
+            AudioCuePlayer.Play(AudioCue.LineCleared);
         }
 
         private void OnBoardInteracted()
@@ -489,7 +553,7 @@ namespace TrainSudoku.Game
             if (Flow.State != GameState.Play) return;
             _coach.Complete();
             PushTutorial();
-            AudioCuePlayer.Play(AudioCue.Win);
+            AudioCuePlayer.Play(AudioCue.FinalPiece);
             Flow.CompleteLevel();
         }
 

@@ -16,36 +16,103 @@ MonoBehaviour:
   - cue: 0
     clip: {fileID: 8300000, guid: 31d676f1481b356408a4596ff7c48a50, type: 3}
     volume: 1
+    output: {fileID: 0}
+    holdThroughTransition: 0
   - cue: 1
     clip: {fileID: 8300000, guid: 11bfe1bd8d891c44586c0070a48eed30, type: 3}
     volume: 1
+    output: {fileID: 0}
+    holdThroughTransition: 0
   - cue: 2
     clip: {fileID: 8300000, guid: 4bdb0b687d94c364b9b6ac99b38e962a, type: 3}
     volume: 1
+    output: {fileID: 0}
+    holdThroughTransition: 0
   - cue: 3
     clip: {fileID: 8300000, guid: 50e3da448704f3149af9e858035e88c4, type: 3}
     volume: 1
+    output: {fileID: 0}
+    holdThroughTransition: 0
   - cue: 4
     clip: {fileID: 8300000, guid: b8069a131803617439690b4c37879470, type: 3}
     volume: 1
+    output: {fileID: 0}
+    holdThroughTransition: 0
   - cue: 5
     clip: {fileID: 8300000, guid: ee7460474246904468c9b7ae3d5c51ea, type: 3}
     volume: 1
+    output: {fileID: 0}
+    holdThroughTransition: 0
   - cue: 6
     clip: {fileID: 8300000, guid: 2efb51b8706abd14089393ab2a169020, type: 3}
     volume: 1
+    output: {fileID: 0}
+    holdThroughTransition: 0
   - cue: 7
     clip: {fileID: 8300000, guid: 44a0ff6f0b2f1ec48b6241e28fc069ab, type: 3}
     volume: 1
+    output: {fileID: 0}
+    holdThroughTransition: 0
   - cue: 8
     clip: {fileID: 8300000, guid: 18973115e9feadb40a83dbba1db421b1, type: 3}
     volume: 0.6
+    output: {fileID: 0}
+    holdThroughTransition: 0
   - cue: 9
     clip: {fileID: 8300000, guid: 0d9875dc11eee3945bbd1f3d2947fd71, type: 3}
     volume: 0.7
+    output: {fileID: 0}
+    holdThroughTransition: 0
   - cue: 10
     clip: {fileID: 8300000, guid: f7275c377329a25499e8a7e9df8b4c78, type: 3}
     volume: 0.9
+    output: {fileID: 0}
+    holdThroughTransition: 1
   - cue: 11
     clip: {fileID: 8300000, guid: f66899a74d886eb4bad9b5e1e0fa3a25, type: 3}
     volume: 0.8
+    output: {fileID: 0}
+    holdThroughTransition: 1
+  - cue: 12
+    clip: {fileID: 0}
+    volume: 1
+    output: {fileID: 0}
+    holdThroughTransition: 0
+  - cue: 13
+    clip: {fileID: 0}
+    volume: 1
+    output: {fileID: 0}
+    holdThroughTransition: 0
+  - cue: 14
+    clip: {fileID: 0}
+    volume: 1
+    output: {fileID: 0}
+    holdThroughTransition: 0
+  - cue: 15
+    clip: {fileID: 0}
+    volume: 1
+    output: {fileID: 0}
+    holdThroughTransition: 0
+  - cue: 16
+    clip: {fileID: 0}
+    volume: 1
+    output: {fileID: 0}
+    holdThroughTransition: 1
+  - cue: 17
+    clip: {fileID: 0}
+    volume: 1
+    output: {fileID: 0}
+    holdThroughTransition: 1
+  - cue: 18
+    clip: {fileID: 0}
+    volume: 1
+    output: {fileID: 0}
+    holdThroughTransition: 1
+  - cue: 19
+    clip: {fileID: 0}
+    volume: 1
+    output: {fileID: 0}
+    holdThroughTransition: 1
+  output: {fileID: 0}
+  loopOutput: {fileID: 0}
+  masterVolumeParameter: MasterVolume

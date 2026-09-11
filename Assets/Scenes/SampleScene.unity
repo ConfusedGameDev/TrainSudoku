@@ -6556,6 +6556,7 @@ MonoBehaviour:
   trackAssets: {fileID: 11400000, guid: 847a2bad6fef7129273ec8edecc95225, type: 2}
   trainAssets: {fileID: 11400000, guid: dd8f5904bbe9a055f436b2b701c9254a, type: 2}
   unlockAllLevelsInEditor: 0
+  debugUnlockedLines: 010100000000000000000000000000000000000000000000y
   eraseRingColour: {r: 0.9056604, g: 0.1918721, b: 0.15806337, a: 1}
   eraseRingScale: 2
   shell: {fileID: 808086891}
@@ -7019,6 +7020,7 @@ MonoBehaviour:
   clues: {fileID: 2126018046}
   markers: {fileID: 496632323}
   decor: {fileID: 1307341342}
+  guide: {fileID: 0}
   boardCamera: {fileID: 330585548}
   trackAssets: {fileID: 11400000, guid: 847a2bad6fef7129273ec8edecc95225, type: 2}
 --- !u!4 &1976260236
