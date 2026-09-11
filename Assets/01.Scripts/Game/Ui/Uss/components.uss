@@ -216,3 +216,18 @@
     min-height: 116px;
     margin-left: 18px;
 }
+
+/*
+ * The masthead mark: the app icon's roundel, cut to a circle so it sits on the paper sign card instead of
+ * arriving as a dark square tile. It is the one accented thing on any screen that is NOT line-tinted -- a logo
+ * does not change colour with the line the player happens to be on -- so it carries no line class and is art
+ * rather than a painted StationRoundel.
+ */
+.masthead-mark {
+    width: 128px;
+    height: 128px;
+    flex-shrink: 0;
+    margin-right: 30px;
+    background-image: url("/Assets/02.Graphics/Ui/Logo/tsugi-mark.png");
+    background-size: contain;
+}

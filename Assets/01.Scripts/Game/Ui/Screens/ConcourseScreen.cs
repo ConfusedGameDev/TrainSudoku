@@ -16,11 +16,29 @@ namespace TrainSudoku.Game
     /// sign keeps the mockup's three-tier vertical rhythm (a small line above the title, the title, a small line
     /// below) and fills the two small lines with Latin the game already owns: the line name over the top, the two
     /// termini along the bottom. Same read, one language.
+    ///
+    /// <b>The kana came back, as art.</b> The game is <c>Tsugi</c>, and its mark is the app roundel with つぎ in it,
+    /// which stands where the station roundel used to. That does not re-open D5: the kana is a texture inside
+    /// <c>.masthead-mark</c>, not a label, so no VisualElement asks a font for a CJK glyph and an en/es/fr build
+    /// still needs nothing but Barlow to draw this screen.
     /// </remarks>
     public sealed class ConcourseScreen : UiScreen
     {
         /// <summary>The platform art's share of the screen. Tall enough to read as a scene, not an icon.</summary>
         private const float ArtHeight = 460f;
+
+        /// <summary>
+        /// The game's name and the strapline under it, as they appear on the logo. Both are Latin proper nouns and
+        /// neither goes through the string table: the mark reads the same in all four locales, and the kana half of
+        /// it (つぎ) is art inside <c>.masthead-mark</c> rather than a label, which is what keeps D5 intact — no
+        /// Japanese reaches a VisualElement, and no locale needs a CJK face to draw the title.
+        /// </summary>
+        private const string Title = "TSUGI";
+
+        private const string Strapline = "NEXT STATION";
+
+        /// <summary>Larger than the name it replaced, because five letters have to hold the same board.</summary>
+        private const int TitleSize = 96;
 
         private const string MutedKey = "audio.muted";
 
@@ -30,7 +48,7 @@ namespace TrainSudoku.Game
         private Label _cardLine;
         private Label _stationCount;
         private Label _starCount;
-        private StationRoundel _roundel;
+        private VisualElement _mark;
         private LineProgressStrip _strip;
         private PlatformArt _platform;
         private Button _board;
@@ -67,18 +85,28 @@ namespace TrainSudoku.Game
         {
             Signage.SignCard(root, out var content);
 
-            _roundel = new StationRoundel { Stacked = true };
-            _roundel.style.width = 128;
-            _roundel.style.height = 128;
-            _roundel.style.marginRight = 30;
-            content.parent.Insert(0, _roundel);
+            // The game's own mark, not the station's. This card's title is the game's name, so what stands
+            // beside it is the app roundel; where the player is on the line is carried by the over-line, the
+            // termini under the title and the progress card below, which is where the station number went.
+            _mark = new VisualElement();
+            _mark.AddToClassList("masthead-mark");
+            _mark.pickingMode = PickingMode.Ignore;
+            content.parent.Insert(0, _mark);
 
             // The over-line, where the kana was. Small, dim and widely tracked, so the title lands harder for it.
             _lineName = Signage.SignageLabel("", 26, "signage--dim");
             _lineName.style.letterSpacing = 6f;
             content.Add(_lineName);
 
-            content.Add(Signage.SignageLabel("TRAIN SUDOKU", 68));
+            content.Add(Signage.SignageLabel(Title, TitleSize));
+
+            // The strapline off the logo lockup. Latin and untranslated, because it is part of the mark rather
+            // than copy -- the same standing D14 gives station and line names.
+            var strapline = Signage.SignageLabel(Strapline, 26);
+            strapline.AddToClassList(UiShell.LineTextClass);
+            strapline.style.letterSpacing = 8f;
+            strapline.style.marginTop = 2;
+            content.Add(strapline);
 
             // The under-line: where the line runs from and to, the way a platform sign carries its two directions.
             // A row pushed to both edges rather than one string, so the two ends read as two directions.
@@ -310,9 +338,6 @@ namespace TrainSudoku.Game
             var stations = Flow.Layout.StationCount(lineIndex);
 
             var next = Game.NextStationOnLine(lineIndex);
-            _roundel.Code = line != null ? line.Code : "TS";
-            _roundel.Number = (next >= 0 ? next : stations - 1) + 1;
-            _roundel.State = StationState.Current;
             _lineName.text = line != null ? $"{line.DisplayName} LINE".ToUpperInvariant() : "";
 
             var from = Game.Station(lineIndex, 0);

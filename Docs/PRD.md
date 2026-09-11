@@ -1,4 +1,6 @@
-# TrainSudoku — Product Requirements Document
+# Tsugi — Product Requirements Document
+
+(Shipped as **Tsugi**; the codebase, its namespaces and the repo keep the working name TrainSudoku.)
 
 Status: agreed 2026-09-09. Supersedes `Plan.md` (kept as the original brief).
 

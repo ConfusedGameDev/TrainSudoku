@@ -1,4 +1,4 @@
-TRAINSUDOKU · UI WORK ORDER
+TSUGI · UI WORK ORDER
 v0.4 · 10 SEP 2026 · main @ 3947585
 STATUS: M20 next · M11–M19 of M11–M20 done · progress table in 11.0
 
@@ -124,6 +124,30 @@ already exist by step 7:
   time and rails-laid read out in the same two-column form the Arrival screen uses for THIS RUN / BEST.
 - **Train run** = the `LedStrip` element alone, bottom-anchored, over a full-screen transparent button that
   calls the existing skip path. Nothing else on screen.
+
+### 2.2 The masthead — the game is **Tsugi**
+
+The concourse sign card is the game's masthead: its title is the product's name, not the station's. That name is
+**TSUGI** (つぎ, "next" — the first word of every station announcement), with **NEXT STATION** under it in the
+line colour, and the app roundel standing where the station roundel used to.
+
+Three things worth knowing before touching it:
+
+- **The kana is art, not a label.** The mark is `.masthead-mark`, a `background-image` of
+  `02.Graphics/Ui/Logo/tsugi-mark.png` — the 1024 app icon with its square corners cut away so the circle sits on
+  the paper card instead of arriving as a dark tile. **This does not re-open D5.** No `VisualElement` asks a font
+  for つぎ, so an en/es/fr build still needs nothing but Barlow to draw this screen, and the 4.3 MB CJK face stays
+  out of it. Had the kana been a `Label` it would have been a row of missing-glyph boxes in three locales out of
+  four.
+- **TSUGI and NEXT STATION are untranslated**, on the standing D14 rule for proper nouns: they are the mark, not
+  copy. Nothing about them enters the `UI` String Table.
+- **The mark is the one accented thing on any screen that is not line-tinted.** A logo does not change colour with
+  the line the player happens to be on, so it carries no line class. The strapline under it *does* — it is copy
+  wearing the accent, the same as the rule inside the card's bottom edge.
+
+The station roundel that stood there (line code over station number) is gone from this screen. Where the player is
+is still carried three ways: the over-line names the line, the termini name both ends of it, and the progress card
+below carries the code, the count and the strip.
 
 ---
 
