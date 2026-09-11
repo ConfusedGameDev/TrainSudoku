@@ -131,6 +131,42 @@ MonoBehaviour:
     m_Key: play.column_clear
     m_Metadata:
       m_Items: []
+  - m_Id: 289867580825600
+    m_Key: linemap.cleared
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019904
+    m_Key: linemap.resume
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019905
+    m_Key: linemap.in_progress
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019906
+    m_Key: linemap.rails
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019907
+    m_Key: linemap.best
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019908
+    m_Key: linemap.closed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019909
+    m_Key: linemap.legend_cleared
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019910
+    m_Key: linemap.legend_service
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019911
+    m_Key: linemap.legend_closed
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

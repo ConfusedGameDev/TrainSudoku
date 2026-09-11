@@ -134,6 +134,42 @@ MonoBehaviour:
     m_Localized: COLUMNA {0} COMPLETA
     m_Metadata:
       m_Items: []
+  - m_Id: 289867580825600
+    m_Localized: '{0} / {1} COMPLETADAS'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019904
+    m_Localized: CONTINUAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019905
+    m_Localized: En curso
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019906
+    m_Localized: "{0} de {1} ra\xEDles"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019907
+    m_Localized: Mejor
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019908
+    m_Localized: Cerrada
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019909
+    m_Localized: COMPLETADA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019910
+    m_Localized: EN SERVICIO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019911
+    m_Localized: CERRADA
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

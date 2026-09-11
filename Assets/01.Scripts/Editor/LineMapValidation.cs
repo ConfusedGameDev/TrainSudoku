@@ -48,7 +48,9 @@ namespace TrainSudoku.Editor
             }
 
             CheckNodes(nodes, problems);
-            CheckSegments(Segments(nodes, shape), problems);
+            // A stadium's nodes are station positions on a curve, not the ends of drawn segments, so the lattice rule
+            // has nothing to check: there are no segments between them to be off-grid or to run over one another.
+            if (shape != MapShape.Stadium) CheckSegments(Segments(nodes, shape), problems);
             CheckStations(nodes, stationNodes, stationCount, problems);
             return problems;
         }
@@ -259,6 +261,8 @@ namespace TrainSudoku.Editor
         private static List<Segment> Segments(IReadOnlyList<Vector2> nodes, MapShape shape)
         {
             var segments = new List<Segment>();
+            // A stadium is drawn as a curve fitted to the nodes, so nothing runs between them to cross another line.
+            if (shape == MapShape.Stadium) return segments;
             for (var i = 0; i + 1 < nodes.Count; i++) segments.Add(new Segment(nodes[i], nodes[i + 1], i));
             if (shape == MapShape.Loop && nodes.Count > 2)
                 segments.Add(new Segment(nodes[nodes.Count - 1], nodes[0], nodes.Count - 1));

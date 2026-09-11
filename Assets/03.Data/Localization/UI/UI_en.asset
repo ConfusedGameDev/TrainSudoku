@@ -43,7 +43,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 52156999655426
-    m_Localized: "NEXT STATION: {0}"
+    m_Localized: 'NEXT STATION: {0}'
     m_Metadata:
       m_Items: []
   - m_Id: 52156999655427
@@ -132,6 +132,42 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 75892167532545
     m_Localized: COLUMN {0} CLEAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867580825600
+    m_Localized: '{0} / {1} CLEARED'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019904
+    m_Localized: RESUME
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019905
+    m_Localized: In progress
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019906
+    m_Localized: '{0} of {1} rails'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019907
+    m_Localized: Best
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019908
+    m_Localized: Closed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019909
+    m_Localized: CLEARED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019910
+    m_Localized: IN SERVICE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019911
+    m_Localized: CLOSED
     m_Metadata:
       m_Items: []
   references:

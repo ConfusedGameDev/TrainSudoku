@@ -43,7 +43,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 52156999655426
-    m_Localized: "PROCHAINE STATION : {0}"
+    m_Localized: 'PROCHAINE STATION : {0}'
     m_Metadata:
       m_Items: []
   - m_Id: 52156999655427
@@ -132,6 +132,42 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 75892167532545
     m_Localized: "COLONNE {0} COMPL\xC8TE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867580825600
+    m_Localized: "{0} / {1} TERMIN\xC9ES"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019904
+    m_Localized: REPRENDRE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019905
+    m_Localized: En cours
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019906
+    m_Localized: '{0} rails sur {1}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019907
+    m_Localized: Record
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019908
+    m_Localized: "Ferm\xE9e"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019909
+    m_Localized: "TERMIN\xC9E"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019910
+    m_Localized: EN SERVICE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 289867585019911
+    m_Localized: "FERM\xC9E"
     m_Metadata:
       m_Items: []
   references:

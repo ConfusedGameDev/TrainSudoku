@@ -5,18 +5,28 @@ using UnityEngine.UIElements;
 namespace TrainSudoku.Game
 {
     /// <summary>
-    /// One line's map (work order 2): the route, a dot per station, and a docked card for whichever station is
+    /// One line's map (work order 2): the route, a marker per station, and a docked card for whichever station is
     /// selected. It replaces the scrolling button list the old Level Select used.
     /// </summary>
+    /// <remarks>
+    /// Built to the Line Map artboard, with two amendments the closed decisions force. The artboard's header and card
+    /// each carry a kana line over their roman one and its action button reads <c>RESUME · さいかい</c>: D5 kills the
+    /// stacked pair and D13 keeps Japanese out of every <see cref="VisualElement"/>, so each of those is one localised
+    /// line in the active locale. The artboard's station names are level filenames that predate D14 and D17; the real
+    /// ones come off the assets.
+    /// </remarks>
     public sealed class LineMapScreen : UiScreen
     {
+        /// <summary>The artboard's legend strip, and the card's action button.</summary>
+        private const float LegendHeight = 130f;
+        private const float ActionHeight = 104f;
+
         private LineMapElement _map;
-        private StationRoundel _bandRoundel;
         private StationRoundel _cardRoundel;
         private Label _lineName;
+        private Label _cleared;
         private Label _stationName;
         private Label _stationMeta;
-        private VisualElement _stars;
         private VisualElement _starsHost;
         private Button _board;
         private int _selected;
@@ -27,53 +37,79 @@ namespace TrainSudoku.Game
         {
             root.AddToClassList("screen");
 
-            Signage.Band(root, out var bandContent);
-            _bandRoundel = new StationRoundel { Number = -1 };
-            _bandRoundel.style.width = 84;
-            _bandRoundel.style.height = 84;
-            _bandRoundel.style.marginRight = 28;
-            bandContent.parent.Insert(0, _bandRoundel);
+            BuildBand(root);
 
-            bandContent.Add(Signage.SignageLabel(Signage.Text("linemap.title"), 56, "signage--onDark"));
-            _lineName = Signage.BodyLabel("", 30, "body--dim");
-            bandContent.Add(_lineName);
-
-            _map = new LineMapElement { style = { flexGrow = 1f } };
+            _map = new LineMapElement { style = { flexGrow = 1f, flexShrink = 1f } };
             _map.AddToClassList(UiShell.LineTextClass);
             _map.StationClicked += Select;
             root.Add(_map);
 
             root.Add(BuildCard());
-
-            // Back retraces the way in: to the network when there was a choice there, to the concourse when the
-            // network was stepped over. Both edges are legal out of LevelSelect.
-            var back = Signage.LocalizedButton("common.back", AudioCue.UiBack, GoBack);
-            Signage.Inset(back, 0f, 24f);
-            root.Add(back);
+            root.Add(BuildLegend());
         }
 
+        /// <summary>
+        /// The dark header: the way back on the left, the screen's name and the line's beside it, and how much of the
+        /// line is cleared on the right. The artboard puts the back button here rather than at the foot of the screen.
+        /// </summary>
+        private void BuildBand(VisualElement root)
+        {
+            Signage.Band(root, out var bandContent);
+
+            var back = Signage.IconButton(Icons.Back(), AudioCue.UiBack, GoBack);
+            back.style.width = 84;
+            back.style.height = 84;
+            back.style.marginRight = 28;
+            back.style.flexShrink = 0;
+            bandContent.parent.Insert(0, back);
+
+            bandContent.Add(Signage.SignageLabel(Signage.Text("linemap.title"), 56, "signage--onDark"));
+            _lineName = Signage.BodyLabel("", 30, "body--dim");
+            bandContent.Add(_lineName);
+
+            // A hairline box rather than a filled pill: on the dark band the line colour has to read as signage, and
+            // a solid block of it beside the title would outweigh the title.
+            _cleared = Signage.SignageLabel("", 38, UiShell.LineTextClass);
+            _cleared.style.flexShrink = 0;
+            _cleared.style.alignSelf = Align.Center;
+            _cleared.style.paddingLeft = 26;
+            _cleared.style.paddingRight = 26;
+            _cleared.style.paddingTop = 12;
+            _cleared.style.paddingBottom = 12;
+            _cleared.style.borderTopWidth = _cleared.style.borderRightWidth =
+                _cleared.style.borderBottomWidth = _cleared.style.borderLeftWidth = 3;
+            _cleared.AddToClassList(UiShell.LineBorderClass);
+            bandContent.parent.Add(_cleared);
+        }
+
+        /// <summary>The docked card: which station is selected, how it stands, and the way into it.</summary>
         private VisualElement BuildCard()
         {
-            var card = Signage.Row();
+            var card = Signage.Column();
             card.AddToClassList("card");
             Signage.Inset(card, 0f, 20f);
-            card.style.paddingTop = 24;
-            card.style.paddingBottom = 24;
-            card.style.paddingLeft = 28;
-            card.style.paddingRight = 28;
+            card.style.paddingTop = 28;
+            card.style.paddingBottom = 28;
+            card.style.paddingLeft = 32;
+            card.style.paddingRight = 32;
 
-            _cardRoundel = new StationRoundel { Number = 1 };
-            _cardRoundel.style.width = 96;
-            _cardRoundel.style.height = 96;
+            var row = Signage.Row();
+            row.style.alignItems = Align.Center;
+            card.Add(row);
+
+            _cardRoundel = new StationRoundel { Number = 1, Stacked = true };
+            _cardRoundel.style.width = 104;
+            _cardRoundel.style.height = 104;
             _cardRoundel.style.marginRight = 24;
-            card.Add(_cardRoundel);
+            _cardRoundel.style.flexShrink = 0;
+            row.Add(_cardRoundel);
 
             var column = Signage.Column();
             column.style.flexGrow = 1f;
             column.style.flexShrink = 1f;
-            card.Add(column);
+            row.Add(column);
 
-            _stationName = Signage.SignageLabel("", 52);
+            _stationName = Signage.SignageLabel("", 58);
             column.Add(_stationName);
             _stationMeta = Signage.BodyLabel("", 28, "body--dim");
             column.Add(_stationMeta);
@@ -81,17 +117,71 @@ namespace TrainSudoku.Game
             _starsHost = Signage.Column();
             column.Add(_starsHost);
 
-            _board = Signage.LocalizedButton("linemap.board", AudioCue.UiConfirm, BoardSelected, true);
-            // No fixed width: the label is localised (BOARD / EMBARQUER / SUBIR / 乗車) and a fixed box clips the
-            // long ones. It sizes to its own text through the .button padding, with a floor so a short label is
-            // still a fair target, and it never shrinks -- the name column beside it gives way instead.
-            _board.style.minWidth = 220;
-            _board.style.flexShrink = 0;
+            // Full width and line-liveried, like the concourse's BOARD: this is the one thing the screen is for, and
+            // at this size the label can be any locale's without a fixed box to clip it.
+            _board = Signage.LocalizedButton("linemap.board", AudioCue.UiConfirm, BoardSelected);
+            _board.RemoveFromClassList("button--primary");
+            _board.AddToClassList("button--line");
+            _board.AddToClassList(UiShell.LineBackgroundClass);
+            _board.style.height = ActionHeight;
+            _board.style.marginTop = 24;
+            _board.style.marginLeft = 0;
+            _board.style.marginRight = 0;
             _board.style.whiteSpace = WhiteSpace.NoWrap;
-            _board.style.marginLeft = 20;
             card.Add(_board);
 
             return card;
+        }
+
+        /// <summary>The legend: what the three kinds of marker mean, in the same order the player meets them.</summary>
+        private VisualElement BuildLegend()
+        {
+            var legend = Signage.Row();
+            legend.style.height = LegendHeight;
+            legend.style.flexShrink = 0;
+            legend.style.alignItems = Align.Center;
+            legend.style.justifyContent = Justify.Center;
+            legend.style.backgroundColor = Palette.Ink;
+
+            legend.Add(LegendItem("linemap.legend_cleared", StationState.Cleared));
+            legend.Add(LegendItem("linemap.legend_service", StationState.Current));
+            legend.Add(LegendItem("linemap.legend_closed", StationState.Closed));
+            return legend;
+        }
+
+        private VisualElement LegendItem(string key, StationState state)
+        {
+            var item = Signage.Row();
+            item.style.alignItems = Align.Center;
+            item.style.marginLeft = 22;
+            item.style.marginRight = 22;
+
+            var dot = new VisualElement();
+            dot.style.width = 26;
+            dot.style.height = 26;
+            dot.style.borderTopLeftRadius = dot.style.borderTopRightRadius =
+                dot.style.borderBottomLeftRadius = dot.style.borderBottomRightRadius = 13;
+            dot.style.marginRight = 12;
+            if (state == StationState.Cleared)
+            {
+                dot.AddToClassList(UiShell.LineBackgroundClass);
+            }
+            else
+            {
+                dot.style.backgroundColor = Palette.Paper;
+                dot.style.borderTopWidth = dot.style.borderRightWidth =
+                    dot.style.borderBottomWidth = dot.style.borderLeftWidth = 5;
+                if (state == StationState.Current) dot.AddToClassList(UiShell.LineBorderClass);
+                else
+                    dot.style.borderTopColor = dot.style.borderRightColor =
+                        dot.style.borderBottomColor = dot.style.borderLeftColor = Palette.ClosedLight;
+            }
+
+            item.Add(dot);
+            var label = Signage.SignageLabel(Signage.Text(key), 30,
+                state == StationState.Closed ? "signage--dim" : "signage--onDark");
+            item.Add(label);
+            return item;
         }
 
         protected override void Wire()
@@ -101,10 +191,15 @@ namespace TrainSudoku.Game
         public override void Refresh(GameState state)
         {
             var line = Game.CurrentLine;
-            _bandRoundel.Code = line != null ? line.Code : "";
             _lineName.text = line != null ? line.DisplayName.ToUpperInvariant() : "";
 
             _map.SetLine(line, StateOf);
+
+            var stations = line != null ? line.StationCount : 0;
+            var cleared = 0;
+            for (var i = 0; i < stations; i++)
+                if (StateOf(i) == StationState.Cleared) cleared++;
+            _cleared.text = Signage.Text("linemap.cleared", cleared, stations);
 
             // Open on the station the player is up to, not always the first.
             var next = Game.NextStationOnLine(Flow.SelectedLineIndex);
@@ -127,24 +222,52 @@ namespace TrainSudoku.Game
             _selected = station;
             var level = Game.Station(Flow.SelectedLineIndex, station);
             var state = StateOf(station);
+            var line = Game.CurrentLine;
 
+            _cardRoundel.Code = line != null ? line.Code : "";
             _cardRoundel.Number = station + 1;
             _cardRoundel.State = state;
-            _stationName.text = level != null ? level.DisplayName : "";
+            _stationName.text = level != null ? level.DisplayName.ToUpperInvariant() : "";
+            _stationMeta.text = Meta(level, state);
 
             var id = level != null ? level.Id : null;
-            var best = id != null && Flow.Progress.TryGetBestTime(id, out var seconds)
-                ? ProgressTracker.FormatTime(seconds)
-                : "—";
-            _stationMeta.text = level == null ? "" : $"{level.Width}×{level.Height}   ·   {best}";
-
             _starsHost.Clear();
-            if (_stars != null) _stars = null;
-            _stars = Signage.Stars(id != null ? Flow.Progress.GetStars(id) : 0, 34);
-            _starsHost.Add(_stars);
+            _starsHost.Add(Signage.Stars(id != null ? Flow.Progress.GetStars(id) : 0, 34));
 
+            // A half-finished attempt is waiting to be resumed, which is a different offer from starting one.
+            var resuming = id != null && Flow.Progress.TryGetInProgress(id, out _);
+            _board.text = Signage.Text(resuming ? "linemap.resume" : "linemap.board");
             _board.SetEnabled(state != StationState.Closed);
+
+            _map.Selected = station;
             _map.Refresh();
+        }
+
+        /// <summary>
+        /// The line under the station name: where the player stands with it, then its size. A level in progress reads
+        /// out how much track is already down, because that is what decides whether it is worth going back to.
+        /// </summary>
+        private string Meta(LevelDefinition level, StationState state)
+        {
+            if (level == null) return "";
+
+            var size = $"{level.Width}×{level.Height}";
+            var id = level.Id;
+            if (id != null && Flow.Progress.TryGetInProgress(id, out var progress))
+            {
+                var total = 0;
+                var data = level.ToLevelData();
+                foreach (var clue in data.RowClues) total += clue;
+                var laid = progress.Pieces.Count + data.FixedPieces.Count;
+                return $"{Signage.Text("linemap.in_progress")}   ·   {Signage.Text("linemap.rails", laid, total)}   ·   {size}";
+            }
+
+            if (state == StationState.Cleared && Flow.Progress.TryGetBestTime(id, out var seconds))
+                return $"{Signage.Text("linemap.best")}   ·   {ProgressTracker.FormatTime(seconds)}   ·   {size}";
+
+            return state == StationState.Closed
+                ? $"{Signage.Text("linemap.closed")}   ·   {size}"
+                : size;
         }
 
         private void GoBack()

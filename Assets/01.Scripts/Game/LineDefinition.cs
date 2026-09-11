@@ -12,6 +12,13 @@ namespace TrainSudoku.Game
 
         /// <summary>A closed loop; the last node joins back to the first.</summary>
         Loop,
+
+        /// <summary>
+        /// A closed loop drawn as a stadium — two semicircular caps joined by straights — fitted to the bounding box
+        /// of the nodes, with a radius of half the shorter side. The nodes place the stations on that curve and are
+        /// not joined to each other, so this is the one shape whose stations are not on a 45-degree lattice.
+        /// </summary>
+        Stadium,
     }
 
     /// <summary>What it takes to open a line. Derived from stars on every launch, never stored (5.5).</summary>

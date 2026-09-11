@@ -31,6 +31,19 @@ namespace TrainSudoku.Game
             return string.IsNullOrEmpty(value) ? key : value;
         }
 
+        /// <summary>
+        /// The same with arguments, for the handful of strings that carry a number. The placeholders are the table's,
+        /// so a language is free to order them differently — which is the whole reason the count is not concatenated
+        /// in C#.
+        /// </summary>
+        public static string Text(string key, params object[] args)
+        {
+            if (string.IsNullOrEmpty(key)) return "";
+            if (LocalizationSettings.SelectedLocale == null) return key;
+            var value = LocalizationSettings.StringDatabase.GetLocalizedString(Table, key, args);
+            return string.IsNullOrEmpty(value) ? key : value;
+        }
+
         // ---- labels ----
 
         public static Label SignageLabel(string text, int size, params string[] extraClasses)
