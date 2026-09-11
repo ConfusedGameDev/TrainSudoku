@@ -170,6 +170,14 @@ MonoBehaviour:
     m_Localized: CLOSED
     m_Metadata:
       m_Items: []
+  - m_Id: 296786441789440
+    m_Localized: SLIGHT DELAY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983744
+    m_Localized: DELAYED
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

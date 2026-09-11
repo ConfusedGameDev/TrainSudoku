@@ -170,6 +170,14 @@ MonoBehaviour:
     m_Localized: "FERM\xC9E"
     m_Metadata:
       m_Items: []
+  - m_Id: 296786441789440
+    m_Localized: "L\xC9GER RETARD"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983744
+    m_Localized: "RETARD\xC9"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

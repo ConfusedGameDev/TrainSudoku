@@ -11,8 +11,9 @@ namespace TrainSudoku.Game
     /// </summary>
     /// <remarks>
     /// The arrival beat of work order 9 lives here: the title lands like a stamp on a ticket — 1.6 down through
-    /// 0.96 and back to 1.0 over 380 ms — and the stars follow it in 120 ms apart, each with its cue. The buttons
-    /// are live from the first frame, so none of it holds the player up.
+    /// 0.96 and back to 1.0 over 380 ms — the stars follow it in 120 ms apart, each with its cue, and then the
+    /// verdict is stamped on: down from 2.4 and off square, under-size on impact, and a damped rattle to a stop.
+    /// The buttons are live from the first frame, so none of it holds the player up.
     /// </remarks>
     public sealed class ArrivalScreen : UiScreen
     {
@@ -27,12 +28,35 @@ namespace TrainSudoku.Game
         private const float StarDuration = 0.2f;
         private const float StarPop = 1.25f;
 
+        /// <summary>
+        /// The verdict stamp. It comes down big and off-axis, hits under-size, settles, then rattles: a rubber stamp
+        /// pressed onto a ticket does not stop dead, and the shake is what sells the press as an impact rather than
+        /// as a fade-in.
+        /// </summary>
+        private const float StampPressDuration = 0.26f;
+        private const float StampPressFrom = 2.4f;
+        private const float StampPressHit = 0.88f;
+
+        /// <summary>Where the press bottoms out and hands over to the settle, as a share of its duration.</summary>
+        private const float StampPressImpact = 0.62f;
+
+        /// <summary>The rattle after the hit: how long it lasts, how far it swings, and how many times.</summary>
+        private const float StampShakeDuration = 0.34f;
+        private const float StampShakeDegrees = 3.2f;
+        private const float StampShakeCycles = 2.5f;
+
+        /// <summary>How far off square the stamp finally rests, the way a hand-pressed one never lands true.</summary>
+        private const float StampRest = -4f;
+        private const float StampEntryTilt = -22f;
+
         private Label _title;
         private Label _stationName;
         private Label _thisRun;
         private Label _best;
         private Label _newBest;
         private VisualElement _starsHost;
+        private VisualElement _stamp;
+        private Label _stampText;
         private Button _next;
 
         public override bool IsVisibleIn(GameState state) => state == GameState.Win;
@@ -64,9 +88,15 @@ namespace TrainSudoku.Game
             Signage.Margins(rule, 0f, 0f, 12f, 28f);
             card.Add(rule);
 
+            // Stars on the left, the verdict stamped on the right, the way the artboard reads the result out.
+            var verdict = Signage.Row();
+            Signage.Margins(verdict, 0f, 0f, 0f, 24f);
+            card.Add(verdict);
+
             _starsHost = Signage.Column();
-            Signage.Margins(_starsHost, 0f, 0f, 0f, 24f);
-            card.Add(_starsHost);
+            verdict.Add(_starsHost);
+            verdict.Add(Signage.Spacer());
+            verdict.Add(BuildStamp());
 
             card.Add(Readout(Signage.Text("arrival.this_run"), out _thisRun));
             card.Add(Readout(Signage.Text("arrival.best"), out _best));
@@ -88,6 +118,38 @@ namespace TrainSudoku.Game
         }
 
         /// <summary>
+        /// The verdict stamp: a bordered box held off square, carrying how the run went. Built once; only its text
+        /// changes, because the three messages are the same shape.
+        /// </summary>
+        private VisualElement BuildStamp()
+        {
+            _stamp = Signage.Column();
+            _stamp.style.alignItems = Align.Center;
+            _stamp.style.justifyContent = Justify.Center;
+            _stamp.style.flexShrink = 0;
+            _stamp.style.paddingTop = 12;
+            _stamp.style.paddingBottom = 12;
+            _stamp.style.paddingLeft = 26;
+            _stamp.style.paddingRight = 26;
+            _stamp.style.backgroundColor = Palette.Paper;
+            _stamp.style.borderTopWidth = _stamp.style.borderRightWidth =
+                _stamp.style.borderBottomWidth = _stamp.style.borderLeftWidth = 3;
+            _stamp.AddToClassList(UiShell.LineBorderClass);
+            _stamp.style.rotate = new Rotate(new Angle(StampRest, AngleUnit.Degree));
+
+            _stampText = Signage.SignageLabel("", 44, UiShell.LineTextClass);
+            _stamp.Add(_stampText);
+            return _stamp;
+        }
+
+        /// <summary>
+        /// How the run reads on the stamp. Three messages for the three ratings a finished run can carry — the timer
+        /// never awards none, so there is no fourth.
+        /// </summary>
+        private static string StampKey(int stars) =>
+            stars >= 3 ? "arrival.on_time" : stars == 2 ? "arrival.slight_delay" : "arrival.delayed";
+
+        /// <summary>
         /// The stamp, then the stars. One tween drives the whole beat rather than a chain of delayed calls, so a
         /// second arrival landing on the first cannot leave a star mid-pop.
         /// </summary>
@@ -101,7 +163,15 @@ namespace TrainSudoku.Game
             }
 
             var cued = new bool[icons.Count];
-            var total = StampDuration + icons.Count * StarInterval + StarDuration;
+
+            // The stamp comes down after the last star, so the beat reads title, rating, verdict.
+            var stampAt = StampDuration + icons.Count * StarInterval + StarDuration;
+            var total = stampAt + StampPressDuration + StampShakeDuration;
+            var struck = false;
+
+            _stamp.style.opacity = 0f;
+            _stamp.style.scale = new Scale(Vector3.one * StampPressFrom);
+            _stamp.style.rotate = new Rotate(new Angle(StampEntryTilt, AngleUnit.Degree));
 
             Motion.Play(Root, total, t =>
             {
@@ -117,6 +187,26 @@ namespace TrainSudoku.Game
                     cued[i] = true;
                     if (cueEachStar && i < earned) AudioCuePlayer.Play(AudioCue.StarAwarded);
                 }
+
+                var press = Motion.Stage(elapsed, stampAt, StampPressDuration);
+                if (press > 0f)
+                {
+                    _stamp.style.opacity = Mathf.Clamp01(press * 3f);
+                    _stamp.style.scale = new Scale(Vector3.one * Press(press));
+                    _stamp.style.rotate = new Rotate(new Angle(
+                        Mathf.Lerp(StampEntryTilt, StampRest, Motion.EaseIn(Mathf.Min(press / StampPressImpact, 1f))),
+                        AngleUnit.Degree));
+
+                    // One hit, at the moment it bottoms out rather than when the tween starts.
+                    if (!struck && press >= StampPressImpact)
+                    {
+                        struck = true;
+                        AudioCuePlayer.Play(AudioCue.UiConfirm);
+                    }
+                }
+
+                var shake = Motion.Stage(elapsed, stampAt + StampPressDuration, StampShakeDuration);
+                if (shake > 0f) _stamp.style.rotate = new Rotate(new Angle(StampRest + Rattle(shake), AngleUnit.Degree));
             }, () =>
             {
                 _title.style.scale = new Scale(Vector3.one);
@@ -125,8 +215,27 @@ namespace TrainSudoku.Game
                     icon.style.opacity = 1f;
                     icon.style.scale = new Scale(Vector3.one);
                 }
+
+                _stamp.style.opacity = 1f;
+                _stamp.style.scale = new Scale(Vector3.one);
+                _stamp.style.rotate = new Rotate(new Angle(StampRest, AngleUnit.Degree));
             });
         }
+
+        /// <summary>
+        /// The press: down fast from <see cref="StampPressFrom"/> past its resting size to
+        /// <see cref="StampPressHit"/>, then back out to rest. Easing in on the way down is what makes it read as
+        /// something falling onto the screen rather than something growing on it.
+        /// </summary>
+        private static float Press(float t)
+        {
+            if (t < StampPressImpact) return Mathf.Lerp(StampPressFrom, StampPressHit, Motion.EaseIn(t / StampPressImpact));
+            return Mathf.Lerp(StampPressHit, 1f, Motion.EaseOut((t - StampPressImpact) / (1f - StampPressImpact)));
+        }
+
+        /// <summary>A damped swing either side of rest, so the stamp rattles to a stop instead of stopping dead.</summary>
+        private static float Rattle(float t) =>
+            Mathf.Sin(t * StampShakeCycles * 2f * Mathf.PI) * StampShakeDegrees * (1f - t) * (1f - t);
 
         /// <summary>Down from <see cref="StampFrom"/> to <see cref="StampSettle"/>, then back up to rest.</summary>
         private static float Stamp(float t)
@@ -161,6 +270,7 @@ namespace TrainSudoku.Game
             _newBest.style.display = result.HasValue && result.Value.IsNewBest ? DisplayStyle.Flex : DisplayStyle.None;
 
             var stars = result.HasValue ? result.Value.Stars : 0;
+            _stampText.text = Signage.Text(StampKey(stars));
             _starsHost.Clear();
             var row = Signage.Stars(stars, 56);
             _starsHost.Add(row);
