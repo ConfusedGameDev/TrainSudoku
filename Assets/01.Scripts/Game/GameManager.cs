@@ -281,6 +281,7 @@ namespace TrainSudoku.Game
             boardView.Interacted += OnBoardInteracted;
             boardView.Completed += OnBoardCompleted;
             boardView.BoardChanged += SaveProgress;
+            boardView.BoardChanged += OnBoardChanged;
             boardView.LineCleared += OnLineCleared;
 
             // Scenes baked before the train existed get the runner at runtime; Regenerate bakes it.
@@ -307,6 +308,7 @@ namespace TrainSudoku.Game
             if (boardView != null)
             {
                 boardView.BoardChanged -= SaveProgress;
+                boardView.BoardChanged -= OnBoardChanged;
                 boardView.LineCleared -= OnLineCleared;
             }
 
@@ -376,6 +378,12 @@ namespace TrainSudoku.Game
         private void OnLevelStarted(int index, LevelProgress resume) => boardView.Load(Level(index), resume);
 
         /// <summary>A satisfied row or column goes to the LED strip, which is the Play screen's to print.</summary>
+        /// <summary>A piece went down or came up: the play screen's track-laid strip counts it.</summary>
+        private void OnBoardChanged()
+        {
+            if (_playScreen != null) _playScreen.UpdateProgress();
+        }
+
         private void OnLineCleared(bool isRow, int index)
         {
             if (_playScreen != null) _playScreen.AnnounceLineClear(isRow, index);

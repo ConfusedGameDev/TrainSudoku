@@ -26,6 +26,19 @@ namespace TrainSudoku.Game
         /// own proportions, so the chamfer is the same size on a wide board as on a small one.</summary>
         private const float TileChamfer = 0.035f;
 
+        /// <summary>
+        /// A clue chip, converted from the artboard at its 95 px cell pitch = one cell: a 72 px disc with a 6 px ring
+        /// and a 46 px numeral on it. The chip is barely wider than the numeral it replaces, which is what keeps the
+        /// camera fit where M17 put it -- <see cref="ContentBounds"/> encapsulates the clue group.
+        /// </summary>
+        private const float ChipRadius = 0.38f;
+        private const float ChipRingWidth = 0.065f;
+        private const float ChipNumeral = 0.48f;
+
+        /// <summary>How far the chip sits behind the numeral, and how high the whole clue floats off the ground.</summary>
+        private const float ChipDepth = 0.01f;
+        private const float ChipHeight = 0.05f;
+
         /// <summary>The erase ring's radii, in cells, and how long a clue's pop lasts (work order 9).</summary>
         private const float HoldRingOuter = 0.42f;
         private const float HoldRingInner = 0.31f;
@@ -56,9 +69,6 @@ namespace TrainSudoku.Game
         /// <summary>How thick the plug at the tunnel's far end is.</summary>
         private const float CapDepth = 0.04f;
 
-        /// <summary>How high the S and E letters ride above the tunnel, under <see cref="BoardLayout.Height"/>.</summary>
-        private const float LabelHeight = 1.05f;
-
         /// <summary>How far into the tunnel a car is revealed, as a share of the tunnel's length.</summary>
         private const float TunnelRevealFraction = 0.35f;
 
@@ -72,8 +82,10 @@ namespace TrainSudoku.Game
         [SerializeField] private TrackAssets trackAssets;
 
         private BoardCell[,] _cells;
-        private TextMesh[] _columnClues;
-        private TextMesh[] _rowClues;
+        private ClueView[] _columnClues;
+        private ClueView[] _rowClues;
+        private Mesh _chipDisc;
+        private Mesh _chipRing;
         private readonly Dictionary<(int X, int Y), PieceView> _pieceViews = new Dictionary<(int, int), PieceView>();
         private PlacementSession _session;
         private TrackMeshProfile _profile;
@@ -105,6 +117,18 @@ namespace TrainSudoku.Game
 
         /// <summary>Track pieces currently on the board, or zero when no level is loaded.</summary>
         public int PieceCount => Board != null ? Board.PieceCount : 0;
+
+        /// <summary>Track pieces a solved board holds. Summed from the row clues, which equal the column clues.</summary>
+        public int TotalRails
+        {
+            get
+            {
+                if (Level == null) return 0;
+                var total = 0;
+                foreach (var clue in Level.RowClues) total += clue;
+                return total;
+            }
+        }
 
         public bool IsGenerated => tiles != null && pieces != null && tunnels != null && clues != null && markers != null;
 
@@ -248,27 +272,25 @@ namespace TrainSudoku.Game
             if (_columnClues == null || result == null) return;
             for (var x = 0; x < _columnClues.Length; x++)
             {
-                _columnClues[x].color = ClueColor(result.ColumnSatisfied[x], Board.ColumnCount(x) > Level.ColumnClues[x]);
+                _columnClues[x].Dress(result.ColumnSatisfied[x], Board.ColumnCount(x) > Level.ColumnClues[x]);
                 if (announce && result.ColumnSatisfied[x] && !_columnSatisfied[x]) Cleared(_columnClues[x], false, x);
                 _columnSatisfied[x] = result.ColumnSatisfied[x];
             }
 
             for (var y = 0; y < _rowClues.Length; y++)
             {
-                _rowClues[y].color = ClueColor(result.RowSatisfied[y], Board.RowCount(y) > Level.RowClues[y]);
+                _rowClues[y].Dress(result.RowSatisfied[y], Board.RowCount(y) > Level.RowClues[y]);
                 if (announce && result.RowSatisfied[y] && !_rowSatisfied[y]) Cleared(_rowClues[y], true, y);
                 _rowSatisfied[y] = result.RowSatisfied[y];
             }
         }
 
-        private void Cleared(TextMesh label, bool isRow, int index)
+        private void Cleared(ClueView clue, bool isRow, int index)
         {
-            PopScale.Play(label.gameObject, CluePopScale, CluePopDuration);
+            // The pop is on the chip's root, so it carries the numeral with it rather than popping the two apart.
+            PopScale.Play(clue.Root, CluePopScale, CluePopDuration);
             LineCleared?.Invoke(isRow, index);
         }
-
-        private static Color ClueColor(bool satisfied, bool exceeded) =>
-            satisfied ? Palette.Success : exceeded ? Palette.ClueExceeded : Palette.ClueText;
 
         // ------------------------------------------------------------------ building
 
@@ -281,6 +303,8 @@ namespace TrainSudoku.Game
             _cells = null;
             _columnClues = null;
             _rowClues = null;
+            DestroyMesh(ref _chipDisc);
+            DestroyMesh(ref _chipRing);
             _columnSatisfied = null;
             _rowSatisfied = null;
             DestroyHoldMesh();
@@ -364,11 +388,15 @@ namespace TrainSudoku.Game
 
         private void BuildTunnels()
         {
-            BuildTunnel(Level.Entrance, "Entrance", "S", BoardMaterials.Entrance);
-            BuildTunnel(Level.Exit, "Exit", "E", BoardMaterials.Exit);
+            BuildTunnel(Level.Entrance, "Entrance", BoardMaterials.Entrance);
+            BuildTunnel(Level.Exit, "Exit", BoardMaterials.Exit);
         }
 
-        private void BuildTunnel(Tunnel tunnel, string name, string letter, Material material)
+        /// <summary>
+        /// One tunnel mouth. It carries no lettering: the artboard has none, and the two ends are told apart by the
+        /// plug at the far end of each tube -- ink for the entrance, signage red for the exit.
+        /// </summary>
+        private void BuildTunnel(Tunnel tunnel, string name, Material material)
         {
             if (!tunnel.IsOnPerimeter(Level.Width, Level.Height)) return;
 
@@ -382,9 +410,6 @@ namespace TrainSudoku.Game
             var model = trackAssets != null ? trackAssets.TunnelModel : null;
             if (model != null) BuildTunnelTube(holder.transform, model, material);
             else BuildTunnelArch(holder.transform, material);
-
-            var label = Label(holder.transform, letter, 0.6f, Palette.ClueText);
-            label.transform.localPosition = new Vector3(0f, LabelHeight, 0f);
         }
 
         /// <summary>
@@ -440,27 +465,69 @@ namespace TrainSudoku.Game
             hole.transform.localScale = new Vector3(0.62f, 0.62f, 0.15f);
         }
 
+        /// <summary>
+        /// A clue is a chip with its number on it: a disc, a ring around it and the numeral, all sharing one root so
+        /// the satisfied pop moves them together. The two meshes are built once and shared by every chip on the board.
+        /// </summary>
         private void BuildClues()
         {
-            _columnClues = new TextMesh[Level.Width];
+            _chipDisc = new Mesh { name = "Clue Chip" };
+            ProceduralBoardMesh.FillRing(_chipDisc, 0f, ChipRadius, 1f);
+            _chipRing = new Mesh { name = "Clue Chip Ring" };
+            ProceduralBoardMesh.FillRing(_chipRing, ChipRadius - ChipRingWidth, ChipRadius, 1f);
+
+            _columnClues = new ClueView[Level.Width];
             _columnSatisfied = new bool[Level.Width];
             for (var x = 0; x < Level.Width; x++)
             {
                 var (wx, wz) = BoardLayout.ColumnClueAnchor(x, Level.Width, Level.Height);
-                _columnClues[x] = Label(clues, Level.ColumnClues[x].ToString(), 0.7f, Palette.ClueText);
-                _columnClues[x].transform.localPosition = new Vector3((float)wx, 0.05f, (float)wz);
-                _columnClues[x].name = $"Column clue {x}";
+                _columnClues[x] = BuildClue(Level.ColumnClues[x], (float)wx, (float)wz, $"Column clue {x}");
             }
 
-            _rowClues = new TextMesh[Level.Height];
+            _rowClues = new ClueView[Level.Height];
             _rowSatisfied = new bool[Level.Height];
             for (var y = 0; y < Level.Height; y++)
             {
                 var (wx, wz) = BoardLayout.RowClueAnchor(y, Level.Width, Level.Height);
-                _rowClues[y] = Label(clues, Level.RowClues[y].ToString(), 0.7f, Palette.ClueText);
-                _rowClues[y].transform.localPosition = new Vector3((float)wx, 0.05f, (float)wz);
-                _rowClues[y].name = $"Row clue {y}";
+                _rowClues[y] = BuildClue(Level.RowClues[y], (float)wx, (float)wz, $"Row clue {y}");
             }
+        }
+
+        private ClueView BuildClue(int value, float wx, float wz, string name)
+        {
+            var pitch = boardCamera != null ? boardCamera.PitchDegrees : 60f;
+            var root = new GameObject(name);
+            root.transform.SetParent(clues, false);
+            root.transform.localPosition = new Vector3(wx, ChipHeight, wz);
+            root.transform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+
+            var fill = ChipPart(root.transform, "Fill", _chipDisc, ChipDepth);
+            var ring = ChipPart(root.transform, "Ring", _chipRing, ChipDepth * 0.5f);
+
+            var label = Label(root.transform, value.ToString(), ChipNumeral, Palette.Ink);
+            // The root already carries the pitch; the label would otherwise apply it a second time.
+            label.transform.localRotation = Quaternion.identity;
+            label.transform.localPosition = Vector3.zero;
+            label.name = "Numeral";
+
+            var clue = new ClueView(root, label, fill, ring);
+            clue.Dress(false, false);
+            return clue;
+        }
+
+        /// <summary>
+        /// One flat disc of a chip, stood up into the numeral's plane. <see cref="ProceduralBoardMesh.FillRing"/>
+        /// builds in XZ, so it is turned a quarter to face the camera the way the text does, and pushed a little way
+        /// behind the glyph so the two never z-fight.
+        /// </summary>
+        private static MeshRenderer ChipPart(Transform parent, string name, Mesh mesh, float depth)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+            go.transform.localPosition = new Vector3(0f, 0f, depth);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            return go.AddComponent<MeshRenderer>();
         }
 
         /// <summary>
@@ -655,12 +722,14 @@ namespace TrainSudoku.Game
         }
 
         /// <summary>The ring owns its mesh, so it has to be released with it; a generated mesh is not collected.</summary>
-        private void DestroyHoldMesh()
+        private void DestroyHoldMesh() => DestroyMesh(ref _holdMesh);
+
+        private void DestroyMesh(ref Mesh mesh)
         {
-            if (_holdMesh == null) return;
-            if (Application.isPlaying) Destroy(_holdMesh);
-            else DestroyImmediate(_holdMesh);
-            _holdMesh = null;
+            if (mesh == null) return;
+            if (Application.isPlaying) Destroy(mesh);
+            else DestroyImmediate(mesh);
+            mesh = null;
         }
 
         // ------------------------------------------------------------------ interaction
@@ -877,6 +946,43 @@ namespace TrainSudoku.Game
 
                 return default;
             }
+        }
+    }
+
+    /// <summary>
+    /// One clue on the board: the number, and the chip it sits on. The chip is filled in the active line once its row
+    /// or column holds exactly as many pieces as it asks for, ringed in the closed grey until then, and ringed in the
+    /// signage red when the line has been overfilled.
+    /// </summary>
+    public readonly struct ClueView
+    {
+        public readonly GameObject Root;
+        private readonly TextMesh _numeral;
+        private readonly MeshRenderer _fill;
+        private readonly MeshRenderer _ring;
+
+        public ClueView(GameObject root, TextMesh numeral, MeshRenderer fill, MeshRenderer ring)
+        {
+            Root = root;
+            _numeral = numeral;
+            _fill = fill;
+            _ring = ring;
+        }
+
+        public void Dress(bool satisfied, bool exceeded)
+        {
+            if (_fill == null || _ring == null || _numeral == null) return;
+
+            _fill.sharedMaterial = satisfied ? BoardMaterials.ClueChip : BoardMaterials.ClueChipIdle;
+            _ring.sharedMaterial = satisfied
+                ? BoardMaterials.ClueChipEdge
+                : exceeded
+                    ? BoardMaterials.ClueChipError
+                    : BoardMaterials.ClueChipIdleEdge;
+
+            // The numeral sits on a light chip either way, so it stays ink unless the line is overfilled, which is
+            // the one state that has to read as a fault rather than as progress.
+            _numeral.color = exceeded && !satisfied ? Palette.ClueExceeded : Palette.Ink;
         }
     }
 }

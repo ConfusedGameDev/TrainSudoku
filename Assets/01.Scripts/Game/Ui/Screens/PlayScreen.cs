@@ -14,12 +14,22 @@ namespace TrainSudoku.Game
     /// </remarks>
     public sealed class PlayScreen : UiScreen
     {
-        /// <summary>Sign bar and LED strip heights, in reference pixels. What the camera gets is measured, not these.</summary>
+        /// <summary>
+        /// Sign bar and LED strip heights, in reference pixels. What the camera gets is measured, not these — and
+        /// <see cref="TopBarHeight"/> is now only what the rest of the UI borrows for its own slide distance, since
+        /// the top of this screen is the bar plus the progress block and measures itself.
+        /// </summary>
         public const float TopBarHeight = 250f;
         public const float BottomBarHeight = 150f;
 
+        /// <summary>The white sign bar alone, without the progress block under it.</summary>
+        private const float SignBarHeight = 190f;
+
         private VisualElement _view;
         private StationRoundel _roundel;
+        private LineProgressStrip _strip;
+        private Label _laid;
+        private Button _hint;
         private Label _stationName;
         private Label _clock;
         private string _clockText;
@@ -40,48 +50,144 @@ namespace TrainSudoku.Game
         {
             root.AddToClassList("screen--transparent");
 
+            BuildSignBar(root);
+            BuildProgress(root);
+
+            // The camera view. Nothing is drawn here; it only reserves the space -- and it is the space the camera
+            // is told about, so the two can never drift apart. Everything above it is a sibling, never a child, or
+            // the insets would stop matching what the player can actually see.
+            _view = Signage.Spacer();
+            root.Add(_view);
+
+            BuildHint(root);
+
+            _led = new LedStrip();
+            _led.style.height = BottomBarHeight;
+            root.Add(_led);
+        }
+
+        /// <summary>
+        /// The white sign bar: the way out, which station this is, and the clock. Light rather than the dark band the
+        /// other screens wear, because the artboard treats the play frame as a platform sign, not a headline.
+        /// </summary>
+        private void BuildSignBar(VisualElement root)
+        {
             var bar = Signage.Row();
-            bar.style.height = TopBarHeight;
+            bar.style.height = SignBarHeight;
             bar.style.flexShrink = 0;
-            bar.style.backgroundColor = Palette.Ink;
-            bar.style.paddingLeft = 40;
-            bar.style.paddingRight = 40;
+            bar.style.backgroundColor = Palette.Paper;
+            bar.style.paddingLeft = 44;
+            bar.style.paddingRight = 44;
             root.Add(bar);
 
             _pause = Signage.IconButton(Icons.Pause(), AudioCue.UiClick, () => Flow.PauseGame());
-            _pause.style.marginRight = 28;
+            _pause.style.width = 100;
+            _pause.style.height = 100;
+            _pause.style.marginRight = 32;
+            _pause.style.flexShrink = 0;
+            _pause.style.backgroundColor = Color.clear;
+            _pause.style.color = Palette.Ink;
+            Border(_pause, 4, Palette.Ink);
             bar.Add(_pause);
 
-            _roundel = new StationRoundel { Number = 1 };
-            _roundel.style.width = 84;
-            _roundel.style.height = 84;
+            _roundel = new StationRoundel { Number = 1, Stacked = true };
+            _roundel.style.width = 120;
+            _roundel.style.height = 120;
             _roundel.style.marginRight = 24;
+            _roundel.style.flexShrink = 0;
             bar.Add(_roundel);
 
-            _stationName = Signage.SignageLabel("", 46, "signage--onDark");
+            _stationName = Signage.SignageLabel("", 58);
             _stationName.style.flexGrow = 1f;
             _stationName.style.flexShrink = 1f;
             bar.Add(_stationName);
 
-            _clock = Signage.Numerals("00:00", 52);
+            // The clock is a lit readout on an unlit ground, so it needs its own dark block to sit on. A fixed width
+            // rather than the artboard's content-driven one: the numerals are tabular and the box must not twitch.
+            var box = Signage.Column();
+            box.style.height = 108;
+            box.style.width = 240;
+            box.style.flexShrink = 0;
+            box.style.justifyContent = Justify.Center;
+            box.style.alignItems = Align.FlexEnd;
+            box.style.paddingLeft = 24;
+            box.style.paddingRight = 24;
+            box.style.backgroundColor = Palette.LedGround;
+            bar.Add(box);
+
+            var caption = Signage.SignageLabel(Signage.Text("pause.elapsed"), 22);
+            caption.style.color = Palette.Led;
+            caption.style.opacity = 0.75f;
+            box.Add(caption);
+
+            _clock = Signage.Numerals("00:00", 58);
             _clockText = null;   // a fresh label: whatever the cache held belongs to the old one
             _clock.style.color = Palette.Led;
-            _clock.style.minWidth = 220;
-            bar.Add(_clock);
+            box.Add(_clock);
 
             var rule = new VisualElement();
             rule.AddToClassList("band__rule");
             rule.AddToClassList(UiShell.LineBackgroundClass);
             root.Add(rule);
+        }
 
-            // The camera view. Nothing is drawn here; it only reserves the space -- and it is the space the camera
-            // is told about, so the two can never drift apart.
-            _view = Signage.Spacer();
-            root.Add(_view);
+        /// <summary>
+        /// How much of the level's track is down, as a count and as a strip of one dot per rail. The same element the
+        /// concourse uses for stations along a line: it takes a count and a state per index and knows nothing else.
+        /// </summary>
+        private void BuildProgress(VisualElement root)
+        {
+            var block = Signage.Column();
+            block.style.flexShrink = 0;
+            block.style.marginTop = 28;
+            block.style.marginBottom = 8;
+            Signage.Inset(block, 0f, 0f);
+            root.Add(block);
 
-            _led = new LedStrip();
-            _led.style.height = BottomBarHeight;
-            root.Add(_led);
+            var caption = Signage.Row();
+            caption.style.marginBottom = 14;
+            block.Add(caption);
+
+            var title = Signage.SignageLabel(Signage.Text("pause.rails_laid"), 30);
+            title.style.color = Palette.InkDim;
+            caption.Add(title);
+            caption.Add(Signage.Spacer());
+
+            _laid = Signage.SignageLabel("", 34);
+            _laid.style.color = Palette.Ink;
+            caption.Add(_laid);
+
+            _strip = new LineProgressStrip { DotRadius = 17f, DotStroke = 5f, TrackWidth = 6f };
+            _strip.style.height = 34;
+            block.Add(_strip);
+        }
+
+        /// <summary>
+        /// The hint button the artboard puts over the board's bottom right. There is no hint system in Core yet, so it
+        /// ships <b>disabled</b>: the layout is right for the day there is one, and a dimmed control cannot be mistaken
+        /// for a live one or swallow a tap meant for the board.
+        /// </summary>
+        private void BuildHint(VisualElement root)
+        {
+            _hint = Signage.IconButton(Icons.Skip(), AudioCue.UiClick, () => { });
+            _hint.style.position = Position.Absolute;
+            _hint.style.right = 44;
+            _hint.style.bottom = BottomBarHeight + 70f;
+            _hint.style.width = 124;
+            _hint.style.height = 124;
+            _hint.style.color = Palette.Ink;
+            _hint.AddToClassList(UiShell.LineBackgroundClass);
+            Border(_hint, 4, Palette.Ink);
+            _hint.SetEnabled(false);
+            root.Add(_hint);
+        }
+
+        private static void Border(VisualElement element, float width, Color colour)
+        {
+            element.style.borderTopWidth = element.style.borderRightWidth =
+                element.style.borderBottomWidth = element.style.borderLeftWidth = width;
+            element.style.borderTopColor = element.style.borderRightColor =
+                element.style.borderBottomColor = element.style.borderLeftColor = colour;
         }
 
         protected override void Wire()
@@ -98,6 +204,7 @@ namespace TrainSudoku.Game
             _roundel.Number = Flow.CurrentStationIndex + 1;
             _roundel.State = StationState.Current;
             _pause.SetEnabled(state == GameState.Play);
+            UpdateProgress();
             UpdateClock(Flow.Timer.Elapsed);
             PushHudInsets();
 
@@ -112,6 +219,22 @@ namespace TrainSudoku.Game
         /// </summary>
         public void AnnounceLineClear(bool isRow, int index) =>
             _led.Announce(isRow ? "play.row_clear" : "play.column_clear", index + 1);
+
+        /// <summary>
+        /// How much track is down out of what the level asks for. Called on every board change, so the strip fills as
+        /// the player lays rail rather than only when the screen is shown.
+        /// </summary>
+        public void UpdateProgress()
+        {
+            var board = Game.Board;
+            var total = board != null ? board.TotalRails : 0;
+            var laid = board != null ? Mathf.Min(board.PieceCount, total) : 0;
+
+            _laid.text = $"{laid} / {total}";
+            _strip.SetStations(total, i => i < laid ? StationState.Cleared
+                : i == laid ? StationState.Current
+                : StationState.Closed);
+        }
 
         /// <summary>
         /// Called every frame in Play by <see cref="GameManager"/>. The clock is tabular so it cannot reflow, and it

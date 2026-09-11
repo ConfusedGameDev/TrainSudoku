@@ -9,10 +9,10 @@ namespace TrainSudoku.Game
     /// yellow platform edge under the selected cell and a red exit portal (work order 5.4).
     /// </summary>
     /// <remarks>
-    /// One of them is <b>line-tinted</b> rather than constant — <see cref="TileForced"/>, the side the player must
-    /// connect to — because the work order asks for that prompt in <c>--line-current</c>. The line colour is a runtime
-    /// value, so <see cref="SetLineColour"/> is how it arrives; the constant below is only what it looks like before
-    /// any line has been chosen. Fixed track is deliberately <b>not</b> line-tinted: a pre-laid piece is a given, so
+    /// Three of them are <b>line-tinted</b> rather than constant — <see cref="TileForced"/>, the side the player must
+    /// connect to, and the two that make up a satisfied clue chip — because the work order asks for those prompts in
+    /// <c>--line-current</c>. The line colour is a runtime value, so <see cref="SetLineColour"/> is how it arrives;
+    /// the constants below are only what they look like before any line has been chosen. Fixed track is deliberately <b>not</b> line-tinted: a pre-laid piece is a given, so
     /// it is flat ink whatever line it sits on.
     /// </remarks>
     public static class BoardMaterials
@@ -23,6 +23,11 @@ namespace TrainSudoku.Game
         private static Material _tileOpen;
         private static Material _tileBlocked;
         private static Material _tileForced;
+        private static Material _clueChip;
+        private static Material _clueChipEdge;
+        private static Material _clueChipIdle;
+        private static Material _clueChipIdleEdge;
+        private static Material _clueChipError;
         private static Material _fixedPiece;
         private static Material _track;
         private static Material _fixedTrack;
@@ -51,6 +56,19 @@ namespace TrainSudoku.Game
         /// <summary>A neighbour the piece <i>must</i> connect to, in the active line's colour.</summary>
         public static Material TileForced => _tileForced != null ? _tileForced : _tileForced = Create("Board Tile Forced", _lineColour);
 
+        /// <summary>A clue chip whose line is satisfied: filled in the active line, ringed in a darker shade of it.</summary>
+        public static Material ClueChip => _clueChip != null ? _clueChip : _clueChip = Create("Clue Chip", _lineColour);
+
+        public static Material ClueChipEdge => _clueChipEdge != null ? _clueChipEdge : _clueChipEdge = Create("Clue Chip Edge", Darken(_lineColour));
+
+        /// <summary>A clue chip still to be satisfied: paper, ringed in the closed grey.</summary>
+        public static Material ClueChipIdle => _clueChipIdle != null ? _clueChipIdle : _clueChipIdle = Create("Clue Chip Idle", Palette.Paper);
+
+        public static Material ClueChipIdleEdge => _clueChipIdleEdge != null ? _clueChipIdleEdge : _clueChipIdleEdge = Create("Clue Chip Idle Edge", Palette.ClosedLight);
+
+        /// <summary>A line holding more pieces than its clue allows.</summary>
+        public static Material ClueChipError => _clueChipError != null ? _clueChipError : _clueChipError = Create("Clue Chip Error", Palette.ClueExceeded);
+
         /// <summary>The dark inside of a tunnel mouth.</summary>
         public static Material FixedPiece => _fixedPiece != null ? _fixedPiece : _fixedPiece = Create("Tunnel Interior", Palette.LedGround);
 
@@ -71,15 +89,23 @@ namespace TrainSudoku.Game
         public static Material PlatformEdge => _platformEdge != null ? _platformEdge : _platformEdge = Create("Platform Edge", Palette.Warn);
 
         /// <summary>
-        /// Publishes the active line's colour to the one material that carries it — the forced side, marked on the
-        /// neighbouring slab or on an edge marker where the side leaves the board. The board's counterpart of the
-        /// shell's tint pass, and the reason no line colour is ever written as a constant.
+        /// Publishes the active line's colour to the materials that carry it: the forced side — marked on the
+        /// neighbouring slab, or on an edge marker where the side leaves the board — and a satisfied clue chip. The
+        /// board's counterpart of the shell's tint pass, and the reason no line colour is ever written as a constant.
         /// </summary>
         public static void SetLineColour(Color colour)
         {
             _lineColour = colour;
             if (_tileForced != null) _tileForced.color = colour;
+            if (_clueChip != null) _clueChip.color = colour;
+            if (_clueChipEdge != null) _clueChipEdge.color = Darken(colour);
         }
+
+        /// <summary>
+        /// The ring around a satisfied clue chip. The artboard draws it as a deeper shade of the line rather than a
+        /// colour of its own, which is the only way it keeps working when a second line ships in another hue.
+        /// </summary>
+        private static Color Darken(Color colour) => new Color(colour.r * 0.72f, colour.g * 0.72f, colour.b * 0.72f, colour.a);
 
         /// <summary>
         /// Overrides the erase ring's colour from the Game Manager. The one board colour that is deliberately tunable

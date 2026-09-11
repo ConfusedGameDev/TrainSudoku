@@ -28,5 +28,11 @@ namespace TrainSudoku.Game
         /// "rails laid"; nothing decides anything with it.
         /// </summary>
         int PieceCount { get; }
+
+        /// <summary>
+        /// How much track a solved board holds: the clue totals, which <see cref="LevelData.Validate"/> guarantees
+        /// agree across the two axes. The play screen counts against it; nothing decides anything with it either.
+        /// </summary>
+        int TotalRails { get; }
     }
 }
