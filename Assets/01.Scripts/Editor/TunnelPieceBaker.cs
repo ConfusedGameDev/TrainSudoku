@@ -22,33 +22,40 @@ namespace TrainSudoku.Editor
     /// </remarks>
     public static class TunnelPieceBaker
     {
-        private const string CollectionPath = "Assets/03.Data/Levels/LevelCollection.asset";
+        private const string NetworkPath = "Assets/03.Data/Levels/Network.asset";
 
         /// <summary>The same budget the Level Editor's "Search longer" and "Fill from solver" use.</summary>
         private const long SolveBudget = 20_000_000;
 
+        /// <summary>
+        /// Every station on every line, not one collection: since the network grew past a single line, a baker that
+        /// knew only about <c>LevelCollection.asset</c> would silently skip most of the game.
+        /// </summary>
         [MenuItem("Window/TrainSudoku/Bake Tunnel Pieces")]
         public static void BakeCollection()
         {
-            var collection = AssetDatabase.LoadAssetAtPath<LevelCollection>(CollectionPath);
-            if (collection == null)
+            var network = AssetDatabase.LoadAssetAtPath<NetworkDefinition>(NetworkPath);
+            if (network == null)
             {
-                Debug.LogError($"Bake Tunnel Pieces: no level collection at {CollectionPath}.");
+                Debug.LogError($"Bake Tunnel Pieces: no network at {NetworkPath}.");
                 return;
             }
 
             var report = new StringBuilder("Bake Tunnel Pieces");
             var changed = 0;
-            for (var i = 0; i < collection.Count; i++)
+            var seen = 0;
+            var levels = network.FlatLevels();
+            for (var i = 0; i < levels.Count; i++)
             {
-                var level = collection[i];
+                var level = levels[i];
                 if (level == null) continue;
+                seen++;
                 report.Append('\n').Append(level.DisplayName).Append(": ").Append(Bake(level, out var wrote));
                 if (wrote) changed++;
             }
 
             if (changed > 0) AssetDatabase.SaveAssets();
-            report.Append($"\n{changed} of {collection.Count} levels changed.");
+            report.Append($"\n{changed} of {seen} stations changed.");
             Debug.Log(report.ToString());
         }
 

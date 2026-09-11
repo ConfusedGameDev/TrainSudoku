@@ -166,11 +166,18 @@ namespace TrainSudoku.Game
                 else
                 {
                     painter.BeginPath();
-                    painter.MoveTo(points[0]);
-                    for (var i = 1; i < points.Length; i++) painter.LineTo(points[i]);
-                    if (line.MapShape == MapShape.Loop) painter.ClosePath();
+                    if (line.MapShape == MapShape.Stadium) StadiumPath(painter, points);
+                    else
+                    {
+                        painter.MoveTo(points[0]);
+                        for (var i = 1; i < points.Length; i++) painter.LineTo(points[i]);
+                        if (line.MapShape == MapShape.Loop) painter.ClosePath();
+                    }
+
                     painter.Stroke();
                 }
+
+                DrawStations(painter, line, points, open, activeWidth);
 
                 // The badge is drawn for a closed line, and once more on the way out while the line opens under it.
                 if (!open) DrawLockBadge(painter, points[points.Length - 1], activeWidth * 1.5f, Palette.Closed, 0f);
@@ -184,6 +191,27 @@ namespace TrainSudoku.Game
             }
 
             DrawInterchanges(painter, offset, scale, activeWidth);
+        }
+
+        /// <summary>
+        /// A dot at every station, laid along the line it belongs to. Without them a line is a bare stroke and the
+        /// map says nothing about how far it runs; with them the length of a line reads as the number of stops it has.
+        /// A locked line keeps its dots in the same washed tint as its stroke, so it reads as dimmed rather than as
+        /// a different kind of thing.
+        /// </summary>
+        private static void DrawStations(Painter2D painter, LineDefinition line, Vector2[] points, bool open, float strokeWidth)
+        {
+            var indices = line.StationNodeIndices;
+            if (indices.Count == 0) return;
+
+            painter.fillColor = open ? Palette.Paper : Color.Lerp(Palette.Paper, Palette.ClosedLight, 0.4f);
+            foreach (var node in indices)
+            {
+                if (node < 0 || node >= points.Length) continue;
+                painter.BeginPath();
+                painter.Arc(points[node], strokeWidth * 0.28f, 0f, 360f);
+                painter.Fill();
+            }
         }
 
         /// <summary>A ring at every node two lines share, drawn last so it sits above both.</summary>
@@ -259,6 +287,42 @@ namespace TrainSudoku.Game
         }
 
         /// <summary>The padlock at a closed line's terminus, drawn straight rather than through an Icon child.</summary>
+        /// <summary>
+        /// A stadium line, drawn the way <see cref="LineMapElement"/> draws it: the nodes' bounding box with its
+        /// corners rounded by half the shorter side, which turns the two short ends into semicircles. Without this a
+        /// closed curve is strung out as a jagged open polyline with a gap where it should meet itself.
+        /// </summary>
+        private static void StadiumPath(Painter2D painter, Vector2[] points)
+        {
+            var min = points[0];
+            var max = points[0];
+            foreach (var point in points)
+            {
+                min = Vector2.Min(min, point);
+                max = Vector2.Max(max, point);
+            }
+
+            var radius = Mathf.Min(max.x - min.x, max.y - min.y) * 0.5f;
+            if (radius <= 0f)
+            {
+                painter.MoveTo(points[0]);
+                for (var i = 1; i < points.Length; i++) painter.LineTo(points[i]);
+                return;
+            }
+
+            var topLeft = new Vector2(min.x, min.y);
+            var topRight = new Vector2(max.x, min.y);
+            var bottomRight = new Vector2(max.x, max.y);
+            var bottomLeft = new Vector2(min.x, max.y);
+
+            painter.MoveTo(new Vector2((min.x + max.x) * 0.5f, min.y));
+            painter.ArcTo(topRight, bottomRight, radius);
+            painter.ArcTo(bottomRight, bottomLeft, radius);
+            painter.ArcTo(bottomLeft, topLeft, radius);
+            painter.ArcTo(topLeft, topRight, radius);
+            painter.ClosePath();
+        }
+
         private static void DrawLockBadge(Painter2D painter, Vector2 centre, float size, Color colour, float drop)
         {
             centre.y += drop;

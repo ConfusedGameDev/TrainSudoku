@@ -6555,7 +6555,7 @@ MonoBehaviour:
   audioCues: {fileID: 11400000, guid: dbe504bbcd3a8ba712d0f49adb6895e3, type: 2}
   trackAssets: {fileID: 11400000, guid: 847a2bad6fef7129273ec8edecc95225, type: 2}
   trainAssets: {fileID: 11400000, guid: dd8f5904bbe9a055f436b2b701c9254a, type: 2}
-  unlockAllLevelsInEditor: 1
+  unlockAllLevelsInEditor: 0
   eraseRingColour: {r: 0.9056604, g: 0.1918721, b: 0.15806337, a: 1}
   eraseRingScale: 2
   shell: {fileID: 808086891}

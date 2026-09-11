@@ -46,10 +46,22 @@ namespace TrainSudoku.Tests
             }
         }
 
+        /// <summary>
+        /// Every station the game ships, across every line — not just the first line's collection. The moment the
+        /// network grew past one line, a test scoped to `LevelCollection.asset` stopped proving most of the game.
+        /// </summary>
+        private static List<LevelDefinition> LoadEveryStation()
+        {
+            var network = LoadNetwork();
+            var levels = new List<LevelDefinition>(network.FlatLevels());
+            Assert.IsNotEmpty(levels, "the network ships no stations at all");
+            return levels;
+        }
+
         [Test]
         public void EveryLevelIsWellFormedAndHasExactlyOneSolution()
         {
-            var collection = LoadCollection();
+            var collection = LoadEveryStation();
             var unverified = new List<string>();
             for (var i = 0; i < collection.Count; i++)
             {
@@ -80,7 +92,7 @@ namespace TrainSudoku.Tests
         [Test]
         public void EveryLevelStartsWithAPieceAtBothTunnels()
         {
-            var collection = LoadCollection();
+            var collection = LoadEveryStation();
             for (var i = 0; i < collection.Count; i++)
             {
                 var level = collection[i];

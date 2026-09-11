@@ -14,7 +14,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.NetworkDefinition
   lines:
   - {fileID: 11400000, guid: bc607a7249f8c44dea2def2c9f05d1a0, type: 2}
-  interchanges: []
+  - {fileID: 11400000, guid: 7b72fe8985665478e848acc44100184c, type: 2}
+  - {fileID: 11400000, guid: 7c17d973e0f3b4296909afecc805c87d, type: 2}
+  - {fileID: 11400000, guid: 6a10c9fb85aa5438d8b1032ae8ff98aa, type: 2}
+  interchanges:
+  - lineA: 0
+    nodeA: 1
+    lineB: 1
+    nodeB: 0
+  - lineA: 0
+    nodeA: 8
+    lineB: 2
+    nodeB: 0
+  - lineA: 0
+    nodeA: 6
+    lineB: 3
+    nodeB: 0
   mapBounds:
     serializedVersion: 2
     x: 0
