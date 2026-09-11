@@ -433,6 +433,12 @@ coordinates — which is how these mockups were made, and does not survive five 
 
 The line's stations are its levels, so the lineup is now a UI concern as well as a gameplay one.
 
+**Station 1 teaches (M21).** Ashgate carries `isTutorial`, which puts the callout on the Play screen and runs the
+walkthrough in `TutorialCoach`. Its board is authored around that job rather than around difficulty: walking the
+solved path from S to E must pass through a rail that lays itself in one tap *and* a rail whose sides have to be
+chosen, no guided rail may need more than two taps, and the whole thing must be solvable by propagation alone so
+a first-time player never has to guess. Exactly one station in the network may carry the flag.
+
 **`Hard` (12×11) must be replaced before launch (D17).** It has never been proven uniquely solvable — the
 backtracking solver runs billions of nodes without a result, and `LevelCollectionTests` verifies every shipped
 level *except* that one. It is currently the **terminus** of the line, so a paid game would end on a puzzle that
@@ -478,6 +484,8 @@ All unscaled time, so it survives the pause. Nothing blocks input for more than 
   but its text may not.
 - Design survives 9:16 through 9:21. Maps scale to fit their container's shorter axis at fixed aspect and never
   stretch.
+- **The game talks to no network in v1.** Game Center leaderboards are planned and unscheduled — OM1 in 11.1,
+  which is also where the reasons for GameKit over a backend are set out. Nothing in M11–M21 assumes them.
 - **Paid once. No IAP, no ads, no analytics, in v1 (D11).** No shop screen, no restore-purchases path, no
   consent flow, and the privacy manifest is the trivial one. Liveries are pure rewards. Revisit for v2, when
   there are five lines to sell.
@@ -486,8 +494,9 @@ All unscaled time, so it survives the pause. Nothing blocks input for more than 
 
 ## 11 · Milestones
 
-M0–M10 are complete (see `CLAUDE.md`). This work is **M11–M20**. Each milestone compiles and runs before the
-next begins.
+M0–M10 are complete (see `CLAUDE.md`). This work is **M11–M21**. Each milestone compiles and runs before the
+next begins. **11.1** holds optional milestones: fully planned, deliberately unscheduled, and outside the v0.3
+scope — nothing in M11–M21 may grow a dependency on one.
 
 > ### The verification gate
 >
@@ -512,7 +521,14 @@ next begins.
 | M17 | Board framing | ☑ |
 | M18 | Line Map Editor | ☑ |
 | M19 | Motion and board re-skin | ☑ |
-| M20 | Translation pass | ☐ |
+| M20 | Translation pass | ☑ |
+| M21 | Tutorial station | ☑ |
+
+**Optional, not scheduled** — planned in 11.1, built only if and when it is called for.
+
+| MILESTONE | TITLE | VERIFIED |
+|---|---|---|
+| OM1 | Station leaderboards | ☐ |
 
 ---
 
@@ -1055,19 +1071,30 @@ carries the identity **before** building six more screens on top of it.
       because station names are untranslated Latin), one 1024x1024 sheet, nothing missing.
 - [x] Lock `defaultScreenOrientation` to portrait (currently `4`, auto-rotate) — now `0`, and landscape
       autorotation is off with it.
-- [ ] Record iOS build size before and after the font work — **not done: there is no build script** (see
-      `CLAUDE.md`), so this needs one adding or a build driven by hand from the Editor.
+- [x] Record iOS build size — measured from a **hand-driven Xcode build, 11 Sep 2026**, run on an iPhone 16
+      Pro Max. Total user assets **8.5 MB** uncompressed (textures 2.3 MB, shaders 0.5 MB, meshes 0.2 MB,
+      sounds 50 KB) plus a **4.6 MB** `localization-assets-japanese` Addressables bundle; the `Data/` payload is
+      **27 MB**, of which `Managed/Metadata` is 11 MB of IL2CPP metadata. The 1.4 GB the report calls "complete
+      build size" is the Xcode project with its IL2CPP intermediates and two copies of `usymtool` — not a
+      shippable figure. **Still no build script** (see `CLAUDE.md`); this was driven by hand from the Editor.
 
 **Done when**
 
-- [ ] All four locales render all seven screens with no clipped, wrapped-badly or ellipsised signage
-      — `ja` now bakes at Medium (see below); the four locales still need looking at by eye.
-- [ ] `en`/`es`/`fr` builds contain no Japanese glyphs in the UI atlas — true by construction (the `Fonts` asset
-      table routes en/es/fr to Barlow only, and Barlow has no CJK), but unproven until a build is measured.
+- [x] All four locales render all seven screens with no clipped, wrapped-badly or ellipsised signage
+      — `ja` now bakes at Medium (see below); all four read correctly by eye in the Editor.
 - [x] The `ja` atlas covers every glyph in the `ja` table — no missing-glyph boxes anywhere
-- [ ] The build is portrait-locked on device — set in `ProjectSettings`, unverified on hardware
-- [ ] Build size is recorded and acceptable
-- [ ] **Verified by human** ☐ &nbsp;&nbsp; date: ______
+- [x] `en`/`es`/`fr` builds contain no Japanese glyphs in the UI atlas — **measured, and true**: the ja SDF face
+      is alone in `localization-assets-japanese_assets_all.bundle` (4.6 MB), and the shared bundle other locales
+      load carries Barlow Regular and Barlow Condensed SemiBold and nothing else (468 KB). The routing is real,
+      not just intended.
+- [x] The build is portrait-locked on device — `Info.plist` carries `UIInterfaceOrientationPortrait` **and
+      nothing else**, and it was run on an iPhone 16 Pro Max
+- [x] Build size is recorded — see the task above, and note 4 below for the half of it that is one font
+- [x] **Verified by human** ☑ &nbsp;&nbsp; date: 11 Sep 2026
+
+> **Approved on 11 Sep 2026 against a real device.** The four locales were read on all seven screens, an Xcode
+> build was made by hand and run on an iPhone 16 Pro Max, and the three build-gated boxes were closed from that
+> build's own report rather than from intent. What the measurement then showed is note 4.
 
 > #### Two things M20 found that the plan did not anticipate
 >
@@ -1093,12 +1120,253 @@ carries the identity **before** building six more screens on top of it.
 > actually loaded, but an asset baked by any other route may still lie. The pixels are the evidence — Medium's
 > glyphs are measurably wider.
 >
+> **4. The measurement, now that there is one: the Japanese font is half the game.** `NotoSansJP-Medium.otf`
+> is **4.3 MB of an 8.5 MB total user-asset payload — 51 %**, and it is in `sharedassets0`, which means *every*
+> locale carries it, for the four glyphs on the platform decals and the destination plate (D13). It then ships a
+> **second time** inside the 4.6 MB ja localization bundle, because `AtlasPopulationMode.Static` is deprecated
+> (note 1) and a *dynamic* font asset drags its source font along however pre-baked its atlas is. About 8.9 MB
+> of a roughly 13 MB asset payload is one typeface, and an `en` player carries 4.3 MB of it to see no Japanese
+> at all.
+>
+> Nothing here is wrong, and none of it is urgent at 27 MB of `Data/`. The three ways out, cheapest first:
+> bake a **four-glyph legacy font** through the importer's character set and point both `signageFont` fields at
+> it, which removes the 4.3 MB from every locale; clear both `signageFont` fields and lose the decals (D13);
+> or try clearing the SDF asset's source-font reference after a bake, which would halve the ja bundle but may
+> not survive a font-engine that expects a source to fall back to — **spike it before believing it**. Also
+> **`NotoSansJP-Regular.ttf` (5.5 MB) is in the project and referenced by nothing** — it does not reach the
+> build, but it is in the repo; delete it.
+>
 > **3. M19's note 4 is halved but not closed.** The decals and destination plate are world-space `TextMesh`, which
 > needs a legacy `Font`, and a dynamic legacy font ships its whole file in *every* locale for four glyphs. That
 > file is now 4.5 MB rather than 9.1 MB, which is the whole of the build-size win M20 can claim without a build
 > to measure. The two cheaper answers M19 named still stand — bake a four-glyph atlas through the importer's
 > character set, or clear `signageFont` on both assets and lose the decals — and both want the measurement
 > first. The measurement is deferred: there is no build script.
+
+---
+
+### M21 · Tutorial station
+
+**Goal:** the first station teaches the game. A player who has never seen it should reach a solved Ashgate
+knowing how to lay a rail, how to choose which way it runs, and — the one that is not discoverable — how to
+take one back off.
+
+**Touches:** `Core/TutorialCoach.cs` (new), `Game/Ui/Elements/TutorialCallout.cs` and `TutorialBriefing.cs`
+(new), `Game/Board/GuideRing.cs` (new), `PlayScreen`, `BoardView`, `BoardMaterials`, `GameManager`,
+`LevelDefinition`, `03.Data/Levels/simple.asset`, the `UI` String Table, the `ja` atlas.
+
+> #### Why a level alone could not do it
+>
+> Laying and connecting are taught by the board: tap a cell with one legal key and a rail appears, tap one with
+> three and the game asks which two sides you meant. **Long-press-to-erase is taught by nothing.** There is no
+> affordance for it anywhere on screen, no failure state that hints at it, and a player who lays a wrong rail on
+> the first level has no way to find out that the board is not now ruined. Every other mechanic in the game is
+> discoverable by tapping things; that one is not, and the level lineup cannot fix it.
+
+- [x] **The rules first, in three cards.** `TutorialBriefing` — the pause screen's chrome, an ink scrim with a
+      centred `.card` — says what the line is, what the numbers mean and what finishing looks like, then hands
+      over. It is **not a `UiScreen`**: screens are chosen by `GameFlow`, which throws on a transition it does not
+      know, so a briefing screen would mean a new state in Core for something one level shows once. It is an
+      overlay inside the Play screen instead, and it is the one element there that **picks** — swallowing taps is
+      what makes it modal, and `display: none` on dismissal gives the board back. Shown once per session on a
+      tutorial board nobody has laid a rail on; a resumed board or a second attempt goes straight to the track.
+- [x] **`TutorialCoach` in Core — a walkthrough over the solved path.** `Begin` solves the level once and walks
+      it from the entrance with `PathFinder`, which is the order a railway would actually be laid in. The target
+      is then always the first cell of that order still empty, so the coach never has to be told where the player
+      is: the board says. **Which lesson a step teaches is read off the board**, not written down against
+      coordinates — one legal key at that cell is the "a single tap lays it" lesson, more than one is the "choose
+      the two sides" lesson — so a different tutorial board produces its own script.
+- [x] **The erase lesson stages a real mistake.** After three rails — by which point laying them is routine —
+      the coach points at a cell that is *off the solution*, where exactly one key is legal so it goes down in a
+      single tap, and where laying it pushes a row or column past its clue. The player watches a number turn red
+      and is then shown the way out of it. **Nothing about that cell is hard-coded**: `TryFindMistake` looks for
+      the nearest cell to the last rail that satisfies all three conditions, so another tutorial board would
+      stage its own. Asking the player to undo good work, which is what shipped first, taught the gesture but
+      not the situation it is for.
+- [x] **The opening is locked.** Until the erase lesson is done, `TutorialGuide.Locked` is set and `BoardView`
+      refuses every tap that is not on the guided target. A lesson that can be walked past teaches nothing to the
+      player who walks past it. A refused tap is answered by popping the ring and a one-line note, **not** by the
+      error cue: they have not done anything wrong, they have looked away from what is being pointed at.
+- [x] **`TutorialCallout`** — a paper card with a painted tail, anchored beside the cell. It flips to the far
+      side of the cell rather than running off screen, and nothing in its tree picks, because a picking element
+      over the board makes `EventSystem.IsPointerOverGameObject` answer yes and silently swallows placements
+      (4.4). `PlayScreen.PointTutorialAt` is the one place in the game that maps world space into the panel:
+      `WorldToScreenPoint` then `RuntimePanelUtils.ScreenToPanel` with the y flipped, the same two steps
+      `UiShell.ApplySafeArea` already uses.
+- [x] **`GuideRing`** on the board, under its own `Guide` group. **Not** under `Markers` and **not** a tile
+      material: `RefreshSelection` clears that group wholesale and rewrites every tile material on each selection
+      change, so a highlight put in either place vanishes on the next tap. It is line-coloured, like the
+      callout's tail, so the two ends of the pointer read as one instruction.
+- [x] **`BoardView.Acted`**, a `BoardAction` per player action, raised *after* the validator so a handler
+      reading `HasOverfullLine` sees the board as it now is. Deliberately off `IBoardView`: the coach is a
+      screen's concern, not the flow's.
+- [x] **`LevelDefinition.isTutorial`**, so the teaching station is data rather than a hard-coded id and can be
+      moved or replaced without touching code. `LevelCollectionTests` holds it to exactly one, at the head of the
+      first line.
+- [x] **Ashgate rebuilt.** 6 rails became 16 (row clues 1,1,2,3,4,5; columns 3,4,3,3,1,2), four fixed pieces,
+      one solution in 139 solver nodes and reachable by propagation alone — no guessing anywhere. The board was
+      authored around the script and the script falls back out of it: rail 1 is a choice, rail 2 is a choice that
+      also turns a clue green, rail 3 lays itself in one tap, and the staged mistake at (1,1) overfills row 1.
+      **No guided rail ever needs more than two taps**, which a test enforces.
+- [x] **Twenty-one new String Table rows** in all four locales — the walkthrough's lines plus the three briefing
+      cards — and the `ja` atlas rebaked over them: 140 kana/kanji against M20's 56, still one 1024 sheet.
+- [x] Star times 75/150 → **180/300**. A guided first run with reading takes about two minutes and the clock is
+      running throughout; the old thresholds would have handed every new player one star on their first level.
+- [x] The hint button moved from the screen root to the view spacer, so it is positioned against the bottom of
+      the camera strip rather than the bottom of the screen. Still disabled; still no hint system.
+
+**Done when**
+
+- [x] The coach is covered by a transcript test that plays the whole walkthrough against the shipped board, and
+      by tests for every way a player can go off script: taking the forced side first, erasing before being
+      asked, resuming a half-built board, overfilling a line. The staged mistake is held to being off the
+      solution, one-tap, and genuinely overfilling
+- [x] Every row of the `UI` table is filled in for every locale — `StringTableTests` proves it for all 61
+- [x] A player who has never seen the game reaches a solved Ashgate without being told anything out of band
+- [x] The callout reads cleanly in all four locales at the 1080×1920 reference, and its flip behaviour is right
+      at the top and bottom rows — es and fr run longest, `ja` is the one to check for the M20 line-height fault
+- [x] The ring is legible against the ballast, and against a slab already tinted by a selection
+- [x] The three briefing cards fit without scrolling in all four locales, and the scrim does not let a tap
+      through to the board behind it
+- [x] **Verified by human** ☑ &nbsp;&nbsp; date: 11 Sep 2026
+
+> #### Two things M21 changed its mind about
+>
+> **1. The LED strip was the obvious home for this and is the wrong one.** It scrolls, it queues, and it already
+> carries the clue announcements — so an instruction put through it competes with "ROW 3 CLEAR" for the same
+> 150 px and slides off the left edge whether or not anyone read it. An instruction has to stay up until the
+> thing it describes has been done, which makes it a notice and not an announcement.
+>
+> **2. A notice pinned above the strip was also wrong, and shipped first.** It stayed up, which fixed the
+> scrolling, but it still sat at the bottom of the screen talking about a cell in the middle of the board: the
+> eye had to travel, and the player had to work out which square the sentence meant. Anchoring the words to the
+> cell removes both problems at once, and is the difference between a tutorial that explains the rules and one
+> that walks you to a finished board. The band is gone.
+
+---
+
+## 11.1 · Optional milestones
+
+Planned to the same standard as the rest, and **not scheduled**. An optional milestone is built when someone
+decides it is worth the cost, which is stated at the top of each. Until then it changes nothing: no file in
+M11–M21 may depend on one, and the verification gate applies to it unchanged.
+
+---
+
+### OM1 · Station leaderboards
+
+**Optional.** **Cost:** roughly a week of work, most of it UI and App Store Connect data entry, plus a permanent
+support obligation — a leaderboard, once public, cannot be quietly deleted.
+
+**Goal:** every station carries its own leaderboard of best times, and every entry on it shows the stars that
+run earned. Drawn in the game's own signage, not Apple's sheet.
+
+**Prerequisites:** a repeatable build — one has been made by hand and run on device (M20), but there is still
+no build script, and none of OM1 can be checked in the Editor against real players; an App Store Connect record
+with Game Center enabled; **D17 closed** — `Hard` must be
+replaced *before* any leaderboard is created, because a leaderboard is created against a level `id` and the
+replacement finale gets a new one.
+
+**Touches:** `Core/Leaderboards.cs` (new — ids and the pending queue), `Core/SaveJson.cs` (v3),
+`Core/ISaveStore.cs`, `Core/GameFlow.cs`, `Game/Services/ILeaderboardService.cs`, `GameKitLeaderboards.cs` and
+`EditorLeaderboards.cs` (all new), `Game/Ui/Elements/DeparturesBoard.cs` (new), `LineMapScreen`,
+`ArrivalScreen`, `Ui/Uss/`, the `UI` String Table, the `ja` atlas, `Packages/manifest.json`.
+
+> #### Why GameKit and not a backend
+>
+> The game has no network code, no accounts, and D11 forbids analytics, a consent flow and anything but a
+> trivial privacy manifest. GameKit is a **system framework**: no third-party SDK, no privacy manifest entry of
+> our own, no server bill, and an authenticated player with a nickname, an avatar and a friends list for free.
+> Every alternative — Unity Gaming Services, a Supabase or Cloud Run backend — reintroduces auth, a consent
+> story and a running cost in exchange for cross-platform reach this game has no plan to use. **The plug-in is
+> Apple's own `apple/unityplugins` (`Apple.Core` + `Apple.GameKit`), not `UnityEngine.Social`** — the old Social
+> API is a 2012 wrapper that cannot reach `GKLeaderboard`'s entry context, which is where the stars ride.
+>
+> What this buys, stated honestly: **an authenticated identity, not an authenticated time.** Scores are
+> client-reported. A modified build can post a two-second Winterlode and there is no way to refuse it. Friends
+> and weekly scopes are where the board stays worth looking at; the all-time global top will eventually be
+> junk. Server-validated times mean a backend, which means re-opening D11. That trade is accepted here.
+
+- [ ] **One leaderboard per station, id derived from the level id.** `ts.station.<level-id>` — `marlbrook`,
+      `winterlode`. The level `id` is already the save-file identity and already may not change after release
+      (`CLAUDE.md`), so the leaderboard id inherits that guarantee rather than inventing a second one. 36
+      stations today against Apple's per-app cap of about 100; verify the current cap before the fifth line.
+      Group them with a **`GKLeaderboardSet` per line**, so Apple's own UI — which some players will reach
+      through the Game Center app whatever we draw — shows Calderwyke's nine together.
+- [ ] **The score is the time; the stars ride in the context.** `GKLeaderboard.submitScore` takes an `Int64`
+      score and a `UInt64` **context**, developer-defined and returned on every `GKLeaderboard.Entry`. Score is
+      the run in **milliseconds**, format Elapsed Time, low wins. Context is the star count. Ranking stays
+      one-dimensional — stars are a function of time thresholds anyway — and the stars are display, not order.
+- [ ] **Submit the run, never the stored best.** `ProgressTracker` keeps time and stars independently, on
+      purpose: "a slower run never lowers either", and a threshold change can never take back a rating. So the
+      stored pair may come from **two different runs**, and posting it would let the board show 3★ against a
+      time that never earned three. Submit the finished run's own `(time, stars)` from
+      `CompletionResult`; Game Center keeps the best score *and the context submitted with it*, so the pair on
+      the board is always one real run.
+- [ ] **A pending queue in save v3.** `{"version":3, … ,"pending":[{"id":"marlbrook","ms":34210,"stars":3}]}` —
+      additive exactly as v2's `stars` was, and `SaveJson` already reads v1 and v2 and ignores unknown members.
+      A run finished on a plane reaches the board on the next authenticated launch. The queue lives in **Core**
+      (`Leaderboards.PendingQueue`), engine-free and unit-testable; only the submit call is behind
+      `ILeaderboardService` in Game. Flush on authentication and on `OnApplicationPause(false)`.
+- [ ] **Nothing waits for the network.** Submission and entry loading are fire-and-forget. The Arrival stamp
+      sequence (work order 9) runs at its own pace and a rank that arrives late fades into the card; a rank that
+      never arrives leaves no gap. `GameFlow.CompleteLevel` hands the result to the service and returns.
+- [ ] **The game is whole with Game Center off.** Authentication is async, can be declined, and after two
+      refusals iOS stops asking. Unauthenticated, the board shows one card — "GAME CENTER IS OFF" — and the
+      station card on the line map simply omits its leaderboard row. **No screen, unlock, star or level may be
+      reachable only through a signed-in player.**
+- [ ] **We draw the board; Apple's sheet stays closed.** `GKGameCenterViewController` is a full-screen Apple
+      modal that cannot show the context, so it cannot show stars, and it drops the player out of the station
+      world entirely. `DeparturesBoard` instead: `loadEntries` into a departures list — rank, nickname, time,
+      stars — in the Arrival card's chrome, with the local player's row pinned and line-coloured. `GKAccessPoint`
+      stays **off**.
+- [ ] **Two scopes, two toggles.** Configure each station **classic** rather than recurring, which makes
+      `GKLeaderboard.PlayerScope` (GLOBAL / FRIENDS) and `TimeScope` (THIS WEEK / ALL TIME) free — four loads
+      off one leaderboard, no extra App Store Connect rows, no occurrence handling. Verify both scopes still
+      apply to classic leaderboards on the current SDK before relying on it.
+- [ ] **An overlay, not a screen.** Reached from the line map's station card and from Arrival, so on the M21
+      precedent it is an overlay inside each, not a `GameState`: screens are chosen by `GameFlow`, which throws
+      on a transition it does not know, and a destination reachable from two states with a "back to where you
+      came from" would mean teaching Core about return stacks. Like `TutorialBriefing` it is the one thing in
+      its tree that **picks** — it covers the map and swallowing taps is what makes it modal (4.4).
+- [ ] **An Editor fake with seeded entries.** `EditorLeaderboards` returns a plausible board — mixed name
+      lengths, a CJK nickname, ranks either side of the player — so the whole element is designed, localised and
+      motion-tuned without a device build. The GameKit implementation is behind `UNITY_IOS && !UNITY_EDITOR`;
+      the default everywhere else is a no-op that accepts submissions and reports no entries.
+- [ ] **Nicknames are other people's text, and the font rules do not cover them.** D15 routes en/es/fr to Barlow,
+      which has no CJK, so a Japanese or Korean nickname on an `en` build is a row of missing-glyph boxes — and
+      unlike every other string in the game this one cannot be authored around. Give **the nickname label only**
+      a fallback to the dynamic `NotoSansJP-Medium SDF`. The 4.5 MB source already ships in every locale for the
+      D13 decals (M20 note 3), so this finally earns some of that weight back. Emoji stay boxes; accepted.
+      **This does not breach D5** — no Japanese reaches a `VisualElement` from us; it arrives from Game Center.
+- [ ] **A plausibility floor, which stops bugs and not cheats.** Refuse to submit a time below a per-level floor
+      derived from its rail count — nobody lays sixteen rails in two seconds — so a clock fault of ours can never
+      poison a board permanently. Say plainly in the milestone notes that this is not anti-cheat.
+- [ ] **App Store Connect: 36 leaderboards, and they are forever.** Each needs an id, a format, a sort order, a
+      set, and localised display names in all four locales. Station names are untranslated proper nouns (D14), so
+      the four names are the same string and only the leaderboard's own labels differ — the 144 rows collapse to
+      36 names plus four label sets. Script it through the App Store Connect API rather than typing it; a typo in
+      an id is permanent. **Create none of them until D17 is closed.**
+- [ ] **Update the App Store privacy label.** GameKit means Apple collects a Game Center player id. D11's "no
+      analytics" is untouched — we send a time and a star count and read a list back — but the nutrition label is
+      no longer the empty one.
+
+**Done when**
+
+- [ ] A completed station posts its time and stars, and both appear on the board next launch
+- [ ] A station completed in airplane mode posts on the next authenticated launch, in order, exactly once
+- [ ] Declining the Game Center prompt leaves every screen, unlock and star reachable and the game silent about it
+- [ ] The board renders in all four locales, and a CJK nickname renders on the `en` build
+- [ ] The Arrival stamp sequence is frame-identical with the network unreachable
+- [ ] EditMode tests cover the queue (order, dedupe, survival across a save round-trip), the id derivation, and
+      that every shipped level yields a unique id and the network stays under the leaderboard cap
+- [ ] Tapping the board does not place a piece on the level behind it (4.4)
+- [ ] **Verified by human** ☐ &nbsp;&nbsp; date: ______
+
+> **The cheaper version, if this is ever too much.** Drop `DeparturesBoard`, drop the fallback font, drop the
+> scopes, and open `GKGameCenterViewController` from one button. It is about a day, and it costs the stars —
+> Apple's sheet will not draw them — and the look. Everything else above still applies: the ids are still
+> permanent, the queue is still needed, and Game Center can still be off.
 
 ---
 

@@ -72,12 +72,17 @@ namespace TrainSudoku.Game
         /// <summary>How far into the tunnel a car is revealed, as a share of the tunnel's length.</summary>
         private const float TunnelRevealFraction = 0.35f;
 
+        /// <summary>The tutorial's ring. Wider than the erase ring so the two never read as the same cue.</summary>
+        private const float GuideRingInner = 0.37f;
+        private const float GuideRingOuter = 0.47f;
+
         [SerializeField] private Transform tiles;
         [SerializeField] private Transform pieces;
         [SerializeField] private Transform tunnels;
         [SerializeField] private Transform clues;
         [SerializeField] private Transform markers;
         [SerializeField] private Transform decor;
+        [SerializeField] private Transform guide;
         [SerializeField] private BoardCamera boardCamera;
         [SerializeField] private TrackAssets trackAssets;
 
@@ -94,6 +99,9 @@ namespace TrainSudoku.Game
         private bool[] _rowSatisfied;
         private Mesh _holdMesh;
         private float _eraseRingScale = 1f;
+        private Mesh _guideMesh;
+        private GuideRing _guideRing;
+        private TutorialGuide _guide;
 
         // Current press, for taps and long presses.
         private bool _pressing;
@@ -145,6 +153,26 @@ namespace TrainSudoku.Game
         /// </summary>
         public event Action<bool, int> LineCleared;
 
+        /// <summary>
+        /// What the player just did, for the tutorial coach (<see cref="TutorialCoach"/>). Raised <b>after</b> the
+        /// validator has run, so a listener reading <see cref="HasOverfullLine"/> in the handler sees the board as it
+        /// now is rather than as it was before the action.
+        /// </summary>
+        public event Action<BoardAction> Acted;
+
+        /// <summary>
+        /// Whether any row or column holds more track than its clue allows — the red state of the clue chips, as a
+        /// single answer. Recomputed by the validator on every change.
+        /// </summary>
+        public bool HasOverfullLine { get; private set; }
+
+        /// <summary>The cell the player currently has selected, for the tutorial's sub-steps.</summary>
+        public (int X, int Y)? SelectedCell =>
+            _session != null && _session.IsActive ? (_session.X, _session.Y) : ((int X, int Y)?)null;
+
+        /// <summary>The first side already taken on the selected cell, if any.</summary>
+        public Direction? ChosenSide => _session != null && _session.IsActive ? _session.First : null;
+
         /// <summary>Creates the empty board root under <paramref name="parent"/>. Works in the Editor and at runtime.</summary>
         public static BoardView Create(Transform parent, BoardCamera camera, TrackAssets trackAssets)
         {
@@ -157,6 +185,7 @@ namespace TrainSudoku.Game
             view.clues = view.Group("Clues");
             view.markers = view.Group("Markers");
             view.decor = view.Group("Decor");
+            view.guide = view.Group("Guide");
             view.boardCamera = camera;
             view.trackAssets = trackAssets;
             return view;
@@ -168,6 +197,7 @@ namespace TrainSudoku.Game
             if (assets != null) trackAssets = assets;
             if (markers == null) markers = Group("Markers");
             if (decor == null) decor = Group("Decor");
+            if (guide == null) guide = Group("Guide");
         }
 
         private Transform Group(string name)
@@ -270,19 +300,26 @@ namespace TrainSudoku.Game
         private void ApplyClueColors(WinResult result, bool announce)
         {
             if (_columnClues == null || result == null) return;
+            var overfull = false;
             for (var x = 0; x < _columnClues.Length; x++)
             {
-                _columnClues[x].Dress(result.ColumnSatisfied[x], Board.ColumnCount(x) > Level.ColumnClues[x]);
+                var exceeded = Board.ColumnCount(x) > Level.ColumnClues[x];
+                overfull |= exceeded;
+                _columnClues[x].Dress(result.ColumnSatisfied[x], exceeded);
                 if (announce && result.ColumnSatisfied[x] && !_columnSatisfied[x]) Cleared(_columnClues[x], false, x);
                 _columnSatisfied[x] = result.ColumnSatisfied[x];
             }
 
             for (var y = 0; y < _rowClues.Length; y++)
             {
-                _rowClues[y].Dress(result.RowSatisfied[y], Board.RowCount(y) > Level.RowClues[y]);
+                var exceeded = Board.RowCount(y) > Level.RowClues[y];
+                overfull |= exceeded;
+                _rowClues[y].Dress(result.RowSatisfied[y], exceeded);
                 if (announce && result.RowSatisfied[y] && !_rowSatisfied[y]) Cleared(_rowClues[y], true, y);
                 _rowSatisfied[y] = result.RowSatisfied[y];
             }
+
+            HasOverfullLine = overfull;
         }
 
         private void Cleared(ClueView clue, bool isRow, int index)
@@ -296,7 +333,7 @@ namespace TrainSudoku.Game
 
         private void Clear()
         {
-            foreach (var group in new[] { tiles, pieces, tunnels, clues, markers, decor })
+            foreach (var group in new[] { tiles, pieces, tunnels, clues, markers, decor, guide })
                 if (group != null) SceneObjects.Clear(group);
             // The bent meshes belong to the level that just went away, and the next one may use a different profile.
             TrackMeshBender.Clear();
@@ -308,6 +345,9 @@ namespace TrainSudoku.Game
             _columnSatisfied = null;
             _rowSatisfied = null;
             DestroyHoldMesh();
+            DestroyMesh(ref _guideMesh);
+            _guideRing = null;
+            _guide = TutorialGuide.None;
             _pieceViews.Clear();
             _holdIndicator = null;
             _session = null;
@@ -692,6 +732,122 @@ namespace TrainSudoku.Game
             _eraseRingScale = Mathf.Max(0.05f, scale);
         }
 
+        // ------------------------------------------------------------------ the tutorial's guide
+
+        /// <summary>
+        /// Where the tutorial is pointing (<see cref="TutorialCoach"/>): the board rings that cell, and while the
+        /// guide is locked it refuses every tap that is not on it. <see cref="TutorialGuide.None"/> turns both off,
+        /// which is the state every non-tutorial level stays in.
+        /// </summary>
+        public void SetGuide(TutorialGuide value)
+        {
+            _guide = value;
+            RefreshGuideRing();
+        }
+
+        /// <summary>
+        /// The three world points the callout needs: the guided target's centre and the mid-points of the edges
+        /// away from and towards the camera. Both edges are given rather than one offset mirrored, because the
+        /// board is seen at a pitch and the two do not project to the same distance on screen.
+        /// </summary>
+        public bool TryGuideAnchor(out Vector3 centre, out Vector3 far, out Vector3 near)
+        {
+            centre = far = near = Vector3.zero;
+            if (Level == null || !_guide.Active) return false;
+
+            var local = GuidePoint();
+            centre = transform.TransformPoint(local);
+            far = transform.TransformPoint(local + new Vector3(0f, 0f, (float)BoardLayout.CellSize / 2f));
+            near = transform.TransformPoint(local - new Vector3(0f, 0f, (float)BoardLayout.CellSize / 2f));
+            return true;
+        }
+
+        /// <summary>
+        /// Where the ring goes, in board-local space: the cell to tap. For a side the player is being asked for,
+        /// that is the neighbour — or, when the side leaves the board, the edge marker standing in for it.
+        /// </summary>
+        private Vector3 GuidePoint()
+        {
+            var (x, y) = (_guide.X, _guide.Y);
+            if (_guide.Side.HasValue)
+            {
+                var side = _guide.Side.Value;
+                var nx = x + side.Dx();
+                var ny = y + side.Dy();
+                if (Board != null && Board.InBounds(nx, ny))
+                {
+                    var (ix, iz) = BoardLayout.CellCenter(nx, ny, Level.Width, Level.Height);
+                    return new Vector3((float)ix, 0f, (float)iz);
+                }
+
+                var (ex, ez) = BoardLayout.CellCenter(x, y, Level.Width, Level.Height);
+                var (sx, sz) = BoardLayout.Step(side);
+                return new Vector3((float)(ex + sx * MarkerInset), 0f, (float)(ez + sz * MarkerInset));
+            }
+
+            var (cx, cz) = BoardLayout.CellCenter(x, y, Level.Width, Level.Height);
+            return new Vector3((float)cx, 0f, (float)cz);
+        }
+
+        /// <summary>
+        /// Builds or moves the ring. It hangs off its own <c>Guide</c> group rather than <c>Markers</c>, because
+        /// <see cref="RefreshSelection"/> clears that group wholesale on every selection change — and for the same
+        /// reason it is a ring of its own rather than a tile material, which that method also rewrites.
+        /// </summary>
+        private void RefreshGuideRing()
+        {
+            if (guide == null || Level == null || !_guide.Active)
+            {
+                if (guide != null) SceneObjects.Clear(guide);
+                _guideRing = null;
+                DestroyMesh(ref _guideMesh);
+                return;
+            }
+
+            if (_guideRing == null)
+            {
+                _guideMesh = new Mesh { name = "Guide Ring" };
+                ProceduralBoardMesh.FillRing(_guideMesh, GuideRingInner, GuideRingOuter, 1f);
+
+                var go = new GameObject("Guide Ring");
+                go.transform.SetParent(guide, false);
+                go.AddComponent<MeshFilter>().sharedMesh = _guideMesh;
+                go.AddComponent<MeshRenderer>().sharedMaterial = BoardMaterials.Guide;
+                _guideRing = go.AddComponent<GuideRing>();
+            }
+
+            _guideRing.transform.localPosition = GuidePoint() + new Vector3(0f, 0.16f, 0f);
+        }
+
+        /// <summary>Whether a tap on this cell is allowed through while the tutorial has the board locked.</summary>
+        private bool AllowsCell(int x, int y)
+        {
+            if (!_guide.Locked) return true;
+
+            var tap = _guide.TapCell;
+            if (tap.X == x && tap.Y == y) return true;
+
+            // Tapping the guided cell again while a side is being asked for only cancels the selection. Backing
+            // out of a choice is never the wrong move, so it is not refused.
+            return _guide.Side.HasValue && _guide.X == x && _guide.Y == y;
+        }
+
+        /// <summary>The same for an edge marker, which stands for a side that leaves the board.</summary>
+        private bool AllowsMarker(Direction side) =>
+            !_guide.Locked || (_guide.Side.HasValue && _guide.Side.Value == side);
+
+        /// <summary>
+        /// A tap the locked tutorial will not take. It is answered by the ring rather than by the error cue: the
+        /// player has not done anything wrong, they have simply looked away from what is being pointed at.
+        /// </summary>
+        private void Refuse()
+        {
+            _pressConsumed = true;
+            _pressCell = null;
+            if (_guideRing != null) _guideRing.Pop();
+            Acted?.Invoke(BoardAction.Refused);
+        }
+
         /// <summary>
         /// The erase ring: a flat annulus that fills round the held cell over <see cref="HoldDuration"/>, linearly,
         /// so the sweep is a readable countdown rather than a guess (work order 9).
@@ -772,6 +928,12 @@ namespace TrainSudoku.Game
             // let the press fall through rather than consume it.
             if (hit.collider.TryGetComponent<BoardMarker>(out var marker) && _session.MarkOf(marker.Side) != SideMark.Blocked)
             {
+                if (!AllowsMarker(marker.Side))
+                {
+                    Refuse();
+                    return;
+                }
+
                 _pressConsumed = true;
                 ApplyChoose(_session.Choose(marker.Side));
                 return;
@@ -779,6 +941,12 @@ namespace TrainSudoku.Game
 
             if (hit.collider.TryGetComponent<BoardCell>(out var cell))
             {
+                if (!AllowsCell(cell.X, cell.Y))
+                {
+                    Refuse();
+                    return;
+                }
+
                 _pressCell = (cell.X, cell.Y);
                 LastTappedCell = _pressCell;
             }
@@ -812,6 +980,7 @@ namespace TrainSudoku.Game
             {
                 if (_pieceViews.TryGetValue(cell, out var view)) view.PlayShake();
                 AudioCuePlayer.Play(AudioCue.Error);
+                Acted?.Invoke(BoardAction.EraseRefused);
             }
             else if (Board.TryErase(cell.X, cell.Y))
             {
@@ -820,6 +989,7 @@ namespace TrainSudoku.Game
                 RefreshSelection();
                 AudioCuePlayer.Play(AudioCue.Erase);
                 OnBoardChanged();
+                Acted?.Invoke(BoardAction.Erased);
             }
         }
 
@@ -837,6 +1007,7 @@ namespace TrainSudoku.Game
                 {
                     _session.Cancel();
                     RefreshSelection();
+                    Acted?.Invoke(BoardAction.Deselected);
                 }
 
                 return;
@@ -856,7 +1027,7 @@ namespace TrainSudoku.Game
             switch (outcome)
             {
                 case SelectOutcome.AutoPlaced:
-                    OnPlaced();
+                    OnPlaced(BoardAction.AutoPlaced);
                     break;
                 case SelectOutcome.Rejected:
                     if (!occupied) AudioCuePlayer.Play(AudioCue.Error);
@@ -865,9 +1036,11 @@ namespace TrainSudoku.Game
                 case SelectOutcome.Selected:
                     Haptics.Play(HapticFeel.Selection);
                     RefreshSelection();
+                    Acted?.Invoke(BoardAction.Selected);
                     break;
                 default:
                     RefreshSelection();
+                    Acted?.Invoke(BoardAction.Deselected);
                     break;
             }
         }
@@ -890,22 +1063,27 @@ namespace TrainSudoku.Game
         {
             if (outcome == ChooseOutcome.Placed)
             {
-                OnPlaced();
+                OnPlaced(BoardAction.Connected);
                 return;
             }
 
             // Narrowing to the first side, or letting it go again, is a change of selection rather than a placement.
             if (outcome != ChooseOutcome.Ignored) Haptics.Play(HapticFeel.Selection);
             RefreshSelection();
+
+            // Reverting puts the cell back to how it looked on selection, so it reads to the coach as a fresh one.
+            if (outcome == ChooseOutcome.Narrowed) Acted?.Invoke(BoardAction.Narrowed);
+            else if (outcome == ChooseOutcome.Reverted) Acted?.Invoke(BoardAction.Selected);
         }
 
-        private void OnPlaced()
+        private void OnPlaced(BoardAction action)
         {
             var (x, y) = _session.LastPlacedCell;
             if (_session.LastPlaced.HasValue) SpawnPiece(x, y, _session.LastPlaced.Value, false, true);
             RefreshSelection();
             AudioCuePlayer.Play(AudioCue.Place);
             OnBoardChanged();
+            Acted?.Invoke(action);
         }
 
         private void EndPress()

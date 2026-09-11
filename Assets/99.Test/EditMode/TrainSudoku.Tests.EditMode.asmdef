@@ -5,6 +5,7 @@
         "TrainSudoku.Core",
         "TrainSudoku.Game",
         "TrainSudoku.Editor",
+        "Unity.Localization",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

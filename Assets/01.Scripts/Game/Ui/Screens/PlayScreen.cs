@@ -30,6 +30,8 @@ namespace TrainSudoku.Game
         private LineProgressStrip _strip;
         private Label _laid;
         private Button _hint;
+        private TutorialCallout _coach;
+        private TutorialBriefing _briefing;
         private Label _stationName;
         private Label _clock;
         private string _clockText;
@@ -59,11 +61,21 @@ namespace TrainSudoku.Game
             _view = Signage.Spacer();
             root.Add(_view);
 
-            BuildHint(root);
+            BuildHint(_view);
+
+            // Inside the camera strip, so it is positioned in the same space the board is drawn in and cannot be
+            // pushed about by the bars above and below. Hidden on every non-tutorial level.
+            _coach = new TutorialCallout();
+            _view.Add(_coach);
 
             _led = new LedStrip();
             _led.style.height = BottomBarHeight;
             root.Add(_led);
+
+            // Over everything, and last so it draws on top. It is the only thing on this screen that takes taps.
+            _briefing = new TutorialBriefing();
+            _briefing.Finished += () => SetCoachVisible(true);
+            root.Add(_briefing);
         }
 
         /// <summary>
@@ -167,19 +179,26 @@ namespace TrainSudoku.Game
         /// ships <b>disabled</b>: the layout is right for the day there is one, and a dimmed control cannot be mistaken
         /// for a live one or swallow a tap meant for the board.
         /// </summary>
-        private void BuildHint(VisualElement root)
+        /// <remarks>
+        /// It hangs off the <b>view spacer</b>, not the screen root, so it is positioned against the bottom of the
+        /// camera strip rather than against the bottom of the screen. That is what keeps it clear of the tutorial
+        /// band, whose height is not known in advance and is zero on most levels. The spacer is
+        /// <see cref="PickingMode.Ignore"/>, which does not travel to its children — the button still takes its own
+        /// taps, and the board still gets everything else (4.4).
+        /// </remarks>
+        private void BuildHint(VisualElement host)
         {
             _hint = Signage.IconButton(Icons.Skip(), AudioCue.UiClick, () => { });
             _hint.style.position = Position.Absolute;
             _hint.style.right = 44;
-            _hint.style.bottom = BottomBarHeight + 70f;
+            _hint.style.bottom = 70f;
             _hint.style.width = 124;
             _hint.style.height = 124;
             _hint.style.color = Palette.Ink;
             _hint.AddToClassList(UiShell.LineBackgroundClass);
             Border(_hint, 4, Palette.Ink);
             _hint.SetEnabled(false);
-            root.Add(_hint);
+            host.Add(_hint);
         }
 
         private static void Border(VisualElement element, float width, Color colour)
@@ -204,6 +223,9 @@ namespace TrainSudoku.Game
             _roundel.Number = Flow.CurrentStationIndex + 1;
             _roundel.State = StationState.Current;
             _pause.SetEnabled(state == GameState.Play);
+            SetCoachVisible(state == GameState.Play);
+            _coach.Refresh();
+            _briefing.Refresh();
             UpdateProgress();
             UpdateClock(Flow.Timer.Elapsed);
             PushHudInsets();
@@ -211,6 +233,66 @@ namespace TrainSudoku.Game
             if (state != GameState.Play) return;
             _led.Clear();
             _led.Announce("play.next_stop");
+        }
+
+        /// <summary>
+        /// Puts one line of tutorial instruction up, or takes the callout away with null. The key comes from
+        /// <see cref="TrainSudoku.Core.TutorialCoach"/>; this screen does not decide what is taught or when.
+        /// </summary>
+        public void ShowTutorial(string key) => _coach.Show(key);
+
+        /// <summary>
+        /// Puts the rules up, three cards over an ink scrim, and hands the board back when they are dismissed.
+        /// Only the tutorial station ever asks.
+        /// </summary>
+        public void ShowBriefing()
+        {
+            _briefing.Open();
+            SetCoachVisible(false);
+        }
+
+        /// <summary>
+        /// The callout is up in Play and only in Play — and never behind the briefing, which is talking about the
+        /// same thing at the same time and would be arguing with it.
+        /// </summary>
+        private void SetCoachVisible(bool visible) => _coach.SetVisible(visible && !_briefing.IsOpen);
+
+        /// <summary>
+        /// Anchors the callout beside a cell on the board. Called every frame in Play, because the camera re-fits
+        /// on rotation and when the safe area lands, and a bubble that lagged its cell would point at nothing.
+        /// </summary>
+        /// <remarks>
+        /// This is the one place in the game that maps world space into the UI panel. It is the same two steps the
+        /// shell already uses for the safe area (<c>UiShell.ApplySafeArea</c>): project, then hand the point to
+        /// <see cref="RuntimePanelUtils.ScreenToPanel"/> with the y flipped, because screen space counts up from the
+        /// bottom and panel space counts down from the top. <c>BoardCamera</c> assigns its fitted matrix to
+        /// <c>Camera.projectionMatrix</c>, so the projection already carries the HUD-strip shift.
+        /// </remarks>
+        public void PointTutorialAt(Vector3 centre, Vector3 far, Vector3 near)
+        {
+            var panel = Root != null ? Root.panel : null;
+            var camera = Game != null && Game.BoardCamera != null ? Game.BoardCamera.Camera : null;
+            if (panel == null || camera == null) return;
+
+            if (!TryProject(panel, camera, centre, out var c) ||
+                !TryProject(panel, camera, far, out var f) ||
+                !TryProject(panel, camera, near, out var b))
+                return;
+
+            // The callout is a child of the strip, so everything is expressed relative to the strip's own origin.
+            var origin = _view.worldBound.position;
+            var host = new Rect(Vector2.zero, _view.worldBound.size);
+            if (host.width <= 1f || host.height <= 1f) return;
+
+            _coach.PointAt(c - origin, f - origin, b - origin, host);
+        }
+
+        /// <summary>False when the point is behind the camera, where a projection mirrors rather than vanishes.</summary>
+        private static bool TryProject(IPanel panel, Camera camera, Vector3 world, out Vector2 point)
+        {
+            var screen = camera.WorldToScreenPoint(world);
+            point = RuntimePanelUtils.ScreenToPanel(panel, new Vector2(screen.x, Screen.height - screen.y));
+            return screen.z > 0f;
         }
 
         /// <summary>

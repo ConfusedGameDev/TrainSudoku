@@ -178,6 +178,90 @@ MonoBehaviour:
     m_Localized: RETRASADO
     m_Metadata:
       m_Items: []
+  - m_Id: 296786445983745
+    m_Localized: "Toca esta casilla. Aqu\xED va la siguiente v\xEDa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983746
+    m_Localized: "Ahora toca la casilla hacia la que va la v\xEDa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983747
+    m_Localized: "Y ahora el otro extremo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983748
+    m_Localized: "Cada n\xFAmero cuenta v\xEDas. Esa l\xEDnea ya tiene justo las que pide."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983749
+    m_Localized: "Ese n\xFAmero se ha puesto rojo: sobran v\xEDas en su l\xEDnea. Mant\xE9n pulsada la v\xEDa para retirarla."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983750
+    m_Localized: "Ya lo tienes. Sigue el c\xEDrculo hasta el final de la l\xEDnea."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983751
+    m_Localized: "Esa v\xEDa ya estaba tendida. Mant\xE9n pulsada una de las tuyas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983752
+    m_Localized: "Esa l\xEDnea tiene m\xE1s v\xEDas de las que marca su n\xFAmero. Mant\xE9n pulsada una para retirarla."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983753
+    m_Localized: "Aqu\xED solo cabe una pieza, as\xED que un toque la coloca."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983755
+    m_Localized: "La siguiente v\xEDa, aqu\xED."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983756
+    m_Localized: "Por aqu\xED."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983757
+    m_Localized: "Primero esta."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983758
+    m_Localized: "Ahora coloca una mal a prop\xF3sito. Toca esta casilla."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983759
+    m_Localized: "LA L\xCDNEA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983760
+    m_Localized: "Ashgate a\xFAn no tiene ferrocarril. Coloca una pieza de v\xEDa por casilla para que la l\xEDnea vaya del t\xFAnel S al t\xFAnel E."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983761
+    m_Localized: "LOS N\xDAMEROS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983762
+    m_Localized: "Cada n\xFAmero dice cu\xE1ntas piezas debe tener su fila o columna. Justo esas: se pone verde cuando acierta y rojo cuando se pasa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983763
+    m_Localized: "SALIDA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983764
+    m_Localized: "Cuando la v\xEDa une S con E y todos los n\xFAmeros cuadran, el tren sale. T\xF3mate tu tiempo: el reloj solo decide las estrellas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983765
+    m_Localized: "SIGUIENTE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983766
+    m_Localized: "EMPEZAR"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

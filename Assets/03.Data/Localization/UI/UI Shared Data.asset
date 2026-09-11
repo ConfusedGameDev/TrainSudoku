@@ -175,6 +175,90 @@ MonoBehaviour:
     m_Key: arrival.delayed
     m_Metadata:
       m_Items: []
+  - m_Id: 296786445983745
+    m_Key: tutorial.select_first
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983746
+    m_Key: tutorial.side_first
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983747
+    m_Key: tutorial.side_second
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983748
+    m_Key: tutorial.clue
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983749
+    m_Key: tutorial.erase
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983750
+    m_Key: tutorial.unlocked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983751
+    m_Key: tutorial.note_fixed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983752
+    m_Key: tutorial.note_overfull
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983753
+    m_Key: tutorial.select_auto
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983755
+    m_Key: tutorial.select_next
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983756
+    m_Key: tutorial.side_next
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983757
+    m_Key: tutorial.refused
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983758
+    m_Key: tutorial.mistake
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983759
+    m_Key: tutorial.brief1_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983760
+    m_Key: tutorial.brief1_body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983761
+    m_Key: tutorial.brief2_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983762
+    m_Key: tutorial.brief2_body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983763
+    m_Key: tutorial.brief3_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983764
+    m_Key: tutorial.brief3_body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983765
+    m_Key: tutorial.brief_next
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983766
+    m_Key: tutorial.brief_start
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

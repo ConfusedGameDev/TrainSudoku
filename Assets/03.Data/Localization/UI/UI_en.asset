@@ -178,6 +178,90 @@ MonoBehaviour:
     m_Localized: DELAYED
     m_Metadata:
       m_Items: []
+  - m_Id: 296786445983745
+    m_Localized: "Tap this square. The next rail goes here."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983746
+    m_Localized: "Now tap the square the rails run to."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983747
+    m_Localized: "And now the other end."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983748
+    m_Localized: "Each number counts rails. That line now holds exactly as many as it asks for."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983749
+    m_Localized: "That number has turned red: too many rails in its line. Press and hold the rail to lift it off."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983750
+    m_Localized: "You have it. Follow the ring to the end of the line."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983751
+    m_Localized: "That rail was laid before you arrived. Hold one of your own."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983752
+    m_Localized: "That line holds more rails than its number allows. Hold one down to lift it."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983753
+    m_Localized: "Only one piece can fit here, so a single tap lays it."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983755
+    m_Localized: "Next rail here."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983756
+    m_Localized: "This way."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983757
+    m_Localized: "This one first."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983758
+    m_Localized: "Now lay one in the wrong place on purpose. Tap this square."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983759
+    m_Localized: "THE LINE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983760
+    m_Localized: "Ashgate has no railway yet. Lay one piece of track per square so the line runs from the S tunnel to the E tunnel."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983761
+    m_Localized: "THE NUMBERS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983762
+    m_Localized: "Each number says how many pieces its row or column must hold. Exactly that many: it turns green when the count is right and red when it is over."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983763
+    m_Localized: "DEPARTURE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983764
+    m_Localized: "When the track joins S to E and every number is matched, the train runs. Take your time \u2014 the clock only decides your stars."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983765
+    m_Localized: "NEXT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983766
+    m_Localized: "START"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

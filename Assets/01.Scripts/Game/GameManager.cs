@@ -55,6 +55,25 @@ namespace TrainSudoku.Game
         [SerializeField] private StyleSheet componentSheet = null;
 
         private PlayScreen _playScreen;
+
+        /// <summary>
+        /// The teaching script for a tutorial station (<see cref="LevelDefinition.IsTutorial"/>). It exists on every
+        /// level and simply says nothing on the rest.
+        /// </summary>
+        private readonly TutorialCoach _coach = new TutorialCoach();
+
+        /// <summary>
+        /// A row or column went green on the placement being processed. Buffered rather than sent to the coach as
+        /// it happens: the board raises it from inside the validator, <b>before</b> the action, so a coach told
+        /// straight away would have the news wiped by the very placement that earned it.
+        /// </summary>
+        private bool _lineSatisfied;
+
+        /// <summary>
+        /// The rules have been read this session. Kept in memory rather than in the save file: it is three taps,
+        /// and a player who restarts the app to re-read them should be allowed to.
+        /// </summary>
+        private bool _briefed;
         private List<LevelDefinition> _flatLevels;
 
         /// <summary>The JSON save file (PRD section 6).</summary>
@@ -283,6 +302,7 @@ namespace TrainSudoku.Game
             boardView.BoardChanged += SaveProgress;
             boardView.BoardChanged += OnBoardChanged;
             boardView.LineCleared += OnLineCleared;
+            boardView.Acted += OnBoardActed;
 
             // Scenes baked before the train existed get the runner at runtime; Regenerate bakes it.
             if (trainRunner == null) trainRunner = TrainRunner.Create(transform, trainAssets);
@@ -297,7 +317,14 @@ namespace TrainSudoku.Game
         private void Update()
         {
             Flow.Tick(Time.deltaTime);
-            if (Flow.State == GameState.Play && _playScreen != null) _playScreen.UpdateClock(Flow.Timer.Elapsed);
+            if (Flow.State != GameState.Play || _playScreen == null) return;
+
+            _playScreen.UpdateClock(Flow.Timer.Elapsed);
+
+            // The callout is anchored to a cell on a camera that re-fits on rotation and when the safe area lands,
+            // so where it belongs is re-asked every frame rather than only when the guide changes.
+            if (boardView.TryGuideAnchor(out var centre, out var far, out var near))
+                _playScreen.PointTutorialAt(centre, far, near);
         }
 
         private void OnDestroy()
@@ -310,6 +337,7 @@ namespace TrainSudoku.Game
                 boardView.BoardChanged -= SaveProgress;
                 boardView.BoardChanged -= OnBoardChanged;
                 boardView.LineCleared -= OnLineCleared;
+                boardView.Acted -= OnBoardActed;
             }
 
             if (trainRunner != null) trainRunner.Finished -= OnTrainFinished;
@@ -375,7 +403,45 @@ namespace TrainSudoku.Game
             if (Flow.State == GameState.TrainRun) Flow.FinishTrainRun();
         }
 
-        private void OnLevelStarted(int index, LevelProgress resume) => boardView.Load(Level(index), resume);
+        private void OnLevelStarted(int index, LevelProgress resume)
+        {
+            var level = Level(index);
+            boardView.Load(level, resume);
+
+            // Every load, Retry included: the coach has no memory across attempts, so a level restarted mid-lesson
+            // teaches from the top rather than from wherever the abandoned attempt had got to. It reads the board
+            // the view has just built, so it must come after Load.
+            _lineSatisfied = false;
+            _coach.Begin(boardView.Level, boardView.Board, level != null && level.IsTutorial);
+            PushTutorial();
+
+            // A locked guide means a tutorial board nobody has laid a rail on yet — the one moment the rules are
+            // worth reading. A resumed board, or a second attempt this session, goes straight to the track.
+            if (_coach.Guide.Locked && !_briefed && _playScreen != null)
+            {
+                _briefed = true;
+                _playScreen.ShowBriefing();
+            }
+        }
+
+        /// <summary>Where the tutorial is pointing and what it is saying. Pushed after anything that changes either.</summary>
+        private void PushTutorial()
+        {
+            boardView.SetGuide(_coach.Guide);
+            if (_playScreen != null) _playScreen.ShowTutorial(_coach.Key);
+        }
+
+        /// <summary>
+        /// One player action, straight to the tutorial coach. It runs on every level — the coach is inert unless the
+        /// level asked for it — so nothing here has to know which station is the teaching one.
+        /// </summary>
+        private void OnBoardActed(BoardAction action)
+        {
+            _coach.Observe(new BoardPulse(action, boardView.SelectedCell, boardView.ChosenSide,
+                boardView.HasOverfullLine, _lineSatisfied));
+            _lineSatisfied = false;
+            PushTutorial();
+        }
 
         /// <summary>A satisfied row or column goes to the LED strip, which is the Play screen's to print.</summary>
         /// <summary>A piece went down or came up: the play screen's track-laid strip counts it.</summary>
@@ -386,6 +452,7 @@ namespace TrainSudoku.Game
 
         private void OnLineCleared(bool isRow, int index)
         {
+            _lineSatisfied = true;
             if (_playScreen != null) _playScreen.AnnounceLineClear(isRow, index);
         }
 
@@ -397,6 +464,8 @@ namespace TrainSudoku.Game
         private void OnBoardCompleted()
         {
             if (Flow.State != GameState.Play) return;
+            _coach.Complete();
+            PushTutorial();
             AudioCuePlayer.Play(AudioCue.Win);
             Flow.CompleteLevel();
         }

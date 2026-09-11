@@ -46,12 +46,23 @@ namespace TrainSudoku.Game
                  "play, never derived from solver node count — that measures search-tree size, not how long a person takes.")]
         [SerializeField] private float[] starTimes = new float[2];
 
+        [Tooltip("Runs the tutorial coach on this level: the instruction band above the LED strip that teaches " +
+                 "placing, connecting and erasing. Only the first station of the first line should carry it.")]
+        [SerializeField] private bool isTutorial;
+
         public string Id => id;
 
         /// <summary>The station's name. An invented proper noun, untranslated, like any station on a real map (D14).</summary>
         public string DisplayName => displayName;
         public int Width => width;
         public int Height => height;
+
+        /// <summary>
+        /// Whether the Play screen coaches the player through this level (<see cref="TutorialCoach"/>). It is a
+        /// property of the level rather than a hard-coded id so the teaching station can be moved, or replaced,
+        /// without touching code — and so nothing else in the lineup can silently become one.
+        /// </summary>
+        public bool IsTutorial => isTutorial;
 
         /// <summary>
         /// Star thresholds in seconds, fastest first. Always two entries, so a half-authored asset still answers.

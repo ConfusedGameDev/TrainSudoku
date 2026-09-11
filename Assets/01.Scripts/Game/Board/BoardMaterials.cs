@@ -34,6 +34,7 @@ namespace TrainSudoku.Game
         private static Material _entrance;
         private static Material _exit;
         private static Material _hold;
+        private static Material _guide;
         private static Material _platformEdge;
         private static Color _lineColour = Palette.Warn;
         private static Color _holdColour = Palette.Warn;
@@ -83,6 +84,12 @@ namespace TrainSudoku.Game
         public static Material Exit => _exit != null ? _exit : _exit = Create("Exit", Palette.Stop);
 
         /// <summary>The long-press erase ring, in the platform-edge yellow unless the Game Manager overrides it.</summary>
+        /// <summary>
+        /// The tutorial's ring. Line-coloured, so the cell being pointed at and the callout's tail read as the
+        /// same instruction rather than as two unrelated cues.
+        /// </summary>
+        public static Material Guide => _guide != null ? _guide : _guide = Create("Guide", _lineColour);
+
         public static Material Hold => _hold != null ? _hold : _hold = Create("Hold Ring", _holdColour);
 
         /// <summary>The yellow tactile strip along the platform edge (D13 environment art).</summary>
@@ -99,6 +106,7 @@ namespace TrainSudoku.Game
             if (_tileForced != null) _tileForced.color = colour;
             if (_clueChip != null) _clueChip.color = colour;
             if (_clueChipEdge != null) _clueChipEdge.color = Darken(colour);
+            if (_guide != null) _guide.color = colour;
         }
 
         /// <summary>

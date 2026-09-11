@@ -178,6 +178,90 @@ MonoBehaviour:
     m_Localized: "RETARD\xC9"
     m_Metadata:
       m_Items: []
+  - m_Id: 296786445983745
+    m_Localized: "Touche cette case. C'est l\xE0 que va la voie suivante."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983746
+    m_Localized: "Touche maintenant la case vers laquelle part la voie."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983747
+    m_Localized: "Et maintenant l'autre extr\xE9mit\xE9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983748
+    m_Localized: "Chaque nombre compte les voies. Cette ligne a maintenant exactement celles qu'elle demande."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983749
+    m_Localized: "Ce nombre est pass\xE9 au rouge : trop de voies sur sa ligne. Appuie longuement sur la voie pour l'enlever."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983750
+    m_Localized: "Tu as compris. Suis le cercle jusqu'au terminus."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983751
+    m_Localized: "Cette voie \xE9tait d\xE9j\xE0 pos\xE9e. Appuie longuement sur une des tiennes."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983752
+    m_Localized: "Cette ligne a plus de voies que son nombre. Appuie longuement pour en retirer une."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983753
+    m_Localized: "Une seule pi\xE8ce peut tenir ici : un seul appui la pose."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983755
+    m_Localized: "La voie suivante, ici."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983756
+    m_Localized: "Par ici."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983757
+    m_Localized: "Celle-ci d'abord."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983758
+    m_Localized: "Pose-en une au mauvais endroit, expr\xE8s. Touche cette case."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983759
+    m_Localized: "LA LIGNE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983760
+    m_Localized: "Ashgate n'a pas encore de chemin de fer. Pose une pi\xE8ce de voie par case pour relier le tunnel S au tunnel E."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983761
+    m_Localized: "LES NOMBRES"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983762
+    m_Localized: "Chaque nombre indique combien de pi\xE8ces sa ligne ou sa colonne doit contenir. Exactement autant : il passe au vert quand le compte est juste, au rouge quand il est d\xE9pass\xE9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983763
+    m_Localized: "D\xC9PART"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983764
+    m_Localized: "Quand la voie relie S \xE0 E et que tous les nombres sont respect\xE9s, le train part. Prends ton temps : l'horloge ne d\xE9cide que des \xE9toiles."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983765
+    m_Localized: "SUIVANT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983766
+    m_Localized: "COMMENCER"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

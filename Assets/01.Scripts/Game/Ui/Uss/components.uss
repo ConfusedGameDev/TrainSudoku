@@ -131,6 +131,31 @@
     overflow: hidden;
 }
 
+/*
+ * The tutorial's speech bubble. The card itself is .card (white, 4px --ink); this only floats it and sizes its
+ * type. The tail is painted by the element, because USS cannot make a triangle.
+ *
+ * 44px is deliberately larger than any other body copy in the game: it is the only text a player is expected to
+ * stop and read, and it is read against a 3D board rather than a flat screen ground.
+ */
+.callout {
+    position: absolute;
+    max-width: 640px;
+}
+
+.callout__card {
+    padding-top: 26px;
+    padding-bottom: 26px;
+    padding-left: 30px;
+    padding-right: 30px;
+}
+
+.callout__text {
+    white-space: normal;
+    font-size: 44px;
+    color: var(--ink);
+}
+
 /* ---- the roundel ---- */
 
 .station-roundel { flex-shrink: 0; }

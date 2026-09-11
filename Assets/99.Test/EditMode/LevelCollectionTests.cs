@@ -109,6 +109,65 @@ namespace TrainSudoku.Tests
             }
         }
 
+        // ---- the tutorial station (M21) ----
+
+        /// <summary>
+        /// Exactly one station teaches, and it is the first one the player reaches. Two of them would repeat the
+        /// lesson; none would leave long-press-to-erase undiscoverable, which is the whole reason the coach exists.
+        /// </summary>
+        [Test]
+        public void OnlyTheFirstStationOfTheFirstLineIsATutorial()
+        {
+            var network = LoadNetwork();
+            var teaching = new List<string>();
+            foreach (var level in LoadEveryStation())
+                if (level.IsTutorial) teaching.Add(level.name);
+
+            Assert.AreEqual(1, teaching.Count, "tutorial levels: " + string.Join(", ", teaching));
+
+            var first = network.Line(0).Station(0);
+            Assert.IsTrue(first.IsTutorial, $"the first station of the first line is {first.name}, which does not teach");
+        }
+
+        /// <summary>
+        /// The coach teaches two ways of laying a piece, and it teaches each of them on the rail the player is
+        /// actually being walked to at that moment. So the test is not "the opening position offers both" but "the
+        /// guided order contains both": a board whose every guided cell had a choice would leave the one-tap lesson
+        /// with nothing to land on, and the erase detour — which runs on the first rail that lays itself — with
+        /// nowhere to start.
+        /// </summary>
+        [Test]
+        public void TheTutorialWalkthroughOffersBothAnAutoPlaceAndAChoice()
+        {
+            foreach (var level in LoadEveryStation())
+            {
+                if (!level.IsTutorial) continue;
+
+                var data = level.ToLevelData();
+                Assert.IsTrue(Solver.TrySolve(data, out var solution), $"{level.name} does not solve");
+                Assert.IsTrue(PathFinder.TryFindPath(solution, out var path), $"{level.name} has no path from S to E");
+
+                var board = new Board(data);
+                var autoPlace = 0;
+                var choice = 0;
+                foreach (var (x, y) in path)
+                {
+                    if (!board.IsEmpty(x, y)) continue;
+
+                    var keys = Legality.LegalKeys(board, x, y);
+                    Assert.IsNotEmpty(keys, $"{level.name}: the walkthrough stalls at ({x},{y})");
+                    if (keys.Count == 1) autoPlace++;
+                    else choice++;
+
+                    // Lay the solved piece and carry on, so every cell is judged in the state the player meets it.
+                    board.SetUnchecked(x, y, solution[x, y]);
+                }
+
+                Assert.Greater(autoPlace, 0, $"{level.name}: no guided rail that a single tap lays");
+                Assert.Greater(choice, 0, $"{level.name}: no guided rail whose sides the player has to choose");
+            }
+        }
+
         // ---- the network (M13) ----
 
         private static NetworkDefinition LoadNetwork()
