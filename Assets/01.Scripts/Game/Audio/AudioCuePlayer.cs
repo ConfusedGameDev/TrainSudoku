@@ -26,6 +26,8 @@ namespace TrainSudoku.Game
 
         public static void Play(AudioCue cue)
         {
+            // Haptics ride the same cue vocabulary, and fire whether or not the cue has a clip.
+            Haptics.Play(cue);
             if (_instance == null || _instance.library == null || _instance.source == null) return;
             if (_instance.library.TryGetClip(cue, out var clip, out var volume))
                 _instance.source.PlayOneShot(clip, volume);
@@ -35,6 +37,7 @@ namespace TrainSudoku.Game
         {
             _instance = this;
             if (source == null) source = GetComponent<AudioSource>();
+            Haptics.Prepare();
         }
 
         private void OnDisable()

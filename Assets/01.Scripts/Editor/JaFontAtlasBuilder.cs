@@ -71,7 +71,8 @@ namespace TrainSudoku.Editor
 
             var added = font.TryAddCharacters(characters, out var missing);
             AdoptAtlasTextures(font);
-            RefreshFaceName(font);
+            // Again after the bake: ClearFontAssetData and TryAddCharacters both touch the face.
+            RefreshFace(font);
 
             EditorUtility.SetDirty(font);
             AssetDatabase.SaveAssets();
@@ -97,7 +98,6 @@ namespace TrainSudoku.Editor
         {
             var serialized = new SerializedObject(font);
 
-            SetNumber(serialized, "m_FaceInfo.m_PointSize", SamplingPointSize);
             SetNumber(serialized, "m_AtlasPadding", AtlasPadding);
             SetNumber(serialized, "m_AtlasWidth", AtlasSize);
             SetNumber(serialized, "m_AtlasHeight", AtlasSize);
@@ -112,13 +112,16 @@ namespace TrainSudoku.Editor
             serialized.FindProperty("m_ClearDynamicDataOnBuild").boolValue = false;
 
             serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            // The face metrics have to be right before the bake as well as after it.
+            RefreshFace(font);
         }
 
         /// <summary>
         /// Writes a number without caring whether the field behind it is an int or a float — the face's own
         /// metrics mix the two, and guessing wrong logs "type is not a supported int value" and skips the write.
         /// </summary>
-        private static void SetNumber(SerializedObject serialized, string path, int value)
+        private static void SetNumber(SerializedObject serialized, string path, float value)
         {
             var property = serialized.FindProperty(path);
             if (property == null)
@@ -128,23 +131,62 @@ namespace TrainSudoku.Editor
             }
 
             if (property.propertyType == SerializedPropertyType.Float) property.floatValue = value;
-            else property.intValue = value;
+            else property.intValue = Mathf.RoundToInt(value);
         }
 
         /// <summary>
-        /// Re-reads the family and style the glyphs were actually rasterised from. Clearing and rebaking leaves the
-        /// previous source's name behind, and a face that still calls itself Thin after a Medium bake is the exact
-        /// trap this milestone fell into: the pixels are right and the label lies about them.
+        /// Re-reads the whole face — name and metrics — from the source at the sampling size actually used.
         /// </summary>
-        private static void RefreshFaceName(FontAsset font)
+        /// <remarks>
+        /// <b>The face info is one coherent set, and writing half of it breaks the other half.</b> Every metric in
+        /// it is expressed in the units of <c>m_PointSize</c>, and the renderer scales a label by
+        /// <c>fontSize / pointSize</c>. This used to overwrite <c>m_PointSize</c> with 48 and leave line height,
+        /// ascent and the rest at whatever the previous bake had put there — Noto's own default of 90 — so every
+        /// metric came out 90/48 = 1.875x too large. Nothing looked wrong glyph for glyph, because the glyphs are
+        /// rasterised at the sampling size either way; what went wrong was the *boxes*, with a line height of 2.7x
+        /// the font size instead of 1.45x. Every ja label was three times its proper height, which pushed the
+        /// concourse's sign card to 452 px and squeezed the platform art underneath it.
+        ///
+        /// Clearing and rebaking also leaves the previous source's name behind, and a face that still calls itself
+        /// Thin after a Medium bake is the trap this milestone fell into once already: the pixels are right and the
+        /// label lies about them. Same cure — take the lot from the face that was actually loaded.
+        /// </remarks>
+        private static void RefreshFace(FontAsset font)
         {
             if (font.sourceFontFile == null) return;
-            if (FontEngine.LoadFontFace(font.sourceFontFile, SamplingPointSize) != FontEngineError.Success) return;
+            if (FontEngine.LoadFontFace(font.sourceFontFile, SamplingPointSize) != FontEngineError.Success)
+            {
+                Debug.LogWarning($"Could not load {font.sourceFontFile.name} at {SamplingPointSize} pt; " +
+                                 "the face metrics are whatever the last bake left.");
+                return;
+            }
 
             var face = FontEngine.GetFaceInfo();
             var serialized = new SerializedObject(font);
+
             serialized.FindProperty("m_FaceInfo.m_FamilyName").stringValue = face.familyName;
             serialized.FindProperty("m_FaceInfo.m_StyleName").stringValue = face.styleName;
+
+            SetNumber(serialized, "m_FaceInfo.m_PointSize", face.pointSize);
+            SetNumber(serialized, "m_FaceInfo.m_Scale", face.scale);
+            // m_UnitsPerEM is left alone: it is the font file's own em square, not a bake setting, and this
+            // editor's FaceInfo does not expose it.
+            SetNumber(serialized, "m_FaceInfo.m_LineHeight", face.lineHeight);
+            SetNumber(serialized, "m_FaceInfo.m_AscentLine", face.ascentLine);
+            SetNumber(serialized, "m_FaceInfo.m_CapLine", face.capLine);
+            SetNumber(serialized, "m_FaceInfo.m_MeanLine", face.meanLine);
+            SetNumber(serialized, "m_FaceInfo.m_Baseline", face.baseline);
+            SetNumber(serialized, "m_FaceInfo.m_DescentLine", face.descentLine);
+            SetNumber(serialized, "m_FaceInfo.m_SuperscriptOffset", face.superscriptOffset);
+            SetNumber(serialized, "m_FaceInfo.m_SuperscriptSize", face.superscriptSize);
+            SetNumber(serialized, "m_FaceInfo.m_SubscriptOffset", face.subscriptOffset);
+            SetNumber(serialized, "m_FaceInfo.m_SubscriptSize", face.subscriptSize);
+            SetNumber(serialized, "m_FaceInfo.m_UnderlineOffset", face.underlineOffset);
+            SetNumber(serialized, "m_FaceInfo.m_UnderlineThickness", face.underlineThickness);
+            SetNumber(serialized, "m_FaceInfo.m_StrikethroughOffset", face.strikethroughOffset);
+            SetNumber(serialized, "m_FaceInfo.m_StrikethroughThickness", face.strikethroughThickness);
+            SetNumber(serialized, "m_FaceInfo.m_TabWidth", face.tabWidth);
+
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 

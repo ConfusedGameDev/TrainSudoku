@@ -862,6 +862,10 @@ namespace TrainSudoku.Game
                     if (!occupied) AudioCuePlayer.Play(AudioCue.Error);
                     RefreshSelection();
                     break;
+                case SelectOutcome.Selected:
+                    Haptics.Play(HapticFeel.Selection);
+                    RefreshSelection();
+                    break;
                 default:
                     RefreshSelection();
                     break;
@@ -884,8 +888,15 @@ namespace TrainSudoku.Game
 
         private void ApplyChoose(ChooseOutcome outcome)
         {
-            if (outcome == ChooseOutcome.Placed) OnPlaced();
-            else RefreshSelection();
+            if (outcome == ChooseOutcome.Placed)
+            {
+                OnPlaced();
+                return;
+            }
+
+            // Narrowing to the first side, or letting it go again, is a change of selection rather than a placement.
+            if (outcome != ChooseOutcome.Ignored) Haptics.Play(HapticFeel.Selection);
+            RefreshSelection();
         }
 
         private void OnPlaced()
