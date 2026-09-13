@@ -1,0 +1,16 @@
+{
+    "name": "TrainSudoku.XR.Rules",
+    "rootNamespace": "TrainSudoku.XR.Rules",
+    "references": [
+        "TrainSudoku.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

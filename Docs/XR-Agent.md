@@ -34,6 +34,22 @@ This branch is **Tsugi XR**, the Meta Quest edition. Read these notes alongside 
 
 XR Management and Composition Layers come in as dependencies. If a pin breaks, fall back to the version the a6 editor bundles and record the change in XR-PRD 10.5.
 
+## XR assemblies
+
+| Assembly | Location | Holds |
+|---|---|---|
+| `TrainSudoku.XR.Rules` | `Assets/01.Scripts/XR/Rules/` | `PieceDrop` (XR-PRD 4.4): grabbing from the tray or a cell, the ghost tint, and every release outcome. It works on the shared `Board` through `TryPlace`, `TryErase` and `Legality`. `noEngineReferences`; references only Core |
+| `TrainSudoku.XR.Editor` | `Assets/01.Scripts/XR/Editor/` | `XRFoundationSetup`: the XR render pipeline and scene |
+| `TrainSudoku.XR.Tests.EditMode` | `Assets/99.Test/XR/EditMode/` | `PieceDropTests`, with its own fixtures in `XRTestBoards`. It never uses the phone's test assembly, which would pull in Game and Editor |
+
+- **Every `PieceDrop` call returns a `DropResult`:**
+  - `Outcome`: `Taken`, `Lifted`, `Placed`, `Moved`, `Replaced`, `Returned`, `Puffed`, `Thrown` or `Refused`.
+  - `IllegalDrop`, for the coach: a `Returned`, or a `Puffed` whose way back was closed.
+  - `BoardChanged`, for the validator.
+  - `RefuseReason`. `FixedPiece` is the case that plays the wobble and the "that's fixed" note.
+- **`Hover` never changes the board**, and `GhostAgreesWithTheReleaseOnEveryCellAndKey` holds the ghost tint to the real release outcome.
+- **The rules tests also run outside Unity.** A scratch `net10.0` NUnit project that compiles `Core/**`, `XR/Rules/**` and `99.Test/XR/EditMode/**` runs them with `dotnet test` in well under a second. That also proves the assembly stays engine-free.
+
 ## Driving the Editor
 
 - **Windows paths.**

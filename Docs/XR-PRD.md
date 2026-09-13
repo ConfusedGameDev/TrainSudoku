@@ -433,7 +433,7 @@ Same rules as the phone work: **no `git commit` until a milestone's *Verified by
 |---|---|---|
 | XR1 | ~~Shared package~~ (dropped) | — |
 | XR2 | XR foundation | ☑ |
-| XR3 | `PieceDrop` | ☐ |
+| XR3 | `PieceDrop` | ☑ |
 | XR4 | Board display | ☐ |
 | XR5 | Board in the room | ☐ |
 | XR6 | Tray and grab | ☐ |
