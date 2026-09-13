@@ -2,6 +2,7 @@
     "name": "TrainSudoku.XR.Editor",
     "rootNamespace": "TrainSudoku.XR.Editor",
     "references": [
+        "TrainSudoku.XR",
         "Unity.XR.ARFoundation",
         "Unity.XR.CoreUtils",
         "Unity.RenderPipelines.Core.Runtime",

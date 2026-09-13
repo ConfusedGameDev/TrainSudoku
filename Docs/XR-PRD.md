@@ -196,6 +196,12 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 
 - An invisible shadow-catching surface under the platform lets the board, pieces and train cast shadows onto the real table.
 - There is one directional light, chosen for a readable shadow, not estimated from the room.
+- **Occlusion.** Real hands, arms and furniture in front of the board hide it, using the headset's environment depth:
+  - The pieces are the Meta Quest: Occlusion feature and AR Foundation's `AROcclusionManager` and `ARShaderOcclusion`.
+  - Only materials on an occlusion-aware shader are hidden, so every board, piece, sign, text and train material uses one.
+  - Hand removal stays off, so the depth map covers the player's real hands too.
+  - It needs the same spatial-data permission as surface placement (5.2).
+  - Added 2026-09-13 after the XR4 headset check showed the board drawn over the player's body.
 
 ---
 
@@ -417,7 +423,7 @@ Same rules as the phone work: **no `git commit` until a milestone's *Verified by
 | XR2 | XR foundation | On `feat/MetaXR`: XR packages at the pinned versions; the Meta Quest build profile with its Player, Graphics/Quality and scene-list overrides; XR Plug-in Management with OpenXR on the Quest target only; `Scenes/XR.unity` with an AR Session and the XRI hands-and-controllers rig. The phone's full suite stays green and `SampleScene` still plays. A Quest 3 build shows passthrough, tracked hands and controllers, and its APK targets API 34 and declares `quest3\|quest3s`. `Docs/XR-Agent.md` written, `.gitignore` covers keystores |
 | XR3 | `PieceDrop` | `XR.Rules` with EditMode tests covering every row of section 4.4, the move rollback, replacing a piece, fixed-piece refusal, two hands and lift-equals-erase |
 | XR4 | Board display | A shared level loads into an XR-built board at 0.06 scale: tiles, tunnels, clue signs facing the player, fixed pieces, bent track from `TrackCurve`, validator colouring, train run along `TrackPath`. Placed in front of the player for now |
-| XR5 | Board in the room | Surface-snapped placement, float fallback, handle move and turn, anchor persistence across launches, growth from the near edge, shadow catcher |
+| XR5 | Board in the room | Surface-snapped placement, float fallback, handle move and turn, anchor persistence across launches, growth from the near edge, shadow catcher, environment depth occlusion of the board and train by the player's body and the room (5.6) |
 | XR6 | Tray and grab | Six-slot tray with docking, handedness and moving between edges. Direct and distant grab, ghost, every release outcome, steam puff and throw, timer from the first grab. A level is playable start to finish. Star timing sampled (section 9) |
 | XR7 | Flow on the platform | Network and line maps on the platform, roundel selection by poke and ray, signboard (masthead, station, arrival), train run skip, save and continue, stars |
 | XR8 | Wrist menu and pause | Back-of-wrist menu, pause semantics including focus loss and headset removal, all settings |
@@ -434,7 +440,7 @@ Same rules as the phone work: **no `git commit` until a milestone's *Verified by
 | XR1 | ~~Shared package~~ (dropped) | — |
 | XR2 | XR foundation | ☑ |
 | XR3 | `PieceDrop` | ☑ |
-| XR4 | Board display | ☐ |
+| XR4 | Board display | ☑ |
 | XR5 | Board in the room | ☐ |
 | XR6 | Tray and grab | ☐ |
 | XR7 | Flow on the platform | ☐ |

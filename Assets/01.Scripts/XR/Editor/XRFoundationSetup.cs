@@ -11,12 +11,12 @@ using UnityEngine.XR.ARFoundation;
 namespace TrainSudoku.XR.Editor
 {
     /// <summary>
-    /// XR2: builds the two XR foundation assets that need the Editor's own APIs rather than
-    /// hand-written YAML. The Quest render pipeline is a copy of the phone's mobile one, re-tuned
-    /// per XR-PRD section 8. <c>Scenes/XR.unity</c> holds an AR Session, the XRI hands-and-controllers
-    /// rig with a passthrough camera, and a board-scale test cube. The build profile, XR Plug-in
-    /// Management and the package samples are set by hand; <c>Docs/XR-Agent.md</c> lists the steps.
-    /// Both menu items leave the phone's assets and open scene untouched.
+    /// Builds the XR assets that need the Editor's own APIs rather than hand-written YAML. XR2: the Quest render
+    /// pipeline, a copy of the phone's mobile one re-tuned per XR-PRD section 8, and <c>Scenes/XR.unity</c> with an AR
+    /// Session, the XRI hands-and-controllers rig with a passthrough camera, and a board-scale test cube. XR4: the
+    /// <see cref="XRBoardAssets"/> and the board demo in that scene. The build profile, XR Plug-in Management and the
+    /// package samples are set up by hand; <c>Docs/XR-Agent.md</c> lists the steps. None of it touches the phone's
+    /// assets or open scene.
     /// </summary>
     static class XRFoundationSetup
     {
@@ -26,6 +26,14 @@ namespace TrainSudoku.XR.Editor
         const string SourcePipeline = "Assets/02.Graphics/RenderPipeline/Mobile_RPAsset.asset";
         const string SourceRenderer = "Assets/02.Graphics/RenderPipeline/Mobile_Renderer.asset";
         const string ScenePath = "Assets/Scenes/XR.unity";
+
+        const string DataFolder = "Assets/03.Data/XR";
+        const string BoardAssetsPath = DataFolder + "/XRBoardAssets.asset";
+        const string NetworkPath = "Assets/03.Data/Levels/Network.asset";
+        const string BoardDemoName = "Board Demo";
+
+        // The phone's art hooks. The XR asset is seeded from them once, field by field, and is XR's own after that.
+        static readonly string[] PhoneArtAssets = { "Assets/03.Data/Board/TrackAssets.asset", "Assets/03.Data/Board/TrainAssets.asset" };
 
         // The XRI "Hands Interaction Demo" rig: XR Origin with hands and controllers, switched by
         // the XR Input Modality Manager. It is a variant of the Starter Assets rig, which carries the
@@ -73,6 +81,14 @@ namespace TrainSudoku.XR.Editor
             renderers.arraySize = 1;
             renderers.GetArrayElementAtIndex(0).objectReferenceValue = renderer;
             serialized.FindProperty("m_DefaultRendererIndex").intValue = 0;
+            // Shadows sized for a 6 cm board rather than a phone scene. The mobile asset's 50 m distance on one 1024 map
+            // makes a shadow texel about 10 cm, wider than a cell, so a hand's shadow on the board came out striped.
+            // 2.5 m covers the board and the hands over it at about 2.5 mm a texel.
+            serialized.FindProperty("m_ShadowDistance").floatValue = 2.5f;
+            serialized.FindProperty("m_MainLightShadowmapResolution").intValue = 2048;
+            serialized.FindProperty("m_ShadowCascadeCount").intValue = 1;
+            serialized.FindProperty("m_SoftShadowsSupported").boolValue = true;
+            serialized.FindProperty("m_SoftShadowQuality").intValue = 1;
             serialized.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(pipeline);
 
@@ -142,6 +158,81 @@ namespace TrainSudoku.XR.Editor
                     SceneManager.SetActiveScene(previous);
                 EditorSceneManager.CloseScene(scene, true);
             }
+        }
+
+        /// <summary>
+        /// XR4: adds the self-running board demo to <c>XR.unity</c>, wired to the shipped network and to
+        /// <see cref="XRBoardAssets"/>, which it seeds from the phone's art hooks the first time. Running it again only
+        /// re-wires the existing demo object.
+        /// </summary>
+        [MenuItem("Window/TrainSudoku/XR/Add Board Demo to XR Scene")]
+        static void AddBoardDemo()
+        {
+            var boardAssets = EnsureBoardAssets();
+            var network = AssetDatabase.LoadAssetAtPath<ScriptableObject>(NetworkPath);
+            if (network == null)
+            {
+                Debug.LogError($"[XR] No network at {NetworkPath}.");
+                return;
+            }
+
+            var scene = SceneManager.GetSceneByPath(ScenePath);
+            var openedHere = !scene.isLoaded;
+            if (openedHere) scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
+            try
+            {
+                var root = scene.GetRootGameObjects().FirstOrDefault(go => go.name == BoardDemoName);
+                if (root == null)
+                {
+                    root = new GameObject(BoardDemoName);
+                    SceneManager.MoveGameObjectToScene(root, scene);
+                }
+                if (!root.TryGetComponent<XRBoardDemo>(out var demo)) demo = root.AddComponent<XRBoardDemo>();
+
+                var serialized = new SerializedObject(demo);
+                serialized.FindProperty("network").objectReferenceValue = network;
+                serialized.FindProperty("assets").objectReferenceValue = boardAssets;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene);
+                Debug.Log($"[XR] '{BoardDemoName}' in {ScenePath} plays the network from {NetworkPath}.");
+            }
+            finally
+            {
+                if (openedHere) EditorSceneManager.CloseScene(scene, true);
+            }
+        }
+
+        /// <summary>
+        /// The XR board's art hooks. Created the first time by copying every field whose name matches from the phone's
+        /// TrackAssets and TrainAssets — the same kit meshes, models and tuning — through serialized properties, so this
+        /// editor code never names a phone type.
+        /// </summary>
+        static XRBoardAssets EnsureBoardAssets()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<XRBoardAssets>(BoardAssetsPath);
+            if (existing != null) return existing;
+
+            if (!AssetDatabase.IsValidFolder(DataFolder)) AssetDatabase.CreateFolder("Assets/03.Data", "XR");
+            var asset = ScriptableObject.CreateInstance<XRBoardAssets>();
+            AssetDatabase.CreateAsset(asset, BoardAssetsPath);
+
+            var target = new SerializedObject(asset);
+            foreach (var path in PhoneArtAssets)
+            {
+                var source = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
+                if (source == null) continue;
+                var property = new SerializedObject(source).GetIterator();
+                for (var enter = true; property.NextVisible(enter); enter = false)
+                    if (property.name != "m_Script" && target.FindProperty(property.propertyPath) != null)
+                        target.CopyFromSerializedProperty(property);
+            }
+
+            target.ApplyModifiedPropertiesWithoutUndo();
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[XR] Created {BoardAssetsPath} from the phone's track and train assets.");
+            return asset;
         }
 
         static GameObject FindPrefab(string name) =>

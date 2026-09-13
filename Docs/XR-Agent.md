@@ -39,7 +39,14 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
 | Assembly | Location | Holds |
 |---|---|---|
 | `TrainSudoku.XR.Rules` | `Assets/01.Scripts/XR/Rules/` | `PieceDrop` (XR-PRD 4.4): grabbing from the tray or a cell, the ghost tint, and every release outcome. It works on the shared `Board` through `TryPlace`, `TryErase` and `Legality`. `noEngineReferences`; references only Core |
-| `TrainSudoku.XR.Editor` | `Assets/01.Scripts/XR/Editor/` | `XRFoundationSetup`: the XR render pipeline and scene |
+| `TrainSudoku.XR` | `Assets/01.Scripts/XR/` | The XR runtime. References Core, `TrainSudoku.Game` (the four level data types only) and XR.Rules. So far:
+<br>- `Board/XRBoardDisplay`, the board.
+<br>- `Train/XRTrainRun`, the train.
+<br>- `XRPalette`, the XR re-skin point.
+<br>- `Board/XRBoardMaterials`.
+<br>- `Board/XRBoardAssets`, the kit meshes and train models.
+<br>- `XRBoardDemo` (XR4 only) |
+| `TrainSudoku.XR.Editor` | `Assets/01.Scripts/XR/Editor/` | `XRFoundationSetup`: the XR render pipeline, the scene, and **Add Board Demo to XR Scene** |
 | `TrainSudoku.XR.Tests.EditMode` | `Assets/99.Test/XR/EditMode/` | `PieceDropTests`, with its own fixtures in `XRTestBoards`. It never uses the phone's test assembly, which would pull in Game and Editor |
 
 - **Every `PieceDrop` call returns a `DropResult`:**
@@ -48,6 +55,17 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
   - `BoardChanged`, for the validator.
   - `RefuseReason`. `FixedPiece` is the case that plays the wobble and the "that's fixed" note.
 - **`Hover` never changes the board**, and `GhostAgreesWithTheReleaseOnEveryCellAndKey` holds the ghost tint to the real release outcome.
+- **The board (XR4).**
+  - **What it draws.** `XRBoardDisplay` builds tiles, tunnels, clue signs, pieces, platform-edge decals and the validator colouring from Core's `BoardLayout`, one unit per cell.
+  - **Scale.** The parent is scaled 0.06, so a cell is 6 cm. A 6x6 board comes out 0.52 x 0.46 m and an 8x8 0.64 x 0.58 m, tunnels and clue signs included.
+  - **No input.** Whatever changes `Board` calls `Sync(animate)`, which brings the pieces on show into line and recolours the clues.
+  - **Clue signs** are the phone's chip stood on a pole, and turn about the vertical to face `Camera.main` every frame. The destination plate on the locomotive does the same.
+  - **Forked mesh code.** `XR/Board/` holds forks of the phone's mesh code (`TrackMeshBender`, `TrackMeshResampler`, `TrackMeshProfile`, `ProceduralTrackMesh`, `ProceduralBoardMesh`, `PieceView`, `PopScale`). Each is marked with a one-line fork note at the top and is never synced with the phone's copy.
+  - **`XRBoardAssets`** was seeded field by field from the phone's `TrackAssets` and `TrainAssets`, so it has the same kit and tuning.
+- **The XR4 demo.** `XRBoardDemo` places the board 0.6 m ahead of the head and 0.5 m below it, facing the gaze, one second after start.
+  - It then plays every station in network order: the level, then its solution laid along the route, then the train, then the next station.
+  - It solves on a background thread, so the frame rate holds.
+  - The XR flow replaces it at XR7.
 - **The rules tests also run outside Unity.** A scratch `net10.0` NUnit project that compiles `Core/**`, `XR/Rules/**` and `99.Test/XR/EditMode/**` runs them with `dotnet test` in well under a second. That also proves the assembly stays engine-free.
 
 ## Driving the Editor
