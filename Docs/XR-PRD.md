@@ -2,7 +2,7 @@
 
 (The mixed-reality edition of **Tsugi**. Like the phone game, the code keeps the working name TrainSudoku.)
 
-Status: agreed 2026-09-11 by interview. Meta Quest first, Apple Vision Pro second. Revised the same day: sharing narrowed to the rules code and the levels, and the XR edition moved into its own Unity project.
+Status: agreed 2026-09-11 by interview. Meta Quest first, Apple Vision Pro second. Revised the same day: sharing narrowed to the rules code and the levels. **Revised 2026-09-13 by the user: there is no second Unity project.** XR is developed in this project on the long-lived branch `feat/MetaXR`, which takes the phone's `main` in by merge (X2, section 10). The shared package and its milestone (XR1) are dropped.
 
 This document **extends** `Docs/PRD.md`. It does not repeat what is unchanged:
 
@@ -15,7 +15,7 @@ It covers only what the XR edition changes or adds. Where the two disagree, this
 
 `Docs/UIDesign.MD` governs the phone only. The XR edition keeps the same station-signage visual language, but implements it itself (section 8).
 
-**The phone game remains in active development.** The two editions share **the rules code and the levels**, and nothing else. Everything else is re-implemented for XR.
+**The phone game remains in active development.** The two editions share **the rules code and the levels**, and nothing else. Everything else is re-implemented for XR. They live in one Unity project: the phone on `main`, XR on `feat/MetaXR`.
 
 ---
 
@@ -28,8 +28,8 @@ Settled by interview on 11 Sep 2026. Closed. Do not re-open one without asking f
 | # | Decision | Consequence |
 |---|---|---|
 | X1 | Phone and XR are **two live products**. They share **the rules code (`Core`) and the level data** only | The phone keeps developing independently. A level or line authored once ships to both. Nothing XR-specific may enter the level data or the save format |
-| X2 | **Two Unity projects in one repo, sharing one local package** (section 10.1). The phone project stays where it is; the XR project is `TsugiXR/` | The phone project never sees an XR package, and each product has its own settings. Two Editors can be open at once, so phone and XR work run in parallel |
-| X3 | Both projects stay on **`6000.7.0a6`**, the newest 6.7 build as of 11 Sep 2026 (there is no 6.7 beta yet; the latest beta is 6.6). They move to later 6.7 builds **together** | The shared package must compile in both. Every editor change goes through the checklist in 10.7 |
+| X2 | **One Unity project, two branches** (revised 2026-09-13; section 10.1). The phone develops on `main`; XR develops on the long-lived fork `feat/MetaXR`, which takes `main` in by merge and never merges back | `main` never sees an XR package. XR adds files under its own paths and puts its settings on the Meta Quest build profile, so merges from `main` stay clean (10.2) |
+| X3 | Both branches stay on **`6000.7.0a6`**, the newest 6.7 build as of 11 Sep 2026 (there is no 6.7 beta yet; the latest beta is 6.6). They move to later 6.7 builds **together** | `Core` must compile on both. Every editor change goes through the checklist in 10.7 |
 | X4 | Quest target is **Quest 3 and 3S** | Colour passthrough and a depth sensor are assumed. Quest Pro only if it comes for free; Quest 2 is not supported |
 | X13 | Vision Pro uses **Metal mode, Mixed immersion, Full Space** | Same rendering pipeline, post-processing and (expected) world-space UI Toolkit as Quest. The app does not share space with other apps. The studio holds a Pro licence |
 | X23 | Test hardware on hand: **Quest 3, Quest 3S, Apple Vision Pro** | Every milestone, Vision Pro included, is verified on a real headset |
@@ -56,18 +56,18 @@ Settled by interview on 11 Sep 2026. Closed. Do not re-open one without asking f
 | X14 | Level select, pause and arrival: see section 6 | The **network and line maps are drawn on the platform itself**. A standing **signboard** at the far edge carries the masthead, briefing and arrival. A **wrist menu** carries pause and settings. The Concourse screen is dropped in XR |
 | X15 | v1 carries **every phone system**; the **tutorial is rewritten** for XR | Out of scope for v1: multiplayer/co-location, hints, a VR level editor |
 | X18 | Pause **stops the clock, dims the board and locks the pieces** | Also triggered by taking the headset off and by the system menu |
-| X20 | The XR signboard and menus follow the phone's **visual language** (colour tokens, fonts, roundel, LED strip), **re-implemented in the XR project** | The XR project may copy phone files as a starting point. Copies are forks: never kept in sync, never referenced across projects |
+| X20 | The XR signboard and menus follow the phone's **visual language** (colour tokens, fonts, roundel, LED strip), **re-implemented under XR's own paths** | XR may copy phone files under its `XR/` paths as a starting point. Copies are forks: never kept in sync, and XR code never references the phone's UI code |
 
 ### 0.4 Code and sharing
 
 | # | Decision | Consequence |
 |---|---|---|
 | X12 | Tech: Unity's cross-platform stack — **OpenXR + OpenXR Meta + XR Interaction Toolkit + AR Foundation + XR Hands** — behind **our own grab interface** | Quest can later swap in Meta's hand grab without the rules or board code knowing. Vision Pro is a new platform, not a rewrite. Meta's own SDKs do not compile on 6.7 and are not used |
-| X21 | The shared package holds **`Core`, the level data types, the level/line/network assets and the tests that need only those** | The phone's `TrainSudoku.Game` stays whole and keeps its screens, board display and input. XR writes its own |
-| X22 | XR-only rules (`PieceDrop`, the XR tutorial coach) live in an **engine-free assembly in the XR project**, built on the shared `Core` and unit-tested there | The shared package only grows with code both products use. The phone never has to keep XR-only code green |
-| X24 | **Localisation and art are not shared.** XR has its own String Table (same four locales) and its own Japanese atlas bake. Art (train kit, track meshes, fonts, the tsugi mark) is **copied once** into the XR project | Station and line names travel with the level assets, so they arrive in XR anyway. The two re-skins are independent |
-| X25 | **The phone edits the shared package, XR reads it.** Every shared change must pass **both** projects' test suites before a commit | The phone project's level editor, Line Map Editor and network tools are the only writers of level assets. Shared code may be edited from either project under the both-suites rule |
-| X26 | The extraction is the **first XR milestone**, and it starts only once the in-flight 24-line network expansion is committed | Moving the files the expansion is still writing would tangle two pieces of work in one diff |
+| X21 | **Nothing is packaged** (revised 2026-09-13). XR uses **`Core`, the four level data types and the level/line/network assets in place**; the data types stay in `TrainSudoku.Game` | XR references `TrainSudoku.Game` for `LevelDefinition`, `LevelCollection`, `LineDefinition` and `NetworkDefinition` only, never for its screens, board display or input. XR writes its own |
+| X22 | XR-only rules (`PieceDrop`, the XR tutorial coach) live in an **engine-free assembly under `Assets/01.Scripts/XR/Rules/`**, built on `Core` and unit-tested beside it | `Core` only grows with code both products use. `main` never has to keep XR-only code green |
+| X24 | **Localisation copy and re-skins are not shared.** XR has its own `XR` String Table beside the phone's `UI` table (same four locales, same Localization settings) and its own Japanese atlas bake. Art (train kit, track meshes, fonts, the tsugi mark) is **used in place**; only what XR re-skins is copied under `02.Graphics/XR/` | Station and line names travel with the level assets, so they arrive in XR anyway. The two re-skins are independent |
+| X25 | **Shared changes land on `main` first.** `Core`, the level assets and the four data types change only on `main` and reach XR by merge | The phone's level editor, Line Map Editor and network tools are the only writers of level assets. A commit on `feat/MetaXR` needs **both** the phone's and XR's EditMode suites green |
+| X26 | *Obsolete (2026-09-13).* There is no extraction, so XR1 is dropped. The 24-line network expansion it waited for is committed (`b09b359`) | — |
 
 ---
 
@@ -82,7 +82,7 @@ The same puzzle, set on the player's own table. The player puts a small model ra
 | 1 | Meta Quest 3, Quest 3S | Android, OpenXR, colour passthrough. Hands and Touch controllers. Horizon Store. |
 | 2 | Apple Vision Pro | visionOS, Metal mode, Mixed immersion, Full Space. Hands only (look-and-pinch and direct pinch). App Store. |
 
-The phone game (iOS, Android) continues in its own project (X2). At every XR milestone that touches the shared package, it must still build and pass its tests.
+The phone game (iOS, Android) continues on `main` (X2). On `feat/MetaXR` it must still pass its tests and play in the Editor at every XR milestone.
 
 **Vision Pro comes second, but nothing built for Quest may block it.** In practice:
 
@@ -161,7 +161,7 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 
 - The XR edition builds its own board.
   - **Positions** come from the shared `Core`, at **1 unit per cell**: cell, tunnel and clue positions from `BoardLayout`, per-piece centre lines from `TrackCurve`, and the S-to-E route from `TrackPath`.
-  - **Art** is the copied train kit (X24).
+  - **Art** is the phone's train kit, used in place (X24).
 - The whole board sits under one root scaled to **0.06**, so one cell is 6 cm. No board code learns about metres, and `Core`'s layout maths is used unchanged.
 - Tunnels, clue signs, the train and every other board mesh inherit the scale.
 
@@ -258,19 +258,19 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
   1. **The adjacency rule.** The coach asks for a piece that is illegal at the target. The ghost goes red, and on release the piece flies back to the tray.
   2. **Erasing.** The coach points at an overfill cell derived from the board, as on the phone. The player lays the piece, watches the clue sign turn red, and is then shown how to lift the piece and throw or release it.
 - **Callout.** The tutorial callout is a world-space sign beside the target.
-- **Level constraints.** The phone's `LevelCollectionTests`, which move into the shared package, keep holding the tutorial level to constraints that also suit XR: solvable by propagation alone, both rail kinds on the guided path, and exactly one tutorial station.
+- **Level constraints.** The phone's `LevelCollectionTests` keep holding the tutorial level to constraints that also suit XR: solvable by propagation alone, both rail kinds on the guided path, and exactly one tutorial station.
 
 ---
 
 ## 8. Presentation
 
 - **Visual language**: the same station signage as the phone. The colour tokens (`Paper`, `Ink`, `Led`, and the rest from `Docs/UIDesign.MD` section 6), the Barlow and Noto faces, roundels and the LED strip. The line colour tints the active line's markings.
-- **Re-implemented in the XR project.** It gets its own palette file as its single re-skin point, and its own style sheets and elements. Phone files may be copied as a starting point (X20).
-- **Board art**: the copied train kit and track meshes, bent along `Core`'s `TrackCurve`, at the 0.06 board scale.
+- **Re-implemented under XR's own paths.** It gets its own palette file as its single re-skin point, and its own style sheets and elements. Phone files may be copied as a starting point (X20).
+- **Board art**: the phone's train kit and track meshes, used in place, bent along `Core`'s `TrackCurve`, at the 0.06 board scale.
 - **Signage**: the signboard, wrist menu and placement sign are **world-space UI Toolkit panels**.
 - **Train run**: the train follows `Core`'s `TrackPath` by arc length and hides inside the tunnels, as on the phone.
 - **Steam effects**: one particle system in two sizes (puff and burst) plus a whistle. Placement has a scale-in; a return plays a quick arc back to the origin.
-- **Rendering on Quest**: the XR project's own render pipeline asset.
+- **Rendering on Quest**: XR's own render pipeline asset (`02.Graphics/XR/XR_RPAsset`), assigned through the Meta Quest build profile.
   - HDR off, post-processing off, 4× MSAA, Forward renderer.
   - Target 90 Hz on Quest 3, never below 72 Hz on Quest 3S.
   - Refresh rate and foveation are set per device.
@@ -282,10 +282,10 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 | System | XR behaviour |
 |---|---|
 | Progression (lines, network reveal, unlocks) | From the shared `NetworkDefinition`, `NetworkLayout` and `GameFlow`, unchanged |
-| Stars | Same `starTimes` thresholds per level, through the shared `ProgressTracker`. **Open item:** grab-and-drop may be slower or faster than tapping. XR6 measures a sample on device and may introduce a single XR scaling factor, held in the XR project. The level assets are never forked |
+| Stars | Same `starTimes` thresholds per level, through the shared `ProgressTracker`. **Open item:** grab-and-drop may be slower or faster than tapping. XR6 measures a sample on device and may introduce a single XR scaling factor, held in XR code. The level assets are never forked |
 | Timer | Shared `PlayTimer`; starts on the first grab (section 4.2) |
 | Save / Continue | Shared `SaveJson`, `FileSaveStore` and `LevelProgress`: the same `save.json` format, local to each device. **No sync between phone and headset**, but the shared format keeps that possible later |
-| Localisation | **XR's own** `com.unity.localization` setup, String Table and four locales (X24). Station and line names come from the shared assets. XR gets its own Japanese atlas bake covering its table plus those names |
+| Localisation | **XR's own** `XR` String Table in the project's existing `com.unity.localization` setup, same four locales (X24). Station and line names come from the shared assets. XR gets its own Japanese atlas bake covering its table plus those names |
 | Audio | XR's own cue set, **spatialised**: piece cues from the piece, board cues from the board, UI cues from the signboard or wrist |
 | Haptics | Controller haptics from XR's own cue-to-feel table. Bare hands feel nothing, so **nothing may depend on haptics alone** |
 
@@ -293,55 +293,48 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 
 ## 10. Technical architecture
 
-### 10.1 Repository layout (X2)
+### 10.1 Branch and folder layout (X2)
 
 ```
-TrainSudoku/                                    repo root = phone project (unchanged location)
-├── Assets/ Packages/ ProjectSettings/          phone project
-├── Docs/                                       PRD.md, UIDesign.MD, XR-PRD.md
-├── Shared/
-│   └── com.gorillagonzalez.tsugi.shared/       the shared local package
-│       ├── package.json
-│       ├── Runtime/Core/                       TrainSudoku.Core      (moved from Assets/01.Scripts/Core/)
-│       ├── Runtime/Data/                       TrainSudoku.Data      (the level data types)
-│       ├── Levels/                             level, line and network assets (moved from Assets/03.Data/Levels/)
-│       └── Tests/EditMode/                     TrainSudoku.Shared.Tests
-└── TsugiXR/                                    XR project
-    ├── Assets/ Packages/ ProjectSettings/
-    └── CLAUDE.md                               the XR project's own agent guide
+TrainSudoku/                        one Unity project
+├── Assets/
+│   ├── 01.Scripts/Core/            TrainSudoku.Core: shared, changed on main only
+│   ├── 01.Scripts/Game/            TrainSudoku.Game: the phone; XR uses only its four level data types
+│   ├── 01.Scripts/XR/              TrainSudoku.XR            (XR only)
+│   ├── 01.Scripts/XR/Rules/        TrainSudoku.XR.Rules      (XR only, noEngineReferences)
+│   ├── 01.Scripts/XR/Editor/       TrainSudoku.XR.Editor     (XR only)
+│   ├── 02.Graphics/XR/             XR render pipeline and re-skinned art
+│   ├── 03.Data/Levels/             level, line and network assets: shared, written on main only
+│   ├── 03.Data/XR/                 XR data (cue tables, the XR String Table, ...)
+│   ├── 99.Test/XR/EditMode/        TrainSudoku.XR.Tests.EditMode
+│   ├── Samples/                    XRI and XR Hands samples (XR only)
+│   ├── Scenes/XR.unity             the XR scene; SampleScene stays the phone's
+│   ├── Settings/Build Profiles/    Meta Quest.asset (XR only) beside the phone's profiles
+│   ├── XR/                         XR Plug-in Management and OpenXR settings (generated, XR only)
+│   └── XRI/, CompositionLayers/    settings the XRI and Composition Layers packages generate (XR only)
+└── Docs/                           PRD.md, UIDesign.MD, XR-PRD.md, XR-Agent.md
 ```
 
-- **How the projects use it.** Both manifests reference the package by path: `"com.gorillagonzalez.tsugi.shared": "file:../Shared/com.gorillagonzalez.tsugi.shared"` from the phone, `file:../../Shared/…` from XR. Both also list it under `testables`, so each project's Test Runner runs the shared tests.
-- **The phone project nests the XR project.** It never imports `TsugiXR/`, because Unity only reads `Assets/` and `Packages/`. Its `.gitignore` rules must also cover `TsugiXR/Library/`, `TsugiXR/Logs/`, `TsugiXR/UserSettings/` and the generated IDE files there.
+- `main` is the phone. `feat/MetaXR` is the XR edition: `main` plus the XR packages, the XR paths above and the Meta Quest build profile.
+- The branch is **long-lived** and never merges back into `main`. It takes `main` in by merge (10.6).
 
-### 10.2 What moves into the shared package (X21)
+### 10.2 Sharing by merge (X21, X25)
 
-- **`TrainSudoku.Core`**: all of it, unchanged, still `noEngineReferences: true`.
-  - That includes the phone-only parts (`PlacementSession`, `CameraFit`, `TutorialCoach`). They are plain C#, they cost XR nothing, and splitting them out would churn the phone for no gain.
-- **`TrainSudoku.Data`**, a new assembly referencing only Core and UnityEngine.
-  - It holds `LevelDefinition`, `LevelCollection`, `LineDefinition` and `NetworkDefinition`, moved out of `TrainSudoku.Game`.
-  - They reference nothing in Game today: only Core types and a line `Color`.
-  - **Their `.cs.meta` GUIDs are kept**, so the level and line assets keep their script links.
-  - They move to the namespace `TrainSudoku.Data`; if any asset fails to load after the move, the old namespace is kept instead.
-- **The assets**: every level, line and network asset now under `Assets/03.Data/Levels/` (the 24-line set: 216 stations plus the unused `Hard`), meta GUIDs kept.
-- **The tests that need only Core and Data**: the Core rule, solver, parser, save and flow tests, plus the asset tests (`LevelCollectionTests`, `LevelDefinitionTests`).
-  - Tests that touch the phone's `Game` or `Editor` assemblies stay in the phone project: `BoardCameraTests`, `TrackMeshBenderTests`, `LineMapValidationTests`, `MapGridTests`, `NetworkMapLayoutTests`, `StringTableTests`, and any others that fail to compile against Core and Data alone.
-- **Phone-side changes that go with it.**
-  - `TrainSudoku.Game`, `TrainSudoku.Editor` and the phone test assembly reference `TrainSudoku.Data`.
-  - These editor tools hard-code `Assets/03.Data/Levels`: `LevelEditorWindow`, `LineMapEditorWindow`, `TunnelPieceBaker`, `NetworkGenerator`, `NetworkExpansion`. They are repointed at `Packages/com.gorillagonzalez.tsugi.shared/Levels`, which a local `file:` package allows writing to.
-  - The phone's `CLAUDE.md` is updated for the new locations.
-- **Not moved**: everything else in the phone project, which stays exactly as it is.
+1. **XR adds files; it does not edit phone files.** Everything XR owns sits under the XR paths in 10.1.
+2. **Quest settings ride on the Meta Quest build profile's overrides** (Player, Graphics, Quality, scene list), never on the global Android or iOS settings the phone owns. The project-wide files XR touches are `Packages/manifest.json`, `packages-lock.json`, and the config-object lines that XR Management, OpenXR and AR Foundation append to `ProjectSettings/EditorBuildSettings.asset`, plus at most one appended quality level if an override cannot hold the render pipeline.
+3. **Shared changes land on `main` first.** That covers `Core`, the level assets and the four data types (`LevelDefinition`, `LevelCollection`, `LineDefinition`, `NetworkDefinition`). If XR needs one (making `TutorialCoach.TryFindMistake` public, say), it is made and committed on `main`, then merged in.
+4. **XR references `TrainSudoku.Game` only for those four data types.** Moving them into their own `TrainSudoku.Data` assembly is an optional refactor, done on `main` if ever.
+5. **The phone keeps working on the branch.** Its EditMode suite stays green and `SampleScene` plays in the Editor. Phone builds ship from `main`.
+6. **Project infrastructure is reused, not copied.** `AddressablesBuildGuard` already covers every build, and `com.unity.localization` is already set up; XR adds its own table (section 9).
 
-### 10.3 XR project assemblies
+### 10.3 XR assemblies
 
 | Assembly | Location | Depends on | Contents |
 |---|---|---|---|
-| `TrainSudoku.XR.Rules` | `TsugiXR/Assets/01.Scripts/Rules/` | shared Core only; `noEngineReferences: true` | `PieceDrop` (section 4.4), the XR tutorial coach (section 7), tray-docking and throw-threshold maths that need no engine |
-| `TrainSudoku.XR` | `TsugiXR/Assets/01.Scripts/Game/` | shared Core and Data, XR.Rules, XR packages, Localization | XR shell and game manager, XR start-up, board placement and anchor, handle, board display (tiles, tunnels, clue signs, pieces, track bending), tray, the grab interface and its XRI implementation, train run, platform maps, signboard, wrist menu, steam effects, audio, haptics, palette |
-| `TrainSudoku.XR.Editor` | `TsugiXR/Assets/01.Scripts/Editor/` | as needed | A copy of `AddressablesBuildGuard` (localisation brings Addressables, and the Packed Mode trap is the editor's, not the project's), the Japanese atlas bake |
-| `TrainSudoku.XR.Tests.EditMode` | `TsugiXR/Assets/99.Test/EditMode/` | XR.Rules, shared Core and Data | `PieceDropTests`, XR tutorial coach tests |
-
-The XR project follows the phone's numbered asset folders (`00.Plugins` … `99.Test`).
+| `TrainSudoku.XR.Rules` | `Assets/01.Scripts/XR/Rules/` | Core only; `noEngineReferences: true` | `PieceDrop` (section 4.4), the XR tutorial coach (section 7), tray-docking and throw-threshold maths that need no engine |
+| `TrainSudoku.XR` | `Assets/01.Scripts/XR/` | Core, `TrainSudoku.Game` (the four level data types only), XR.Rules, XR packages, Localization | XR shell and game manager, XR start-up, board placement and anchor, handle, board display (tiles, tunnels, clue signs, pieces, track bending), tray, the grab interface and its XRI implementation, train run, platform maps, signboard, wrist menu, steam effects, audio, haptics, palette |
+| `TrainSudoku.XR.Editor` | `Assets/01.Scripts/XR/Editor/` | as needed | `XRFoundationSetup` (the XR render pipeline and scene, from Window > TrainSudoku > XR), later XR tools and the Japanese atlas bake for the XR table. The project's existing `AddressablesBuildGuard` already covers XR builds |
+| `TrainSudoku.XR.Tests.EditMode` | `Assets/99.Test/XR/EditMode/` | XR.Rules, Core, `TrainSudoku.Game` | `PieceDropTests`, XR tutorial coach tests |
 
 ### 10.4 The grab interface (X12)
 
@@ -361,67 +354,74 @@ The XR input layer turns hardware events into a small set of calls on `PieceDrop
 
 ### 10.5 Packages, scenes and builds
 
-- **Quest packages**: XR Plug-in Management, OpenXR, OpenXR Meta (`com.unity.xr.meta-openxr`), XR Interaction Toolkit, AR Foundation, XR Hands. Also URP, the Input System and `com.unity.localization`.
+- **Quest packages** (on `feat/MetaXR` only): XR Plug-in Management, OpenXR, OpenXR Meta (`com.unity.xr.meta-openxr`), XR Interaction Toolkit, AR Foundation, XR Hands. URP, the Input System and `com.unity.localization` are already in the project.
 - **Vision Pro packages** (XR12): visionOS XR (`com.unity.xr.visionos`), plus PolySpatial's spatial pointer input if Metal mode needs it for look-and-pinch.
-- **Versions** are pinned exactly to what the 6.7 manual lists for this editor. As of 11 Sep 2026:
+- **Versions** are pinned exactly. As of 13 Sep 2026 each pin below exists in the Unity registry, and they agree with each other (OpenXR Meta 2.6.1 requires OpenXR 1.18.0, AR Foundation 6.6.x and Composition Layers 2.4.0):
 
   | Package | Version |
   |---|---|
   | OpenXR | 1.18.0 |
-  | OpenXR Meta | 2.6.1 (marked pre-release) |
-  | XRI | 3.7.0-pre.1 (the only XRI listed for 6.7) |
+  | OpenXR Meta | 2.6.1 |
+  | XRI | 3.7.0-pre.1 |
   | AR Foundation | 6.6.2 |
   | XR Hands | 1.10.0-pre.1 |
   | visionOS XR | 3.2.2 |
 
-- **Not used**: Meta XR Core / All-in-One / Interaction SDK / MRUK. They do not compile on 6.7 (X12); revisit when they do.
-- **One scene**, `TsugiXR/Assets/Scenes/XR.unity`.
-- **Build profiles.** Quest uses Unity's **Meta Quest** build profile (Android, Vulkan, ARM64, IL2CPP); Vision Pro gets a visionOS profile. They are different build targets, so XR Plug-in Management's per-target settings separate them naturally.
-- **The phone project installs no XR package**, so it needs no build guard. That problem existed only in the one-project plan.
+  The a6 editor bundles older pre-releases of these: OpenXR 1.18.0-pre.2, OpenXR Meta 2.6.0-pre.1, XRI 3.6.0, AR Foundation 6.6.0-pre.2 and XR Hands 1.9.0. If a pin fails to resolve or compile, fall back to the bundled version and record it here.
+- **Not used**: Meta XR Core / All-in-One / Interaction SDK / MRUK (X12), and so not `metavr`'s Unity setup tool either, which installs Meta XR Core and an `OVRCameraRig`.
+- **One XR scene**, `Assets/Scenes/XR.unity`. `SampleScene` stays the phone's.
+- **The Meta Quest build profile** (`Assets/Settings/Build Profiles/Meta Quest.asset`, Android, Vulkan, ARM64, IL2CPP) carries every Quest setting as an override:
+  - **Player**: bundle id, product name `Tsugi XR`, Vulkan only, IL2CPP, ARM64 only, ASTC, minimum API 32, **target API 34**. The Horizon Store requires API 34 of every app created since 1 Mar 2026.
+  - **Graphics and Quality**: `02.Graphics/XR/XR_RPAsset`.
+  - **Scene list**: `XR.unity` only.
+  - Vision Pro gets a visionOS profile (XR12).
+- **XR Plug-in Management** enables OpenXR on the Quest target only. iOS and Standalone stay off, so pressing Play on the phone's scene in the Editor never starts XR.
 - **Bundle ids**: Quest `com.GorillaGonzalez.Tsugi.XR`. Whether Vision Pro shares the iPhone app's id (universal purchase) is decided at XR12.
-- Addressables stays on Packed Mode in the XR project too (10.3).
+- Addressables stays on Packed Mode; the project's `AddressablesBuildGuard` sees to it for every build.
 
-### 10.6 Working with the shared package (X25)
+### 10.6 Working across the two branches
 
-- **Levels are written only from the phone project.** The XR project reads the package and never creates or modifies a level, line or network asset.
-- **Shared code may be edited from either project.** A change is committed only when **both** projects' EditMode suites are green, since each includes the shared tests through `testables`.
-- **A shared change travels with the milestone that needs it.** It is committed together with that milestone's changes in whichever project.
-- **Two Editors open.** With both projects open, an edit in one is picked up by the other when it regains focus. Do not edit the same shared file from both Editors at once.
-- **Save format.** `SaveJson` lives in the shared Core, so a save-format change is a shared change and must keep both products' existing saves loading.
+- **Merging `main` in.** At the start of each XR milestone, and whenever XR needs a phone-side change, merge `main` into `feat/MetaXR`.
+  - Conflicts should arise only in `Packages/manifest.json`, `packages-lock.json` and settings assets. Keep both sides and let Unity re-resolve.
+  - A conflict anywhere else means a rule in 10.2 was broken.
+- **Levels are written only on `main`**, with the phone's tools. XR never creates or modifies a level, line or network asset.
+- **Both suites run on the branch.** A commit on `feat/MetaXR` needs the phone's EditMode suite and XR's to be green.
+- **Switching branches in one checkout reimports.** For phone and XR work at the same time, give one of them a second git worktree, with its own `Library/`. The Unity MCP bridge drives whichever Editor is open.
+- **Save format.** `SaveJson` lives in `Core`, so a save-format change is made on `main` and must keep both products' existing saves loading.
 
 ### 10.7 Editor upgrades
 
-Both projects move to a newer 6.7 build together (X3). Back both up first: Unity gives no guarantee that an alpha project upgrades cleanly.
+Both branches move to a newer 6.7 build together (X3). Back up first: Unity gives no guarantee that an alpha project upgrades cleanly.
 
-1. Both EditMode suites pass.
-2. An iOS phone build installs and plays.
-3. `AddressablesBuildGuard` still holds in both projects after a domain reload and a build.
+1. The phone's EditMode suite passes on both branches, and XR's passes on `feat/MetaXR`.
+2. An iOS phone build from `main` installs and plays.
+3. `AddressablesBuildGuard` still holds after a domain reload and a build, on both branches.
 4. The phone's Japanese font atlas rebakes correctly (`m_LineHeight / m_PointSize` ≈ 1.45), and so does XR's from XR10 on.
 5. From XR2 on: a Quest build still starts passthrough with hands.
 
 ### 10.8 Testing
 
 - **Automated.** `PieceDrop`, the XR coach and the shared Core are EditMode-tested.
-- **In the Editor.** Iteration uses the XR Interaction Simulator (from the XRI samples, with a simulated-hands mode) and AR Foundation's XR Simulation (planes, anchors and ray casts, but no hands). Whether either works on the macOS Editor is unverified. They speed things up but do not verify a milestone.
+- **In the Editor.** Iteration uses the XR Interaction Simulator (from the XRI samples, with a simulated-hands mode) and AR Foundation's XR Simulation (planes, anchors and ray casts, but no hands). Whether either works on this Editor (Windows or macOS) is unverified. They speed things up but do not verify a milestone.
 - **On device.** A milestone is verified by a human on a Quest 3 and a Quest 3S (and a Vision Pro for XR12 onward).
 
 ---
 
 ## 11. Milestones
 
-Same rules as the phone work: **no `git commit` until a milestone's *Verified by human* box is ticked**; one commit per milestone, message `XR<n>: <title>`. Any milestone that touches the shared package also requires the phone's full suite to pass and the phone to play unchanged.
+Same rules as the phone work: **no `git commit` until a milestone's *Verified by human* box is ticked**; one commit per milestone, message `XR<n>: <title>`, on `feat/MetaXR`. Every milestone also requires the phone's full suite to pass and `SampleScene` to play on the branch.
 
 | # | Milestone | Done when |
 |---|---|---|
-| XR1 | Shared package | Starts after the network expansion is committed (X26). `Shared/com.gorillagonzalez.tsugi.shared/` holds Core, Data, the level assets and the shared tests (10.2). The phone references it and runs its tests, and its level tools write into it. Level assets load unchanged. The phone's full suite passes, the phone plays identically on device, and the phone's `CLAUDE.md` is updated |
-| XR2 | XR project | `TsugiXR/` on `6000.7.0a6` references the shared package and passes its tests. XR packages are installed at pinned versions, the Quest build profile is set up, and the Addressables guard is copied. A Quest 3 build shows passthrough, tracked hands and controllers. XR `CLAUDE.md` written, `.gitignore` covers the nested project |
+| XR1 | ~~Shared package~~ | **Dropped 2026-09-13** with the X2 revision: one project, nothing to extract |
+| XR2 | XR foundation | On `feat/MetaXR`: XR packages at the pinned versions; the Meta Quest build profile with its Player, Graphics/Quality and scene-list overrides; XR Plug-in Management with OpenXR on the Quest target only; `Scenes/XR.unity` with an AR Session and the XRI hands-and-controllers rig. The phone's full suite stays green and `SampleScene` still plays. A Quest 3 build shows passthrough, tracked hands and controllers, and its APK targets API 34 and declares `quest3\|quest3s`. `Docs/XR-Agent.md` written, `.gitignore` covers keystores |
 | XR3 | `PieceDrop` | `XR.Rules` with EditMode tests covering every row of section 4.4, the move rollback, replacing a piece, fixed-piece refusal, two hands and lift-equals-erase |
 | XR4 | Board display | A shared level loads into an XR-built board at 0.06 scale: tiles, tunnels, clue signs facing the player, fixed pieces, bent track from `TrackCurve`, validator colouring, train run along `TrackPath`. Placed in front of the player for now |
 | XR5 | Board in the room | Surface-snapped placement, float fallback, handle move and turn, anchor persistence across launches, growth from the near edge, shadow catcher |
 | XR6 | Tray and grab | Six-slot tray with docking, handedness and moving between edges. Direct and distant grab, ghost, every release outcome, steam puff and throw, timer from the first grab. A level is playable start to finish. Star timing sampled (section 9) |
 | XR7 | Flow on the platform | Network and line maps on the platform, roundel selection by poke and ray, signboard (masthead, station, arrival), train run skip, save and continue, stars |
 | XR8 | Wrist menu and pause | Back-of-wrist menu, pause semantics including focus loss and headset removal, all settings |
-| XR9 | XR tutorial | The XR coach and tutorial per section 7; the shared `LevelCollectionTests` still green |
+| XR9 | XR tutorial | The XR coach and tutorial per section 7; the phone's `LevelCollectionTests` still green |
 | XR10 | Sound, haptics, language | XR String Table in all four locales, Japanese atlas bake checked on the signboard, spatialised cues, controller haptics |
 | XR11 | Quest release readiness | 90 Hz on Quest 3, never below 72 on 3S, Meta's store requirements (VRCs) pass, store icons and metadata, Horizon Store build uploaded to a test channel |
 | XR12 | Vision Pro port | visionOS profile in Metal mode, Mixed immersion. Grab by look-and-pinch and direct pinch through the grab interface; surface placement and anchors; world-space UI Toolkit verified. Full playthrough of a line on device |
@@ -431,8 +431,8 @@ Same rules as the phone work: **no `git commit` until a milestone's *Verified by
 
 | # | Milestone | Verified by human |
 |---|---|---|
-| XR1 | Shared package | ☐ |
-| XR2 | XR project | ☐ |
+| XR1 | ~~Shared package~~ (dropped) | — |
+| XR2 | XR foundation | ☑ |
 | XR3 | `PieceDrop` | ☐ |
 | XR4 | Board display | ☐ |
 | XR5 | Board in the room | ☐ |
@@ -463,12 +463,12 @@ Same rules as the phone work: **no `git commit` until a milestone's *Verified by
 ## 13. Risks
 
 - **6.7 is an alpha, and several of its XR packages are pre-release** (XRI 3.7.0-pre.1, XR Hands 1.10.0-pre.1, OpenXR Meta 2.6.1). A later alpha may break a package, and a package update may break us. Mitigation: exact version pins, XR2 is early and small and verified before any gameplay depends on it, and every editor change runs the 10.7 checklist.
-- **The extraction disturbs a live phone project.** Moving Core, the data types and every level asset is a large diff in a product under active development. Mitigation: it waits for the network expansion to land (X26), keeps every meta GUID, is its own milestone with no XR code, and is verified by the phone's full suite and a device playthrough.
-- **Shared-code drift.** Two teams (or two sessions) changing Core can break each other. Mitigation: the both-suites rule (X25), and XR-only rules kept out of the package (X22).
+- **Merge drift.** `feat/MetaXR` lives apart from `main` for months while the phone keeps changing. Mitigation: the fork rules (10.2) keep XR's changes in its own paths and on the build profile, and `main` is merged in at the start of every milestone so conflicts stay small.
+- **Shared-code drift.** Two teams (or two sessions) changing Core can break each other. Mitigation: shared changes land on `main` first (X25), both suites run on the branch, and XR-only rules stay in `XR.Rules` (X22).
 - **Meta SDKs unavailable on 6.7.** We lose Meta's better hand grab and instant placement. Mitigation: the grab interface (10.4) lets either be added later without touching the rules or board.
 - **Hand-tracking precision at 6 cm pieces.** Grabs at this size can miss. Mitigation: the tray spaces its slots generously, distant grab is always available, the ghost confirms the target before release, and XR6 tunes the hover band and snap on device.
 - **Direct grab on Vision Pro is not documented for XRI.** Expect custom work in XR12 behind the same interface. Look-and-pinch is the fallback that is documented.
 - **World-space UI Toolkit on Vision Pro Metal mode is unverified.** XR12 checks it first. If it fails, the signboard and wrist menu need a uGUI fallback on Vision Pro only.
 - **Quest performance.** The board is many small meshes (bent track per piece, tiles, decor). Mitigation: XR's own render pipeline asset, and profiling in XR6, not XR11.
-- **Editor upgrade side effects.** `JaFontAtlasBuilder` writes internal FontAsset fields by name, and `AddressablesBuildGuard` works around an a6 behaviour. Both are on the 10.7 checklist, for both projects.
-- **Unity MCP drives one Editor.** The agent tooling in `CLAUDE.md` assumes one open Editor. XR2's `CLAUDE.md` records how the XR Editor is driven. Batchmode against `TsugiXR/` works whenever that Editor is closed.
+- **Editor upgrade side effects.** `JaFontAtlasBuilder` writes internal FontAsset fields by name, and `AddressablesBuildGuard` works around an a6 behaviour. Both are on the 10.7 checklist, for both branches.
+- **Unity MCP drives one Editor.** It attaches to whichever Editor is open, and switching branches in one checkout forces a reimport. Phone and XR work at the same time needs a second git worktree (10.6); `Docs/XR-Agent.md` records how the Editor is driven.

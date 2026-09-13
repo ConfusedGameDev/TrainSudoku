@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**On branch `feat/MetaXR`** (the Meta Quest edition) also read `Docs/XR-Agent.md` and `Docs/XR-PRD.md`: XR is a long-lived fork of this project, and they set what XR may touch.
+
 ## What this is
 
 **Tsugi** (つぎ, "next" — the first word of every station announcement): a portrait mobile puzzle game (mouse-compatible) built in Unity `6000.7.0a6` with URP and the new Input System.

@@ -105,3 +105,13 @@ InitTestScene*.unity*
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
 /.claude/skills
+
+# Signing keys never go in the repo
+*.keystore
+
+# Per-user settings the XR packages generate (XR Simulation, Composition Layers)
+/[Aa]ssets/XR/UserSimulationSettings/
+/[Aa]ssets/XR/UserSimulationSettings.meta
+/[Aa]ssets/CompositionLayers/UserSettings/
+/[Aa]ssets/CompositionLayers/UserSettings.meta
+/[Aa]ssets/CompositionLayers.meta
