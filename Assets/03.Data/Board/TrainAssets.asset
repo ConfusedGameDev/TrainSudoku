@@ -12,16 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 56d93049bdbec13ce91a66310de3d9ae, type: 3}
   m_Name: TrainAssets
   m_EditorClassIdentifier: TrainSudoku.Game::TrainSudoku.Game.TrainAssets
-  locomotive: {fileID: 919132149155446097, guid: e73b0248fbeb39b47a4082ddaf1bdd99, type: 3}
+  locomotive: {fileID: 919132149155446097, guid: f4cfec1688f2bf540a94952d6aff7202, type: 3}
   wagons:
-  - {fileID: 919132149155446097, guid: 0eaeaca4f3d41bd498ca93c0349780f7, type: 3}
-  - {fileID: 919132149155446097, guid: 69296c8162dadb5468dea0ff494ec884, type: 3}
-  - {fileID: 919132149155446097, guid: 69296c8162dadb5468dea0ff494ec884, type: 3}
-  - {fileID: 919132149155446097, guid: 69296c8162dadb5468dea0ff494ec884, type: 3}
-  - {fileID: 919132149155446097, guid: 69296c8162dadb5468dea0ff494ec884, type: 3}
-  - {fileID: 919132149155446097, guid: 69296c8162dadb5468dea0ff494ec884, type: 3}
-  - {fileID: 919132149155446097, guid: 69296c8162dadb5468dea0ff494ec884, type: 3}
-  - {fileID: 919132149155446097, guid: 69296c8162dadb5468dea0ff494ec884, type: 3}
+  - {fileID: 919132149155446097, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
+  - {fileID: 919132149155446097, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
+  - {fileID: 919132149155446097, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
+  - {fileID: 919132149155446097, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
+  - {fileID: 919132149155446097, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
+  - {fileID: 919132149155446097, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
+  - {fileID: 919132149155446097, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
   carSpacing: 0.9
   speedCellsPerSecond: 2.5
   modelYawOffset: 0
