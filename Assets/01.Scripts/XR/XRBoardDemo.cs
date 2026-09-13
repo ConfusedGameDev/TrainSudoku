@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using TrainSudoku.Core;
 using TrainSudoku.Game;
@@ -8,25 +9,26 @@ using UnityEngine;
 namespace TrainSudoku.XR
 {
     /// <summary>
-    /// XR4's stand-in for the XR shell: puts a board in front of the player and plays the shipped stations through on
-    /// their own — show the level, lay its solution a piece at a time along the route, run the train, next station — so
-    /// the board display can be checked on a headset before anything lays track by hand (XR6). The XR flow replaces it
-    /// at XR7.
+    /// The stand-in for the XR shell until the flow arrives (XR7): once the board is placed, it plays the shipped
+    /// stations through on their own — show the level, lay its solution a piece at a time along the route, run the
+    /// train, next station — so the board can be checked on a headset before anything lays track by hand (XR6).
     /// </summary>
     public sealed class XRBoardDemo : MonoBehaviour
     {
         [SerializeField] private NetworkDefinition network;
         [SerializeField] private XRBoardAssets assets;
 
-        [Tooltip("Flat station index (lines in order) the demo starts from.")]
+        [Tooltip("Hangs the board in the room. Without one the demo floats the board in front of the head itself.")]
+        [SerializeField] private XRBoardPlacement placement;
+
+        [Tooltip("Flat station index the demo starts from.")]
         [SerializeField] private int startStation;
 
-        [Tooltip("World size of one cell, in metres (XR-PRD X6).")]
-        [SerializeField] private float cellSize = 0.06f;
+        [Tooltip("Alternate board sizes (6x6, 7x7, 8x8, 6x6, ...) so the board is seen to grow from its near edge.")]
+        [SerializeField] private bool sizeTour = true;
 
-        [Tooltip("Where the board centre goes at start: this far ahead of the head and this far below it, in metres.")]
-        [SerializeField] private float distanceAhead = 0.6f;
-        [SerializeField] private float dropBelowEyes = 0.5f;
+        [Tooltip("World size of one cell, in metres, when floating without a placement (XR-PRD X6).")]
+        [SerializeField] private float cellSize = 0.06f;
 
         [SerializeField] private float secondsPerPiece = 0.3f;
         [SerializeField] private float secondsBetweenStations = 2f;
@@ -50,31 +52,59 @@ namespace TrainSudoku.XR
             }
 
             if (_stations.Count == 0) yield break;
+            var order = sizeTour ? SizeTour(_stations) : _stations;
 
-            // Let head tracking settle before reading where the player is looking.
-            yield return new WaitForSeconds(1f);
-            PlaceInFrontOfHead();
-            _display = XRBoardDisplay.Create(transform, assets);
+            Transform parent;
+            if (placement != null)
+            {
+                while (!placement.IsPlaced) yield return null;
+                parent = placement.BoardRoot;
+            }
+            else
+            {
+                yield return new WaitForSeconds(1f);
+                FloatInFrontOfHead();
+                parent = transform;
+            }
 
-            var index = Mathf.Clamp(startStation, 0, _stations.Count - 1);
+            _display = XRBoardDisplay.Create(parent, assets);
+            if (placement != null)
+            {
+                // Shadows on the real table only when there is a table under the board.
+                _display.ShowShadowCatcher(placement.IsOnSurface);
+                placement.Placed += () => _display.ShowShadowCatcher(placement.IsOnSurface);
+                placement.SurfaceChanged += () => _display.ShowShadowCatcher(placement.IsOnSurface);
+            }
+            var index = Mathf.Clamp(startStation, 0, order.Count - 1);
             while (true)
             {
-                yield return PlayStation(_stations[index]);
-                index = (index + 1) % _stations.Count;
+                yield return PlayStation(order[index]);
+                index = (index + 1) % order.Count;
             }
         }
 
-        /// <summary>Faces the board away from the player along their gaze, flattened, so its south edge is the near one.</summary>
-        private void PlaceInFrontOfHead()
+        /// <summary>Stations of each size in network order, taken in turn: the first 6x6, the first 7x7, the first 8x8, the second 6x6...</summary>
+        private static List<(LevelDefinition Level, LineDefinition Line)> SizeTour(List<(LevelDefinition Level, LineDefinition Line)> stations)
+        {
+            var bySize = stations.GroupBy(s => s.Level.Width * 100 + s.Level.Height).OrderBy(g => g.Key).Select(g => g.ToList()).ToList();
+            var tour = new List<(LevelDefinition Level, LineDefinition Line)>();
+            for (var i = 0; tour.Count < stations.Count; i++)
+                foreach (var size in bySize)
+                    if (i < size.Count) tour.Add(size[i]);
+            return tour;
+        }
+
+        /// <summary>Without a placement: the board's near edge 0.36 m ahead of the head and 0.5 m below it, facing the gaze.</summary>
+        private void FloatInFrontOfHead()
         {
             var head = Camera.main != null ? Camera.main.transform : null;
             var forward = Vector3.forward;
-            var position = new Vector3(0f, 1f, distanceAhead);
+            var position = new Vector3(0f, 1f, 0.36f);
             if (head != null)
             {
                 var flat = Vector3.ProjectOnPlane(head.forward, Vector3.up);
                 if (flat.sqrMagnitude > 1e-4f) forward = flat.normalized;
-                position = head.position + forward * distanceAhead + Vector3.down * dropBelowEyes;
+                position = head.position + forward * 0.36f + Vector3.down * 0.5f;
             }
 
             transform.SetPositionAndRotation(position, Quaternion.LookRotation(forward, Vector3.up));

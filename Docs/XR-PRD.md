@@ -175,7 +175,11 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 
 ### 5.3 Moving and turning
 
-- A **handle bar** at the board's near edge moves it. Grab and drag to move it along the surface it snapped to, or through the air if it was floating; twist the hand to turn it about the vertical.
+- A **handle bar** at the board's near edge moves it, and stays in the hand while it does.
+  - Grab and drag to move the board in any direction, height included.
+  - Let go within 5 cm of a detected surface and the board settles onto it, shadows included. Anywhere else it floats where it was left.
+  - To turn it about the vertical, twist the wrist, or hold the bar with both hands and steer.
+  - Revised 2026-09-13 after the XR5 headset check, which asked for height and a reliable turn.
 - The handle is **hidden while any piece is held**, so it can't be caught by accident mid-drop.
 - Moving is allowed at any time, mid-level included. The anchor is re-saved on release.
 - **Re-place board** in settings runs section 5.2 again.
@@ -441,7 +445,7 @@ Same rules as the phone work: **no `git commit` until a milestone's *Verified by
 | XR2 | XR foundation | ☑ |
 | XR3 | `PieceDrop` | ☑ |
 | XR4 | Board display | ☑ |
-| XR5 | Board in the room | ☐ |
+| XR5 | Board in the room | ☑ |
 | XR6 | Tray and grab | ☐ |
 | XR7 | Flow on the platform | ☐ |
 | XR8 | Wrist menu and pause | ☐ |

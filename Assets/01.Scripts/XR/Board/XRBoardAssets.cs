@@ -56,6 +56,10 @@ namespace TrainSudoku.XR
         [SerializeField] private float modelScale = 1f;
         [SerializeField] private float heightOffset = 0f;
 
+        [Header("Shadows (5.6)")]
+        [Tooltip("The shadow-catcher material (shader TrainSudoku/XR/Shadow Catcher). Leave empty for no shadows on the real table.")]
+        [SerializeField] private Material shadowCatcherMaterial = null;
+
         public GameObject TunnelModel => tunnelModel;
         public float TunnelLength => tunnelLength;
         public Vector2 TunnelBore => tunnelBore;
@@ -74,6 +78,7 @@ namespace TrainSudoku.XR
         public float ModelYawOffset => modelYawOffset;
         public float ModelScale => modelScale <= 0f ? 1f : modelScale;
         public float HeightOffset => heightOffset;
+        public Material ShadowCatcherMaterial => shadowCatcherMaterial;
 
         /// <summary>The meshes and shaping the bender builds pieces from.</summary>
         public TrackMeshProfile ResolveProfile()

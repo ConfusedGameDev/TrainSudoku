@@ -4,7 +4,11 @@
     "references": [
         "TrainSudoku.Core",
         "TrainSudoku.Game",
-        "TrainSudoku.XR.Rules"
+        "TrainSudoku.XR.Rules",
+        "Unity.XR.ARFoundation",
+        "Unity.XR.ARSubsystems",
+        "Unity.XR.CoreUtils",
+        "Unity.XR.Interaction.Toolkit"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -62,6 +62,10 @@ namespace TrainSudoku.XR
 
         private static Material Create(string name, Color color)
         {
+            // On the occlusion shader when one is configured, so the player's real body hides the board (5.6).
+            var occluded = XROcclusionMaterials.Lit(name, color);
+            if (occluded != null) return occluded;
+
             var pipeline = GraphicsSettings.currentRenderPipeline;
             var template = pipeline != null ? pipeline.defaultMaterial : null;
             var material = template != null

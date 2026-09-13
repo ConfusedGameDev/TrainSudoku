@@ -142,6 +142,7 @@ namespace TrainSudoku.XR
                 car.name = i == 0 ? "Locomotive" : $"Wagon {i}";
                 car.transform.SetParent(cars, false);
                 car.transform.localScale = Vector3.one * (assets != null ? assets.ModelScale : 1f);
+                XROcclusionMaterials.Convert(car);
                 foreach (var collider in car.GetComponentsInChildren<Collider>()) Destroy(collider);
                 if (i == 0) FitDestinationPlate(car.transform);
                 _cars.Add(car.transform);
@@ -166,7 +167,7 @@ namespace TrainSudoku.XR
             text.anchor = TextAnchor.MiddleCenter;
             text.alignment = TextAlignment.Center;
             text.color = XRPalette.Led;
-            go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+            go.GetComponent<MeshRenderer>().sharedMaterial = XROcclusionMaterials.Text(font);
             _plate = go.transform;
         }
 

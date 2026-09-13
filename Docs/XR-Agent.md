@@ -39,14 +39,8 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
 | Assembly | Location | Holds |
 |---|---|---|
 | `TrainSudoku.XR.Rules` | `Assets/01.Scripts/XR/Rules/` | `PieceDrop` (XR-PRD 4.4): grabbing from the tray or a cell, the ghost tint, and every release outcome. It works on the shared `Board` through `TryPlace`, `TryErase` and `Legality`. `noEngineReferences`; references only Core |
-| `TrainSudoku.XR` | `Assets/01.Scripts/XR/` | The XR runtime. References Core, `TrainSudoku.Game` (the four level data types only) and XR.Rules. So far:
-<br>- `Board/XRBoardDisplay`, the board.
-<br>- `Train/XRTrainRun`, the train.
-<br>- `XRPalette`, the XR re-skin point.
-<br>- `Board/XRBoardMaterials`.
-<br>- `Board/XRBoardAssets`, the kit meshes and train models.
-<br>- `XRBoardDemo` (XR4 only) |
-| `TrainSudoku.XR.Editor` | `Assets/01.Scripts/XR/Editor/` | `XRFoundationSetup`: the XR render pipeline, the scene, and **Add Board Demo to XR Scene** |
+| `TrainSudoku.XR` | `Assets/01.Scripts/XR/` | The XR runtime. References Core, `TrainSudoku.Game` (the four level data types only), XR.Rules and the XR packages. Holds: `Board/` (display, materials, assets, occlusion materials, forked mesh code); `Train/XRTrainRun`; `Room/` (placement, handle, permission, depth occlusion); `XRPalette`; and `XRBoardDemo` until XR7 |
+| `TrainSudoku.XR.Editor` | `Assets/01.Scripts/XR/Editor/` | `XRFoundationSetup`, the Window > TrainSudoku > XR menu (Create Render Pipeline, Build XR Scene, Add Board Demo, Add Board Placement, Add Depth Occlusion); and `XRManifestPermissions` |
 | `TrainSudoku.XR.Tests.EditMode` | `Assets/99.Test/XR/EditMode/` | `PieceDropTests`, with its own fixtures in `XRTestBoards`. It never uses the phone's test assembly, which would pull in Game and Editor |
 
 - **Every `PieceDrop` call returns a `DropResult`:**
@@ -62,6 +56,27 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
   - **Clue signs** are the phone's chip stood on a pole, and turn about the vertical to face `Camera.main` every frame. The destination plate on the locomotive does the same.
   - **Forked mesh code.** `XR/Board/` holds forks of the phone's mesh code (`TrackMeshBender`, `TrackMeshResampler`, `TrackMeshProfile`, `ProceduralTrackMesh`, `ProceduralBoardMesh`, `PieceView`, `PopScale`). Each is marked with a one-line fork note at the top and is never synced with the phone's copy.
   - **`XRBoardAssets`** was seeded field by field from the phone's `TrackAssets` and `TrainAssets`, so it has the same kit and tuning.
+- **The board in the room (XR5).**
+  - **Placement.** `Room/XRBoardPlacement` first tries to restore the saved anchor. The anchor's GUID lives in `PlayerPrefs` under `tsugi.xr.boardAnchor`, never in `save.json`.
+    - Without one, it asks for spatial data and slides a ghost over detected horizontal planes under the right-hand ray (then the left hand's, then the gaze). If there is no surface, the ghost floats at waist height.
+    - A pinch or trigger places it.
+  - **`BoardRoot`** is the board's parent:
+    - Scaled 0.06, with its origin at the middle of the near edge, on the surface, and +Z pointing away from the player.
+    - `XRBoardDisplay` lifts itself by the slab height and puts its near edge on that origin, so a bigger board grows away from the player.
+  - **Handle.** `Room/XRBoardHandle` is an `XRSimpleInteractable`, not a grab interactable.
+    - A grab interactable detaches the grabbed object from its parent for the length of the grab, which left the bar in the air while the board moved.
+    - Its own code moves `BoardRoot` freely, height included, turning it about the grab point so the bar stays in the hand.
+    - One hand: wrist twist (roll about the hand's pointing axis) turns the board, at 1.5 degrees per degree (`TwistGain`).
+    - Two hands on the bar: their midpoint carries the board, and the line between them steers it.
+    - On release, `XRBoardPlacement` settles the board onto a detected surface within 5 cm (`SettleReach`), or leaves it floating. It then re-anchors, saves the new anchor and erases the old one.
+    - Surfaces stay enabled (unseen) after an anchor restore so this still works.
+  - **Anchor order.** A new anchor is attached before the old one is removed, because removing an anchor destroys its GameObject and anything still parented to it.
+  - **Shadow catcher.** `02.Graphics/XR/Shaders/XRShadowCatcher.shader` darkens the passthrough table where the main light is blocked. The display builds it 3 cells wider than the board and shows it only when the board sits on a surface.
+  - **Occlusion.** `Room/XRDepthOcclusion` switches on AR Foundation's `AROcclusionManager` and `ARShaderOcclusion` once spatial data is granted. They give hard occlusion from environment depth.
+    - It also publishes `_XRWorldToTrackables` and `_XROcclusionBias`.
+    - Every board, piece, sign, text and train material is made from the `Occluded Lit` or `Occluded Text` template through `Board/XROcclusionMaterials`.
+    - The shared clip lives in `Shaders/XROcclusion.hlsl`.
+  - **Locomotion** in the XRI rig is switched off, because the world never moves the player (4.5, 8).
 - **The XR4 demo.** `XRBoardDemo` places the board 0.6 m ahead of the head and 0.5 m below it, facing the gaze, one second after start.
   - It then plays every station in network order: the level, then its solution laid along the route, then the train, then the next station.
   - It solves on a background thread, so the frame rate holds.
@@ -136,6 +151,14 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
    - Permissions: `INTERNET`, `com.oculus.permission.HAND_TRACKING` and the two OpenXR permissions. Nothing prohibited.
 4. **Install and launch** with `metavr app install builds/TsugiXR.apk`, then `metavr app launch com.GorillaGonzalez.Tsugi.XR`. Check that `adb shell dumpsys activity activities` shows the Unity activity as `topResumedActivity`.
    - The `Unity`-tagged logcat holds the OpenXR diagnostic report. The session should reach `XR_SESSION_STATE_FOCUSED`.
+
+**Package workaround: `USE_SCENE` in the manifest.**
+- **The bug.** OpenXR Meta 2.6.1 requests its permissions through XR Management's manifest `OverrideElements`. That matches existing elements by path alone.
+  - Its three `uses-permission` requests (`IMPORT_EXPORT_IOT_MAP_DATA`, `USE_SCENE`, `USE_ANCHOR_API`) all land on one node, so only `USE_ANCHOR_API` survives.
+  - Without `USE_SCENE` declared, the runtime request is refused outright and plane detection never starts.
+- **The workaround.** `XR/Editor/XRManifestPermissions` is an `IPostGenerateGradleAndroidProject` hook. It adds `USE_SCENE` to `unityLibrary/src/main/AndroidManifest.xml` whenever the OpenXR Planes feature is on for Android.
+- **Check every Quest APK** with `aapt dump permissions`.
+- **Remove the hook** once the package merges its permissions correctly.
 
 **Harmless log lines on Quest 3 (runtime 207):**
 - `xrSetHandTrackingFrequencyHintMETA ... XR_ERROR_FUNCTION_UNSUPPORTED` and `Failed to look up xrDiscoverSpacesMETA`.

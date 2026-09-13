@@ -4,7 +4,9 @@
     "references": [
         "TrainSudoku.XR",
         "Unity.XR.ARFoundation",
+        "Unity.XR.ARSubsystems",
         "Unity.XR.CoreUtils",
+        "Unity.XR.OpenXR",
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime"
     ],

@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 using UnityEngine.XR.ARFoundation;
+using UnityEngine.XR.ARSubsystems;
 
 namespace TrainSudoku.XR.Editor
 {
@@ -233,6 +234,260 @@ namespace TrainSudoku.XR.Editor
             AssetDatabase.SaveAssets();
             Debug.Log($"[XR] Created {BoardAssetsPath} from the phone's track and train assets.");
             return asset;
+        }
+
+        const string GhostMaterialPath = GraphicsFolder + "/XRPlacementGhost.mat";
+        const string PlaneMaterialPath = GraphicsFolder + "/XRDetectedPlane.mat";
+        const string PrefabFolder = "Assets/04.Prefabs/XR";
+        const string PlanePrefabPath = PrefabFolder + "/XRPlane.prefab";
+        const string BoardPlacementName = "Board Placement";
+        const string TestCubeName = "Board Scale Cube (6 cm)";
+
+        /// <summary>
+        /// XR5: surface placement and the saved anchor (XR-PRD 5.2). Turns on the OpenXR Planes and Anchors features,
+        /// makes the ghost and plane materials and the plane prefab, adds the plane and anchor managers to the rig with
+        /// planes off until the spatial-data permission is granted, and hangs the board demo from a new
+        /// <see cref="XRBoardPlacement"/>. It also switches off the rig's locomotion — the world never moves the player
+        /// and the thumbstick is unused (4.5, 8) — and removes the XR2 test cube. Running it again only re-wires.
+        /// </summary>
+        [MenuItem("Window/TrainSudoku/XR/Add Board Placement to XR Scene")]
+        static void AddBoardPlacement()
+        {
+            EnableOpenXRFeatures("ARPlaneFeature", "ARAnchorFeature");
+            var ghost = EnsureTransparentMaterial(GhostMaterialPath, new Color(0.95f, 0.76f, 0.19f, 0.35f));
+            var planeMaterial = EnsureTransparentMaterial(PlaneMaterialPath, new Color(1f, 1f, 1f, 0.12f));
+            var planePrefab = EnsurePlanePrefab(planeMaterial);
+            AssignShadowCatcher(EnsureShadowCatcherMaterial());
+
+            var scene = SceneManager.GetSceneByPath(ScenePath);
+            var openedHere = !scene.isLoaded;
+            if (openedHere) scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
+            try
+            {
+                var roots = scene.GetRootGameObjects();
+                var origin = roots.Select(go => go.GetComponentInChildren<XROrigin>(true)).FirstOrDefault(o => o != null);
+                if (origin == null)
+                {
+                    Debug.LogError($"[XR] No XR Origin in {ScenePath}; run Build XR Scene first.");
+                    return;
+                }
+
+                if (!origin.TryGetComponent<ARPlaneManager>(out var planeManager)) planeManager = origin.gameObject.AddComponent<ARPlaneManager>();
+                planeManager.planePrefab = planePrefab;
+                planeManager.requestedDetectionMode = PlaneDetectionMode.Horizontal;
+                planeManager.enabled = false;
+                if (!origin.TryGetComponent<ARAnchorManager>(out var anchorManager)) anchorManager = origin.gameObject.AddComponent<ARAnchorManager>();
+
+                var root = roots.FirstOrDefault(go => go.name == BoardPlacementName);
+                if (root == null)
+                {
+                    root = new GameObject(BoardPlacementName);
+                    SceneManager.MoveGameObjectToScene(root, scene);
+                }
+                if (!root.TryGetComponent<XRBoardPlacement>(out var placement)) placement = root.AddComponent<XRBoardPlacement>();
+                var serialized = new SerializedObject(placement);
+                serialized.FindProperty("planes").objectReferenceValue = planeManager;
+                serialized.FindProperty("anchors").objectReferenceValue = anchorManager;
+                serialized.FindProperty("ghostMaterial").objectReferenceValue = ghost;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+
+                var demo = roots.Select(go => go.GetComponentInChildren<XRBoardDemo>(true)).FirstOrDefault(d => d != null);
+                if (demo != null)
+                {
+                    var demoSerialized = new SerializedObject(demo);
+                    demoSerialized.FindProperty("placement").objectReferenceValue = placement;
+                    demoSerialized.ApplyModifiedPropertiesWithoutUndo();
+                }
+
+                var locomotion = origin.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == "Locomotion");
+                if (locomotion != null) locomotion.gameObject.SetActive(false);
+                var cube = roots.FirstOrDefault(go => go.name == TestCubeName);
+                if (cube != null) Object.DestroyImmediate(cube);
+
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene);
+                Debug.Log($"[XR] Board placement wired in {ScenePath}: planes, anchors, ghost; locomotion off.");
+            }
+            finally
+            {
+                if (openedHere) EditorSceneManager.CloseScene(scene, true);
+            }
+        }
+
+        const string OccludedLitPath = GraphicsFolder + "/XROccludedLit.mat";
+        const string OccludedTextPath = GraphicsFolder + "/XROccludedText.mat";
+
+        /// <summary>
+        /// XR5: environment depth occlusion (XR-PRD 5.6). Turns on the OpenXR Occlusion feature, makes the two template
+        /// materials the board's materials are made from, adds AR Foundation's occlusion manager and shader occlusion to
+        /// the camera (hard occlusion from environment depth, off until the spatial-data permission is granted), and
+        /// wires an <see cref="XRDepthOcclusion"/> to them. Running it again only re-wires.
+        /// </summary>
+        [MenuItem("Window/TrainSudoku/XR/Add Depth Occlusion to XR Scene")]
+        static void AddDepthOcclusion()
+        {
+            EnableOpenXRFeatures("AROcclusionFeature");
+            var lit = EnsureShaderMaterial(OccludedLitPath, "TrainSudoku/XR/Occluded Lit");
+            var text = EnsureShaderMaterial(OccludedTextPath, "TrainSudoku/XR/Occluded Text");
+            if (lit == null || text == null) return;
+
+            var scene = SceneManager.GetSceneByPath(ScenePath);
+            var openedHere = !scene.isLoaded;
+            if (openedHere) scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
+            try
+            {
+                var roots = scene.GetRootGameObjects();
+                var origin = roots.Select(go => go.GetComponentInChildren<XROrigin>(true)).FirstOrDefault(o => o != null);
+                if (origin == null || origin.Camera == null)
+                {
+                    Debug.LogError($"[XR] No XR Origin camera in {ScenePath}; run Build XR Scene first.");
+                    return;
+                }
+
+                var camera = origin.Camera.gameObject;
+                if (!camera.TryGetComponent<AROcclusionManager>(out var occlusion)) occlusion = camera.AddComponent<AROcclusionManager>();
+                occlusion.requestedEnvironmentDepthMode = EnvironmentDepthMode.Medium;
+                occlusion.requestedOcclusionPreferenceMode = OcclusionPreferenceMode.PreferEnvironmentOcclusion;
+                occlusion.environmentDepthTemporalSmoothingRequested = true;
+                occlusion.enabled = false;
+
+                if (!camera.TryGetComponent<ARShaderOcclusion>(out var shaderOcclusion)) shaderOcclusion = camera.AddComponent<ARShaderOcclusion>();
+                var shaderSettings = new SerializedObject(shaderOcclusion);
+                shaderSettings.FindProperty("m_OcclusionManager").objectReferenceValue = occlusion;
+                shaderSettings.FindProperty("m_OcclusionShaderMode").intValue = (int)AROcclusionShaderMode.HardOcclusion;
+                shaderSettings.FindProperty("m_AROcclusionSources").intValue = (int)AROcclusionSources.EnvironmentDepth;
+                shaderSettings.ApplyModifiedPropertiesWithoutUndo();
+                shaderOcclusion.enabled = false;
+
+                var root = roots.FirstOrDefault(go => go.name == BoardPlacementName);
+                if (root == null)
+                {
+                    Debug.LogError($"[XR] No '{BoardPlacementName}' in {ScenePath}; run Add Board Placement first.");
+                    return;
+                }
+                if (!root.TryGetComponent<XRDepthOcclusion>(out var depth)) depth = root.AddComponent<XRDepthOcclusion>();
+                var depthSettings = new SerializedObject(depth);
+                depthSettings.FindProperty("occlusion").objectReferenceValue = occlusion;
+                depthSettings.FindProperty("shaderOcclusion").objectReferenceValue = shaderOcclusion;
+                depthSettings.FindProperty("origin").objectReferenceValue = origin;
+                depthSettings.FindProperty("occludedLit").objectReferenceValue = lit;
+                depthSettings.FindProperty("occludedText").objectReferenceValue = text;
+                depthSettings.ApplyModifiedPropertiesWithoutUndo();
+
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene);
+                Debug.Log($"[XR] Depth occlusion wired in {ScenePath}: hard occlusion from environment depth.");
+            }
+            finally
+            {
+                if (openedHere) EditorSceneManager.CloseScene(scene, true);
+            }
+        }
+
+        /// <summary>A material on one of the XR shaders, saved as an asset so the shader and its variants ship.</summary>
+        static Material EnsureShaderMaterial(string path, string shaderName)
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (existing != null) return existing;
+            var shader = Shader.Find(shaderName);
+            if (shader == null)
+            {
+                Debug.LogError($"[XR] Shader '{shaderName}' not found.");
+                return null;
+            }
+
+            var material = new Material(shader) { name = Path.GetFileNameWithoutExtension(path) };
+            AssetDatabase.CreateAsset(material, path);
+            return material;
+        }
+
+        const string ShadowCatcherMaterialPath = GraphicsFolder + "/XRShadowCatcher.mat";
+
+        /// <summary>The board's shadow-catcher material (5.6), on the XR-owned shader, saved so the shader ships.</summary>
+        static Material EnsureShadowCatcherMaterial()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(ShadowCatcherMaterialPath);
+            if (existing != null) return existing;
+            var shader = Shader.Find("TrainSudoku/XR/Shadow Catcher");
+            if (shader == null)
+            {
+                Debug.LogError("[XR] Shader 'TrainSudoku/XR/Shadow Catcher' not found; no shadow catcher.");
+                return null;
+            }
+
+            var material = new Material(shader) { name = "XRShadowCatcher" };
+            material.SetColor("_ShadowColor", new Color(0f, 0f, 0f, 0.45f));
+            AssetDatabase.CreateAsset(material, ShadowCatcherMaterialPath);
+            return material;
+        }
+
+        static void AssignShadowCatcher(Material material)
+        {
+            var boardAssets = AssetDatabase.LoadAssetAtPath<XRBoardAssets>(BoardAssetsPath);
+            if (boardAssets == null || material == null) return;
+            var serialized = new SerializedObject(boardAssets);
+            serialized.FindProperty("shadowCatcherMaterial").objectReferenceValue = material;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(boardAssets);
+            AssetDatabase.SaveAssets();
+        }
+
+        static void EnableOpenXRFeatures(params string[] featureTypeNames)
+        {
+            var settings = UnityEngine.XR.OpenXR.OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Android);
+            if (settings == null) return;
+            foreach (var feature in settings.GetFeatures())
+            {
+                if (!featureTypeNames.Contains(feature.GetType().Name) || feature.enabled) continue;
+                feature.enabled = true;
+                EditorUtility.SetDirty(feature);
+                Debug.Log($"[XR] Enabled OpenXR feature {feature.GetType().Name} on Android.");
+            }
+            EditorUtility.SetDirty(settings);
+        }
+
+        /// <summary>
+        /// A transparent URP Unlit material saved as an asset, so its shader variant ships in the build; a material made
+        /// at runtime would ask for a variant that stripping may already have removed.
+        /// </summary>
+        static Material EnsureTransparentMaterial(string path, Color color)
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (existing != null) return existing;
+            if (!AssetDatabase.IsValidFolder(GraphicsFolder)) AssetDatabase.CreateFolder("Assets/02.Graphics", "XR");
+
+            var material = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { name = Path.GetFileNameWithoutExtension(path) };
+            material.SetFloat("_Surface", 1f);
+            material.SetFloat("_Blend", 0f);
+            material.SetOverrideTag("RenderType", "Transparent");
+            material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            material.SetFloat("_SrcBlendAlpha", (float)UnityEngine.Rendering.BlendMode.One);
+            material.SetFloat("_DstBlendAlpha", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            material.SetFloat("_ZWrite", 0f);
+            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            material.SetColor("_BaseColor", color);
+            AssetDatabase.CreateAsset(material, path);
+            return material;
+        }
+
+        /// <summary>A detected surface: its mesh and collider kept up to date by AR Foundation, drawn only while placing.</summary>
+        static GameObject EnsurePlanePrefab(Material material)
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(PlanePrefabPath);
+            if (existing != null) return existing;
+            if (!AssetDatabase.IsValidFolder(PrefabFolder)) AssetDatabase.CreateFolder("Assets/04.Prefabs", "XR");
+
+            var go = new GameObject("XR Plane", typeof(ARPlane), typeof(MeshFilter), typeof(MeshCollider), typeof(MeshRenderer), typeof(ARPlaneMeshVisualizer));
+            var renderer = go.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            renderer.enabled = false;
+            var prefab = PrefabUtility.SaveAsPrefabAsset(go, PlanePrefabPath);
+            Object.DestroyImmediate(go);
+            return prefab;
         }
 
         static GameObject FindPrefab(string name) =>

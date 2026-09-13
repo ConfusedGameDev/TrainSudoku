@@ -22,6 +22,11 @@ namespace TrainSudoku.XR
         private const float TileInset = 0.04f;
         private const float TileChamfer = 0.035f;
 
+        /// <summary>How far the shadow catcher reaches past the board on every side, in cells, and how far above the
+        /// table it floats so it never fights the real surface for depth.</summary>
+        private const float ShadowCatcherMargin = 3f;
+        private const float ShadowCatcherLift = 0.01f;
+
         /// <summary>A clue sign's face: the phone's chip, stood upright on a pole so it reads from any edge (5.5).</summary>
         private const float ChipRadius = 0.38f;
         private const float ChipRingWidth = 0.065f;
@@ -67,6 +72,8 @@ namespace TrainSudoku.XR
         private ClueSign[] _rowClues;
         private bool[] _columnSatisfied;
         private bool[] _rowSatisfied;
+        private GameObject _shadowCatcher;
+        private bool _shadowCatcherVisible = true;
         private readonly List<ClueSign> _signs = new List<ClueSign>();
         private readonly Dictionary<(int X, int Y), (PieceView View, Piece Piece)> _shown = new Dictionary<(int X, int Y), (PieceView View, Piece Piece)>();
 
@@ -107,6 +114,10 @@ namespace TrainSudoku.XR
 
             Level = level;
             Board = new Board(level);
+            // The near edge sits on the parent's origin, so a bigger board grows away from the player and the edge
+            // they stand at never moves between levels (X17). Lifted by the slab height so the slabs rest on the
+            // surface the origin is on, rather than sinking into it.
+            transform.localPosition = new Vector3(0f, TileHeight, (float)BoardLayout.HalfDepth(level.Height));
             _profile = assets != null ? assets.ResolveProfile() : XRBoardAssets.PlaceholderProfile();
             XRBoardMaterials.SetLineColour(lineColour);
 
@@ -114,7 +125,18 @@ namespace TrainSudoku.XR
             BuildTunnels();
             BuildClues();
             BuildDecor();
+            BuildShadowCatcher();
             Sync(false);
+        }
+
+        /// <summary>
+        /// Shows or hides the surface that catches the board's shadows on the real table (5.6). Off for a board that
+        /// floats where no surface was found: a shadow on nothing reads as a fault.
+        /// </summary>
+        public void ShowShadowCatcher(bool visible)
+        {
+            _shadowCatcherVisible = visible;
+            if (_shadowCatcher != null) _shadowCatcher.SetActive(visible);
         }
 
         /// <summary>
@@ -173,6 +195,7 @@ namespace TrainSudoku.XR
             DestroyMesh(ref _chipRing);
             _signs.Clear();
             _shown.Clear();
+            _shadowCatcher = null;
             _columnClues = null;
             _rowClues = null;
             _columnSatisfied = null;
@@ -256,9 +279,9 @@ namespace TrainSudoku.XR
             var (wx, wz) = BoardLayout.CellCenter(x, y, Level.Width, Level.Height);
             go.transform.localPosition = new Vector3((float)wx, assets != null ? assets.VerticalOffset : 0f, (float)wz);
             go.AddComponent<MeshFilter>().sharedMesh = TrackMeshBender.ForKey(_profile, piece.Key);
-            go.AddComponent<MeshRenderer>().sharedMaterial = piece.IsFixed
+            go.AddComponent<MeshRenderer>().sharedMaterial = XROcclusionMaterials.Occluded(piece.IsFixed
                 ? assets != null ? assets.FixedTrackMaterial : XRBoardMaterials.FixedTrack
-                : assets != null ? assets.TrackMaterial : XRBoardMaterials.Track;
+                : assets != null ? assets.TrackMaterial : XRBoardMaterials.Track);
 
             var view = go.AddComponent<PieceView>();
             view.Set(x, y, piece.IsFixed);
@@ -300,6 +323,7 @@ namespace TrainSudoku.XR
 
             var tube = Instantiate(model, holder);
             tube.name = "Tube";
+            XROcclusionMaterials.Convert(tube);
             foreach (var collider in tube.GetComponentsInChildren<Collider>()) Kill(collider);
 
             var floor = ConnectorWall * bore.y;
@@ -441,8 +465,31 @@ namespace TrainSudoku.XR
             mesh.anchor = TextAnchor.MiddleCenter;
             mesh.alignment = TextAlignment.Center;
             mesh.color = color;
-            go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+            go.GetComponent<MeshRenderer>().sharedMaterial = XROcclusionMaterials.Text(font);
             return mesh;
+        }
+
+        /// <summary>
+        /// The invisible surface at table level that catches the board's shadows (5.6). It covers the board's footprint
+        /// and a margin all round, so a sign's, the train's or a hand's shadow lands on the real table beside the board.
+        /// </summary>
+        private void BuildShadowCatcher()
+        {
+            var material = assets != null ? assets.ShadowCatcherMaterial : null;
+            if (material == null) return;
+
+            var quad = Primitive(PrimitiveType.Quad, _decor, material, "Shadow Catcher");
+            // A quad faces -Z; laid back a quarter turn it faces up, and its Y becomes the board's Z.
+            quad.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            quad.transform.localPosition = new Vector3(0f, -TileHeight + ShadowCatcherLift, 0f);
+            quad.transform.localScale = new Vector3(
+                2f * ((float)BoardLayout.HalfWidth(Level.Width) + ShadowCatcherMargin),
+                2f * ((float)BoardLayout.HalfDepth(Level.Height) + ShadowCatcherMargin), 1f);
+            var renderer = quad.GetComponent<MeshRenderer>();
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = true;
+            _shadowCatcher = quad;
+            quad.SetActive(_shadowCatcherVisible);
         }
 
         /// <summary>A primitive with its collider removed: only tiles are aimed at.</summary>
