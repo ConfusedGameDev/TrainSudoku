@@ -24,6 +24,8 @@ namespace TrainSudoku.XR
         private static Material _entrance;
         private static Material _exit;
         private static Material _platformEdge;
+        private static Material _ghostLegal;
+        private static Material _ghostIllegal;
         private static Color _lineColour = XRPalette.Warn;
 
         public static Material Tile => _tile != null ? _tile : _tile = Create("XR Tile", XRPalette.Concrete);
@@ -50,6 +52,10 @@ namespace TrainSudoku.XR
         public static Material Exit => _exit != null ? _exit : _exit = Create("XR Exit", XRPalette.Stop);
         public static Material PlatformEdge => _platformEdge != null ? _platformEdge : _platformEdge = Create("XR Platform Edge", XRPalette.Warn);
 
+        /// <summary>The ghost over a cell where letting go would land (XR-PRD 4.3), and over one where it would send the piece back.</summary>
+        public static Material GhostLegal => _ghostLegal != null ? _ghostLegal : _ghostLegal = CreateFade("XR Ghost Legal", XRPalette.GhostLegal);
+        public static Material GhostIllegal => _ghostIllegal != null ? _ghostIllegal : _ghostIllegal = CreateFade("XR Ghost Illegal", XRPalette.GhostIllegal);
+
         /// <summary>Tints the satisfied clue signs in the active line's colour.</summary>
         public static void SetLineColour(Color colour)
         {
@@ -57,6 +63,9 @@ namespace TrainSudoku.XR
             if (_clueChip != null) _clueChip.color = colour;
             if (_clueChipEdge != null) _clueChipEdge.color = Darken(colour);
         }
+
+        /// <summary>Translucent on the occluded fade shader when it is configured; otherwise opaque, so the Editor still shows it.</summary>
+        private static Material CreateFade(string name, Color color) => XROcclusionMaterials.Fade(name, color) ?? Create(name, color);
 
         private static Color Darken(Color colour) => new Color(colour.r * 0.72f, colour.g * 0.72f, colour.b * 0.72f, colour.a);
 

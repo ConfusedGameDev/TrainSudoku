@@ -6,15 +6,16 @@ namespace TrainSudoku.XR
 {
     /// <summary>
     /// A track piece on the board with its small animations (PRD section 4, work order 9): a 220 ms snap-in that
-    /// overshoots to 1.15 and settles, and a 180 ms shake when a fixed piece is long-pressed. Both run on unscaled
-    /// time, so neither depends on <c>Time.timeScale</c>.
+    /// overshoots to 1.15 and settles, and a 300 ms wobble when a fixed piece refuses a grab (XR-PRD 4.2) — larger than
+    /// the phone's shake, which was sized for a finger on glass rather than a 6 cm piece at arm's length. Both run on
+    /// unscaled time, so neither depends on <c>Time.timeScale</c>.
     /// </summary>
     public sealed class PieceView : MonoBehaviour
     {
         private const float ScaleInDuration = 0.22f;
         private const float Overshoot = 1.15f;
-        private const float ShakeDuration = 0.18f;
-        private const float ShakeAmplitude = 0.05f;
+        private const float ShakeDuration = 0.3f;
+        private const float ShakeAmplitude = 0.1f;
 
         private Vector3 _restPosition;
         private Coroutine _animation;

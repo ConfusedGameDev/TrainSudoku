@@ -26,6 +26,16 @@ namespace TrainSudoku.XR
         /// <summary>A clue's numeral once its line holds more pieces than it asks for.</summary>
         public static readonly Color ClueExceeded = Stop;
 
+        // Grab feedback (XR-PRD 4.3): the ghost over a cell, translucent so the slab and its neighbours show through.
+        /// <summary>Releasing here would place, move or replace: the phone's success green.</summary>
+        public static readonly Color GhostLegal = new Color(0.35f, 0.80f, 0.45f, 0.55f);
+
+        /// <summary>Releasing here would send the piece back: <see cref="Stop"/>, translucent.</summary>
+        public static readonly Color GhostIllegal = new Color(0.816f, 0.204f, 0.173f, 0.55f);
+
+        /// <summary>Steam (X19): off-white, so a puff reads against a light table as well as a dark one.</summary>
+        public static readonly Color Steam = new Color(0.94f, 0.95f, 0.93f, 0.85f);
+
         private static Font _font;
 
         /// <summary>The face for the world-space <c>TextMesh</c> clue numerals, which need a legacy font.</summary>

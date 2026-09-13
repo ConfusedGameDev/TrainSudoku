@@ -18,9 +18,12 @@ namespace TrainSudoku.XR
     /// </remarks>
     public sealed class XRBoardDisplay : MonoBehaviour
     {
-        private const float TileHeight = 0.1f;
-        private const float TileInset = 0.04f;
+        internal const float TileHeight = 0.1f;
+        internal const float TileInset = 0.04f;
         private const float TileChamfer = 0.035f;
+
+        /// <summary>How far above a slab's top the volume a hand aims at to lift its piece reaches, in cells (XR6).</summary>
+        private const float GrabVolumeTop = 0.5f;
 
         /// <summary>How far the shadow catcher reaches past the board on every side, in cells, and how far above the
         /// table it floats so it never fights the real surface for depth.</summary>
@@ -74,6 +77,9 @@ namespace TrainSudoku.XR
         private bool[] _rowSatisfied;
         private GameObject _shadowCatcher;
         private bool _shadowCatcherVisible = true;
+        private Mesh _tileMesh;
+        private MeshRenderer[,] _tileRenderers;
+        private BoxCollider[,] _cellVolumes;
         private readonly List<ClueSign> _signs = new List<ClueSign>();
         private readonly Dictionary<(int X, int Y), (PieceView View, Piece Piece)> _shown = new Dictionary<(int X, int Y), (PieceView View, Piece Piece)>();
 
@@ -83,6 +89,50 @@ namespace TrainSudoku.XR
 
         /// <summary>A row or column holds more pieces than its clue asks for.</summary>
         public bool HasOverfullLine { get; private set; }
+
+        /// <summary>The chamfered slab every tile is cut from, at unit size; the tray's tiles and the ghost share it.</summary>
+        public Mesh TileMesh => _tileMesh;
+
+        /// <summary>How high a piece sits above the top of its slab, in cells.</summary>
+        public float PieceLift => assets != null ? assets.VerticalOffset : 0f;
+
+        /// <summary>The material player track is drawn in, on the board, in the tray and in the hand.</summary>
+        public Material PlayerTrackMaterial => XROcclusionMaterials.Occluded(assets != null ? assets.TrackMaterial : XRBoardMaterials.Track);
+
+        /// <summary>The track for a key as this level's profile bends it. Dropped with the level on the next <see cref="Load"/>.</summary>
+        public Mesh TrackMeshFor(PieceKey key) => TrackMeshBender.ForKey(_profile, key);
+
+        /// <summary>The volume a hand aims at to lift the piece on a cell: the slab and the air above it.</summary>
+        public Collider CellVolume(int x, int y) => InGrid(x, y) && _cellVolumes != null ? _cellVolumes[x, y] : null;
+
+        /// <summary>Where a piece on the cell sits, in world space.</summary>
+        public Vector3 CellWorldPosition(int x, int y)
+        {
+            var (wx, wz) = BoardLayout.CellCenter(x, y, Level.Width, Level.Height);
+            return transform.TransformPoint(new Vector3((float)wx, PieceLift, (float)wz));
+        }
+
+        /// <summary>The fixed piece on the cell refuses a grab: it wobbles and stays put (4.2).</summary>
+        public void ShakePiece(int x, int y)
+        {
+            if (_shown.TryGetValue((x, y), out var shown) && shown.View != null) shown.View.PlayShake();
+        }
+
+        /// <summary>Hides the piece on show at a cell, while its double flies back into it.</summary>
+        public void SetPieceVisible(int x, int y, bool visible)
+        {
+            if (_shown.TryGetValue((x, y), out var shown) && shown.View != null && shown.View.TryGetComponent<MeshRenderer>(out var renderer))
+                renderer.enabled = visible;
+        }
+
+        /// <summary>Marks the slab under a piece a hand is aiming at, in the selection yellow.</summary>
+        public void HighlightCell(int x, int y, bool on)
+        {
+            if (!InGrid(x, y) || _tileRenderers == null || _tileRenderers[x, y] == null) return;
+            _tileRenderers[x, y].sharedMaterial = on ? XRBoardMaterials.PlatformEdge : TileMaterial(x, y);
+        }
+
+        private bool InGrid(int x, int y) => Level != null && x >= 0 && y >= 0 && x < Level.Width && y < Level.Height;
 
         public static XRBoardDisplay Create(Transform parent, XRBoardAssets assets)
         {
@@ -193,6 +243,11 @@ namespace TrainSudoku.XR
             TrackMeshBender.Clear();
             DestroyMesh(ref _chipDisc);
             DestroyMesh(ref _chipRing);
+            // Not destroyed: ProceduralBoardMesh caches the slab and hands the same mesh to every level, so destroying
+            // it here left the next level's tiles with no mesh at all.
+            _tileMesh = null;
+            _tileRenderers = null;
+            _cellVolumes = null;
             _signs.Clear();
             _shown.Clear();
             _shadowCatcher = null;
@@ -256,21 +311,33 @@ namespace TrainSudoku.XR
         private void BuildTiles()
         {
             var size = (float)BoardLayout.CellSize - TileInset;
-            var mesh = ProceduralBoardMesh.ChamferedTile(TileChamfer / size, TileChamfer / TileHeight);
+            _tileMesh = ProceduralBoardMesh.ChamferedTile(TileChamfer / size, TileChamfer / TileHeight);
+            _tileRenderers = new MeshRenderer[Level.Width, Level.Height];
+            _cellVolumes = new BoxCollider[Level.Width, Level.Height];
             for (var y = 0; y < Level.Height; y++)
             for (var x = 0; x < Level.Width; x++)
             {
-                // The cube's collider is kept: the grab layer (XR6) will aim at cells.
                 var tile = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 tile.name = $"Cell ({x},{y})";
                 tile.transform.SetParent(_tiles, false);
                 var (wx, wz) = BoardLayout.CellCenter(x, y, Level.Width, Level.Height);
                 tile.transform.localPosition = new Vector3((float)wx, -TileHeight / 2f, (float)wz);
                 tile.transform.localScale = new Vector3(size, TileHeight, size);
-                tile.GetComponent<MeshFilter>().sharedMesh = mesh;
-                tile.GetComponent<MeshRenderer>().sharedMaterial = (x + y) % 2 == 0 ? XRBoardMaterials.Tile : XRBoardMaterials.TileAlt;
+                tile.GetComponent<MeshFilter>().sharedMesh = _tileMesh;
+                _tileRenderers[x, y] = tile.GetComponent<MeshRenderer>();
+                _tileRenderers[x, y].sharedMaterial = TileMaterial(x, y);
+
+                // The cube's collider is kept and stretched upward from the slab's foot to GrabVolumeTop above its top:
+                // it is what a hand aims at to lift the piece on the cell. In the tile's own units the slab spans -0.5 to 0.5.
+                var volume = tile.GetComponent<BoxCollider>();
+                var top = 0.5f + GrabVolumeTop / TileHeight;
+                volume.center = new Vector3(0f, (top - 0.5f) / 2f, 0f);
+                volume.size = new Vector3(1f, top + 0.5f, 1f);
+                _cellVolumes[x, y] = volume;
             }
         }
+
+        private static Material TileMaterial(int x, int y) => (x + y) % 2 == 0 ? XRBoardMaterials.Tile : XRBoardMaterials.TileAlt;
 
         private void Spawn(int x, int y, Piece piece, bool animate)
         {

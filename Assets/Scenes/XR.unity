@@ -327,6 +327,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1320072771}
   - component: {fileID: 1320072770}
+  - component: {fileID: 1320072772}
   m_Layer: 0
   m_Name: Board Demo
   m_TagString: Untagged
@@ -349,8 +350,13 @@ MonoBehaviour:
   network: {fileID: 11400000, guid: 18fa057227d204e359a11e887abe3e35, type: 2}
   assets: {fileID: 11400000, guid: 8b9c117c414dc4b4e990bdc7e9c2c5fd, type: 2}
   placement: {fileID: 2147283166}
+  grabInput: {fileID: 1320072772}
   startStation: 0
-  sizeTour: 1
+  sizeTour: 0
+  autoPlay: 0
+  dominantHand: 1
+  hoverBand: 0.1
+  throwThreshold: 1.2
   cellSize: 0.06
   secondsPerPiece: 0.3
   secondsBetweenStations: 2
@@ -369,6 +375,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1320072772
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1320072769}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1373ed39e87ec043b12d0353804ee96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: TrainSudoku.XR::TrainSudoku.XR.XRIGrabInput
 --- !u!1001 &1653127867
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -673,6 +691,7 @@ MonoBehaviour:
   origin: {fileID: 655329857}
   occludedLit: {fileID: 2100000, guid: 3e6bf8344bd24ab4383263797b9bfcf5, type: 2}
   occludedText: {fileID: 2100000, guid: e0df18f887c3f8343b4c94bd022449ff, type: 2}
+  occludedFade: {fileID: 2100000, guid: b977549db6738474091154c511175ef5, type: 2}
   bias: 0.03
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

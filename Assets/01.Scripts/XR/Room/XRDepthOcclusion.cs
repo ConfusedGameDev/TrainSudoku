@@ -21,6 +21,9 @@ namespace TrainSudoku.XR
         [SerializeField] private Material occludedLit;
         [SerializeField] private Material occludedText;
 
+        [Tooltip("Template for the translucent occluded materials: the grab ghost and the steam (XR6).")]
+        [SerializeField] private Material occludedFade;
+
         [Tooltip("How far behind a real surface a virtual one may be and still show, in metres. Keeps the depth map's fuzz " +
                  "from nibbling at the board where a hand rests on it.")]
         [SerializeField] private float bias = 0.03f;
@@ -28,7 +31,7 @@ namespace TrainSudoku.XR
         private void Awake()
         {
             // Before any Start, so every board material is made from the occlusion templates from the first.
-            XROcclusionMaterials.Configure(occludedLit, occludedText);
+            XROcclusionMaterials.Configure(occludedLit, occludedText, occludedFade);
             Shader.SetGlobalMatrix(WorldToTrackablesId, Matrix4x4.identity);
             Shader.SetGlobalFloat(BiasId, bias);
             if (occlusion != null) occlusion.enabled = false;

@@ -384,6 +384,55 @@ namespace TrainSudoku.XR.Editor
             }
         }
 
+        const string OccludedFadePath = GraphicsFolder + "/XROccludedFade.mat";
+
+        /// <summary>
+        /// XR6: the tray and the hands (XR-PRD 4). Makes the occluded fade material the grab ghost and the steam are made
+        /// from and hands it to the scene's <see cref="XRDepthOcclusion"/>, puts the XRI grab input on the board demo, and
+        /// switches the demo from playing itself to waiting for the player's hands, in network order. Running it again
+        /// only re-wires.
+        /// </summary>
+        [MenuItem("Window/TrainSudoku/XR/Add Tray and Grab to XR Scene")]
+        static void AddTrayAndGrab()
+        {
+            var fade = EnsureShaderMaterial(OccludedFadePath, "TrainSudoku/XR/Occluded Fade");
+            if (fade == null) return;
+
+            var scene = SceneManager.GetSceneByPath(ScenePath);
+            var openedHere = !scene.isLoaded;
+            if (openedHere) scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
+            try
+            {
+                var roots = scene.GetRootGameObjects();
+                var depth = roots.Select(go => go.GetComponentInChildren<XRDepthOcclusion>(true)).FirstOrDefault(d => d != null);
+                var demo = roots.Select(go => go.GetComponentInChildren<XRBoardDemo>(true)).FirstOrDefault(d => d != null);
+                if (depth == null || demo == null)
+                {
+                    Debug.LogError($"[XR] {ScenePath} needs its board demo and depth occlusion; run Add Board Demo and Add Depth Occlusion first.");
+                    return;
+                }
+
+                var depthSettings = new SerializedObject(depth);
+                depthSettings.FindProperty("occludedFade").objectReferenceValue = fade;
+                depthSettings.ApplyModifiedPropertiesWithoutUndo();
+
+                if (!demo.TryGetComponent<XRIGrabInput>(out var input)) input = demo.gameObject.AddComponent<XRIGrabInput>();
+                var demoSettings = new SerializedObject(demo);
+                demoSettings.FindProperty("grabInput").objectReferenceValue = input;
+                demoSettings.FindProperty("autoPlay").boolValue = false;
+                demoSettings.FindProperty("sizeTour").boolValue = false;
+                demoSettings.ApplyModifiedPropertiesWithoutUndo();
+
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene);
+                Debug.Log($"[XR] Tray and grab wired in {ScenePath}: the demo waits for the player's hands.");
+            }
+            finally
+            {
+                if (openedHere) EditorSceneManager.CloseScene(scene, true);
+            }
+        }
+
         /// <summary>A material on one of the XR shaders, saved as an asset so the shader and its variants ship.</summary>
         static Material EnsureShaderMaterial(string path, string shaderName)
         {

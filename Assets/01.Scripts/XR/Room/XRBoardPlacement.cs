@@ -72,6 +72,9 @@ namespace TrainSudoku.XR
         /// <summary>The handle is moving the board; the board is unanchored until it is let go.</summary>
         public bool IsMoving { get; private set; }
 
+        /// <summary>The bar that moves the board, once it is placed.</summary>
+        public XRBoardHandle Handle => _handle;
+
         public event Action Placed;
 
         /// <summary><see cref="IsOnSurface"/> changed: the handle settled the board onto a surface, or lifted it off one.</summary>

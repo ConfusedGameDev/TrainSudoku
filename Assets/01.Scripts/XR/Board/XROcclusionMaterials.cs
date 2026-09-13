@@ -14,13 +14,15 @@ namespace TrainSudoku.XR
     {
         private static Material _lit;
         private static Material _text;
+        private static Material _fade;
         private static readonly Dictionary<Material, Material> Twins = new Dictionary<Material, Material>();
         private static readonly Dictionary<Font, Material> Texts = new Dictionary<Font, Material>();
 
-        public static void Configure(Material litTemplate, Material textTemplate)
+        public static void Configure(Material litTemplate, Material textTemplate, Material fadeTemplate = null)
         {
             _lit = litTemplate;
             _text = textTemplate;
+            _fade = fadeTemplate;
             Twins.Clear();
             Texts.Clear();
         }
@@ -28,6 +30,19 @@ namespace TrainSudoku.XR
         /// <summary>A new occluded material in a flat colour, or null when there is no template.</summary>
         public static Material Lit(string name, Color color) =>
             _lit == null ? null : new Material(_lit) { name = name, color = color };
+
+        /// <summary>
+        /// A new occluded translucent material — the grab ghost, the steam — in <paramref name="color"/>, alpha included,
+        /// over <paramref name="texture"/> when there is one. Null when there is no template.
+        /// </summary>
+        public static Material Fade(string name, Color color, Texture texture = null)
+        {
+            if (_fade == null) return null;
+            var material = new Material(_fade) { name = name };
+            material.SetColor("_BaseColor", color);
+            if (texture != null) material.SetTexture("_BaseMap", texture);
+            return material;
+        }
 
         /// <summary>The occluded twin of <paramref name="source"/>, keeping its colour and texture. Made once per source.</summary>
         public static Material Occluded(Material source)

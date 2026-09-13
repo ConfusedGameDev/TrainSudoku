@@ -38,10 +38,10 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
 
 | Assembly | Location | Holds |
 |---|---|---|
-| `TrainSudoku.XR.Rules` | `Assets/01.Scripts/XR/Rules/` | `PieceDrop` (XR-PRD 4.4): grabbing from the tray or a cell, the ghost tint, and every release outcome. It works on the shared `Board` through `TryPlace`, `TryErase` and `Legality`. `noEngineReferences`; references only Core |
-| `TrainSudoku.XR` | `Assets/01.Scripts/XR/` | The XR runtime. References Core, `TrainSudoku.Game` (the four level data types only), XR.Rules and the XR packages. Holds: `Board/` (display, materials, assets, occlusion materials, forked mesh code); `Train/XRTrainRun`; `Room/` (placement, handle, permission, depth occlusion); `XRPalette`; and `XRBoardDemo` until XR7 |
-| `TrainSudoku.XR.Editor` | `Assets/01.Scripts/XR/Editor/` | `XRFoundationSetup`, the Window > TrainSudoku > XR menu (Create Render Pipeline, Build XR Scene, Add Board Demo, Add Board Placement, Add Depth Occlusion); and `XRManifestPermissions` |
-| `TrainSudoku.XR.Tests.EditMode` | `Assets/99.Test/XR/EditMode/` | `PieceDropTests`, with its own fixtures in `XRTestBoards`. It never uses the phone's test assembly, which would pull in Game and Editor |
+| `TrainSudoku.XR.Rules` | `Assets/01.Scripts/XR/Rules/` | `PieceDrop` (XR-PRD 4.4): grabbing from the tray or a cell, the ghost tint, and every release outcome. It works on the shared `Board` through `TryPlace`, `TryErase` and `Legality`. `TrayDock` (4.1: slot layout, docking edge, handedness, the 1.5 s dwell), `ThrowGesture` (hand speed over the last 0.1 s against 1.2 m/s) and `BoardPick` (the cell under a point, the hover band). `noEngineReferences`; references only Core |
+| `TrainSudoku.XR` | `Assets/01.Scripts/XR/` | The XR runtime. References Core, `TrainSudoku.Game` (the four level data types only), XR.Rules and the XR packages. Holds: `Board/` (display, materials, assets, occlusion materials, forked mesh code); `Grab/` (the grab interface `IGrabInput` and its XRI implementation, the tray, `XRPieceHands`, flights and steam); `Train/XRTrainRun`; `Room/` (placement, handle, permission, depth occlusion); `XRPalette`; and `XRBoardDemo` until XR7 |
+| `TrainSudoku.XR.Editor` | `Assets/01.Scripts/XR/Editor/` | `XRFoundationSetup`, the Window > TrainSudoku > XR menu (Create Render Pipeline, Build XR Scene, Add Board Demo, Add Board Placement, Add Depth Occlusion, Add Tray and Grab); and `XRManifestPermissions` |
+| `TrainSudoku.XR.Tests.EditMode` | `Assets/99.Test/XR/EditMode/` | `PieceDropTests`, `TrayDockTests`, `ThrowGestureTests` and `BoardPickTests`, with their own fixtures in `XRTestBoards`. It never uses the phone's test assembly, which would pull in Game and Editor |
 
 - **Every `PieceDrop` call returns a `DropResult`:**
   - `Outcome`: `Taken`, `Lifted`, `Placed`, `Moved`, `Replaced`, `Returned`, `Puffed`, `Thrown` or `Refused`.
@@ -63,7 +63,9 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
   - **`BoardRoot`** is the board's parent:
     - Scaled 0.06, with its origin at the middle of the near edge, on the surface, and +Z pointing away from the player.
     - `XRBoardDisplay` lifts itself by the slab height and puts its near edge on that origin, so a bigger board grows away from the player.
-  - **Handle.** `Room/XRBoardHandle` is an `XRSimpleInteractable`, not a grab interactable.
+  - **Handle.** `Room/XRBoardHandle` is an `XRSimpleInteractable` (an `XRGrabOnlyInteractable`, which no poke or gaze can select), not a grab interactable.
+    - Since the XR6 headset check it rests as a short knob at the near corner opposite the tray, 4.4 cells from the middle of the near edge, and a close pinch alone takes it (`XRDirectReach`).
+    - Pinched, it grows over 0.15 s into a corner-to-corner bar the other hand can also take. The board follows only once the hand has moved it 3 cm or turned it 12 degrees; a pinch that never leaves that dead zone moves and re-anchors nothing.
     - A grab interactable detaches the grabbed object from its parent for the length of the grab, which left the bar in the air while the board moved.
     - Its own code moves `BoardRoot` freely, height included, turning it about the grab point so the bar stays in the hand.
     - One hand: wrist twist (roll about the hand's pointing axis) turns the board, at 1.5 degrees per degree (`TwistGain`).
@@ -77,9 +79,32 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
     - Every board, piece, sign, text and train material is made from the `Occluded Lit` or `Occluded Text` template through `Board/XROcclusionMaterials`.
     - The shared clip lives in `Shaders/XROcclusion.hlsl`.
   - **Locomotion** in the XRI rig is switched off, because the world never moves the player (4.5, 8).
-- **The XR4 demo.** `XRBoardDemo` places the board 0.6 m ahead of the head and 0.5 m below it, facing the gaze, one second after start.
-  - It then plays every station in network order: the level, then its solution laid along the route, then the train, then the next station.
-  - It solves on a background thread, so the frame rate holds.
+- **Tray and grab (XR6).**
+  - **The grab interface** is `Grab/IGrabInput`: hands grab and release `GrabTarget`s (a tray key or a cell) and report a `GrabHold` each frame (the hand, and a ray for a distant hold). `XRPieceHands` turns those into `PieceDrop` calls and plays the result; nothing else changes the board in play. A later Meta hand grab or visionOS pointer is a second `IGrabInput`.
+  - **The XRI implementation** (`XRIGrabInput`) adds an `XRGrabTargetInteractable` (an `XRSimpleInteractable`) to each target's collider. XRI's near-far interactors then choose what each hand aims at, directly or by ray, and arbitrate with the board handle. Nothing XRI selects moves.
+    - A target is hoverable and selectable only while it has something to give, so an empty cell is never a target. Pokes and gaze never grab.
+    - **Trap:** XRI asks `IsSelectableBy` on every frame of a selection and drops the selection when it turns false. So a hand already selecting a target must always answer true (`IsSelected`), or lifting a piece (which empties the cell) would end the grab at once.
+    - Both hands may select one tray slot at once (`InteractableSelectMode.Multiple`): supply is unlimited.
+  - **Cells.** Each tile's cube collider is kept and stretched from the slab's foot to half a cell above its top: that is what a hand aims at to lift a piece.
+  - **Pinch-only targets** (after the XR6 headset check). Board cells and the handle sit on Unity's built-in Ignore Raycast layer (`Grab/XRDirectReach`), and tray pieces stay ray-grabbable.
+    - The rig's far casters already leave that layer out: their mask is `0x80000021` (Default, UI and layer 31).
+    - The controllers' near casters look at Default only, so `XRDirectReach` adds the layer to every near-far interactor's near caster.
+    - Before this, a ray aimed at a far piece met a nearer cell's tall volume first.
+  - **Trap:** `ProceduralBoardMesh.ChamferedTile` hands one cached mesh to every caller. Never destroy the display's `TileMesh`. The first XR6 build did, on every level change, and every board after the first drew without its slabs.
+  - **The ghost is the whole contract of a release.** A piece lands on the cell its ghost is over. With no ghost (above the 10 cm hover band, or off the grid), letting go is letting go off the platform, and the piece puffs.
+    - A direct hold carries the piece 12 mm below the pinch. A distant hold rides it 0.4 cells above the platform where the ray meets it.
+    - Its yaw is always the board's.
+  - **The tray** (`XRTray`) stands just outside the platform, off the dominant-hand side of the edge the player is at, with its near row level with that edge. That keeps the whole near edge free for the handle.
+    - It stands clear of an 8x8 board at the least, so on the edge the board was placed from it does not move between levels (X17).
+    - Slots are 1.3 cells apart. It slides to a new edge 1.5 s after the player moves there, never while a piece is held.
+  - **Feedback.** The ghost and the steam are on `Shaders/XROccludedFade.shader` (`XROccludedFade.mat` is the template, wired on `XRDepthOcclusion`), so real hands hide them like the board.
+    - A fixed piece refuses a grab with the fork's `PieceView` shake, enlarged to 0.1 cells over 300 ms.
+    - The handle hides while a piece is held; pieces cannot be grabbed while the handle carries the board.
+    - Cues, the whistle and the "that's fixed" note come with XR9 and XR10.
+- **The stand-in (XR4, XR6).** `XRBoardDemo` waits for the placed board, then plays every station in network order: the level with the tray, laid by hand, then the train, then the next station.
+  - The clock starts on the first grab. A placeholder LED clock above the far edge shows the station, the time and the star targets until the XR7 signboard.
+  - Each solve is logged (`[XR play]`) and appended to `xr-star-sample.csv` in `Application.persistentDataPath`: the star-timing sample of XR-PRD 9. On the Quest it is under `/sdcard/Android/data/com.GorillaGonzalez.Tsugi.XR/files/`. Every grab and release is logged as `[XR hands]`.
+  - `autoPlay` brings back the XR4 behaviour: each solution laid along the route, solved on a background thread.
   - The XR flow replaces it at XR7.
 - **The rules tests also run outside Unity.** A scratch `net10.0` NUnit project that compiles `Core/**`, `XR/Rules/**` and `99.Test/XR/EditMode/**` runs them with `dotnet test` in well under a second. That also proves the assembly stays engine-free.
 
@@ -150,6 +175,11 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
    - Features: `com.oculus.feature.PASSTHROUGH` required, `oculus.software.handtracking` optional.
    - Permissions: `INTERNET`, `com.oculus.permission.HAND_TRACKING` and the two OpenXR permissions. Nothing prohibited.
 4. **Install and launch** with `metavr app install builds/TsugiXR.apk`, then `metavr app launch com.GorillaGonzalez.Tsugi.XR`. Check that `adb shell dumpsys activity activities` shows the Unity activity as `topResumedActivity`.
+   - **Read the game's log by streaming it live, with plain `adb`**: `...AndroidPlayer\SDK\platform-tools\adb.exe logcat -v time -s Unity:V`, in a background loop that restarts when the cable drops.
+     - The headset's main log buffer is 256 KiB, and the OS's anchor discovery (`SP:AF:AnchorFramework`, every ~70 ms while planes are on) fills it in seconds. A later `logcat -d` finds no `Unity` lines at all.
+     - `metavr adb shell logcat` held its output back, so a stream through it caught nothing (2026-09-13).
+   - In Git Bash, set `MSYS_NO_PATHCONV=1` before any `adb shell` command that names `/sdcard/...`, or the path is rewritten to `C:/Program Files/Git/sdcard/...`.
+   - The headset leaves adb whenever it sleeps (taken off and set down), so a waiting loop that installs and launches once `adb devices` lists it again saves a round trip.
    - The `Unity`-tagged logcat holds the OpenXR diagnostic report. The session should reach `XR_SESSION_STATE_FOCUSED`.
 
 **Package workaround: `USE_SCENE` in the manifest.**
@@ -177,6 +207,8 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
 - It clears the dynamic atlases of the three Barlow SDF fonts in `02.Graphics/Fonts/SDF/` to 1x1.
 - It rewrites two shader-prefiltering fields in `Mobile_RPAsset`.
 - The Editor re-saves `SampleScene` with `GameManager`'s empty `music` and `musicPlayer` fields.
+- It can leave four `preloadedAssets` on the Meta Quest profile's Player settings: the Localization settings, `XRGeneralSettingsPerBuildTarget`, the input actions and the OpenXR package settings. The packages inject them for the build and add them again at every build; the committed profile keeps `preloadedAssets: []`.
+- Building from script with the Meta Quest profile inactive: the 2026-09-13 XR6 build made it the active profile first (`BuildProfile.SetActiveBuildProfile`), so the OpenXR validator read the Quest's values. Built in 6 min 38 s after the first IL2CPP build.
 
 ## Local files that stay out of commits
 

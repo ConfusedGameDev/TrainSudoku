@@ -45,7 +45,7 @@ Settled by interview on 11 Sep 2026. Closed. Do not re-open one without asking f
 | X9 | Drop rules: see section 4 | Ghost preview. An illegal release returns the piece to where it came from. Dropping on a player piece replaces it if legal. Clues update on release, not while hovering |
 | X10 | Lifting a placed piece erases it; dropping it on another legal cell is a **move**. **Throw vs. release is purely visual** | Fixed pieces refuse the grab with a wobble and the "that's fixed" note. Removal is always allowed, as on the phone |
 | X11 | The tray is **attached to the board** at the edge nearest the player, on the dominant-hand side | It moves to whichever edge the player walks to and never follows the head |
-| X16 | Pieces can be grabbed **directly and at a distance** (hand ray on Quest, look-and-pinch on Vision Pro) | A piece held at a distance rides the board surface under the ray. The ghost and snap work the same either way |
+| X16 | Pieces can be grabbed **directly and at a distance** (hand ray on Quest, look-and-pinch on Vision Pro) | A piece held at a distance rides the board surface under the ray. The ghost and snap work the same either way. *Revised 2026-09-13 after the XR6 headset check:* distant grab is for tray pieces; pieces on the board are taken by a close pinch only (4.2) |
 | X17 | The board **grows from its near edge**; clue numbers are **standing signs that turn to face the player** | The tray and handle never jump between levels, and the board can be walked all the way round |
 | X19 | Throw and puff are **steam**: a burst and a whistle for a throw, a small puff for a release | One particle effect in two sizes. The room's shape is never used |
 
@@ -111,7 +111,8 @@ Unchanged: PRD 3, including placement legality, the adjacency rule and the win c
 ### 4.2 Grabbing
 
 - **Direct**: pinch (or controller grip) on a tray piece or a placed player piece.
-- **Distant**: hand ray on Quest, controller ray, or look-and-pinch on Vision Pro, aimed at a tray piece or placed piece. A piece held at a distance rides the platform surface under the ray.
+- **Distant**: hand ray on Quest, controller ray, or look-and-pinch on Vision Pro, aimed at a tray piece. A piece held at a distance rides the platform surface under the ray.
+- **Placed pieces are taken by a close pinch only.** Revised 2026-09-13 after the XR6 headset check: on the board the pieces sit a cell apart, and a ray aimed at one kept landing on a neighbour.
 - Each hand holds at most one piece, and both hands may hold at once.
 - **Fixed pieces (`K`) refuse the grab.** They wobble, play the "that's fixed" note, and stay put.
 - **Lifting a placed piece erases it at once.** The cell empties, the validator runs, and clues update. The piece is now held like any tray piece and remembers the cell it came from.
@@ -175,7 +176,11 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 
 ### 5.3 Moving and turning
 
-- A **handle bar** at the board's near edge moves it, and stays in the hand while it does.
+- A **handle** moves the board, and stays in the hand while it does.
+  - At rest it is a short knob at the near corner opposite the tray (near-left for a right-handed player). It is taken by a close pinch only: never a ray, a poke or the gaze.
+  - Pinched, it grows into a bar along the near edge, which the other hand can take too.
+  - The board only follows once the hand has moved the handle about 3 cm or turned it about 12 degrees, so a stray pinch does nothing.
+  - Revised 2026-09-13 after the XR6 headset check: the full-length bar at the near edge kept catching rays and pinches aimed at the board, and moved it mid-level.
   - Grab and drag to move the board in any direction, height included.
   - Let go within 5 cm of a detected surface and the board settles onto it, shadows included. Anywhere else it floats where it was left.
   - To turn it about the vertical, twist the wrist, or hold the bar with both hands and steer.
@@ -292,7 +297,7 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 | System | XR behaviour |
 |---|---|
 | Progression (lines, network reveal, unlocks) | From the shared `NetworkDefinition`, `NetworkLayout` and `GameFlow`, unchanged |
-| Stars | Same `starTimes` thresholds per level, through the shared `ProgressTracker`. **Open item:** grab-and-drop may be slower or faster than tapping. XR6 measures a sample on device and may introduce a single XR scaling factor, held in XR code. The level assets are never forked |
+| Stars | Same `starTimes` thresholds per level, through the shared `ProgressTracker`. **Open item:** grab-and-drop may be slower or faster than tapping. XR6 measures a sample on device and may introduce a single XR scaling factor, held in XR code. The level assets are never forked. *XR6 sample, 2026-09-13 (Quest 3, one player, Ashgate):* 291 s by hand on the first try and 95 s on the second, against 180 s for three stars and 300 s for two. Too small to set a factor, so none is introduced yet; the stand-in keeps appending to `xr-star-sample.csv` |
 | Timer | Shared `PlayTimer`; starts on the first grab (section 4.2) |
 | Save / Continue | Shared `SaveJson`, `FileSaveStore` and `LevelProgress`: the same `save.json` format, local to each device. **No sync between phone and headset**, but the shared format keeps that possible later |
 | Localisation | **XR's own** `XR` String Table in the project's existing `com.unity.localization` setup, same four locales (X24). Station and line names come from the shared assets. XR gets its own Japanese atlas bake covering its table plus those names |
@@ -446,7 +451,7 @@ Same rules as the phone work: **no `git commit` until a milestone's *Verified by
 | XR3 | `PieceDrop` | ☑ |
 | XR4 | Board display | ☑ |
 | XR5 | Board in the room | ☑ |
-| XR6 | Tray and grab | ☐ |
+| XR6 | Tray and grab | ☑ |
 | XR7 | Flow on the platform | ☐ |
 | XR8 | Wrist menu and pause | ☐ |
 | XR9 | XR tutorial | ☐ |
