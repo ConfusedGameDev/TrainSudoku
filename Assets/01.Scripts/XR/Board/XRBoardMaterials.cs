@@ -56,6 +56,22 @@ namespace TrainSudoku.XR
         public static Material GhostLegal => _ghostLegal != null ? _ghostLegal : _ghostLegal = CreateFade("XR Ghost Legal", XRPalette.GhostLegal);
         public static Material GhostIllegal => _ghostIllegal != null ? _ghostIllegal : _ghostIllegal = CreateFade("XR Ghost Illegal", XRPalette.GhostIllegal);
 
+        private static readonly System.Collections.Generic.Dictionary<Color32, Material> Solids =
+            new System.Collections.Generic.Dictionary<Color32, Material>();
+
+        /// <summary>
+        /// One opaque material per colour, shared: the platform map prints two dozen line colours and tints of them,
+        /// so it asks by colour rather than by name. On the occlusion shader like every other board material.
+        /// </summary>
+        public static Material Solid(Color colour)
+        {
+            Color32 key = colour;
+            if (Solids.TryGetValue(key, out var material) && material != null) return material;
+            material = Create($"XR Solid {ColorUtility.ToHtmlStringRGB(colour)}", colour);
+            Solids[key] = material;
+            return material;
+        }
+
         /// <summary>Tints the satisfied clue signs in the active line's colour.</summary>
         public static void SetLineColour(Color colour)
         {

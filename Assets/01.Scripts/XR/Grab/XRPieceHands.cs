@@ -8,8 +8,8 @@ namespace TrainSudoku.XR
     /// <summary>
     /// Pieces in the player's hands (XR-PRD 4.2 to 4.4). It turns what the <see cref="IGrabInput"/> reports into
     /// <see cref="PieceDrop"/> calls and shows what each one did: the piece in the hand, the ghost over the cell beneath
-    /// it, the flight back to where an illegal drop came from, the puff, and the thrown piece's arc and burst of steam.
-    /// While a level is in play nothing else changes the board.
+    /// it, the flight back to where an illegal drop came from, and a piece let go or thrown off the platform falling into
+    /// the room before its puff or burst of steam. While a level is in play nothing else changes the board.
     /// </summary>
     /// <remarks>
     /// The ghost is the whole contract of a release: a piece lands on the cell its ghost is over, and with no ghost
@@ -28,7 +28,9 @@ namespace TrainSudoku.XR
 
         private const float ReturnSeconds = 0.25f;
         private const float ReturnArc = 0.05f;
-        private const float ThrowSeconds = 0.6f;
+
+        /// <summary>How long a piece let go off the platform tumbles about the room before it puffs, in seconds.</summary>
+        private const float FallSeconds = 3f;
 
         /// <summary>The ghost's translucent slab over its cell, and how far it floats clear of the real slab's top, in cells.</summary>
         private const float GhostSlabThickness = 0.02f;
@@ -197,16 +199,29 @@ namespace TrainSudoku.XR
                     else Destroy(piece);
                     break;
                 case DropOutcome.Thrown:
-                    XRPieceFlight.Throw(piece, velocity, ThrowSeconds, at =>
-                    {
-                        if (_steam != null) _steam.Burst(at);
-                    });
+                    Fall(piece, velocity, true);
                     break;
                 default:
-                    if (_steam != null) _steam.Puff(piece.transform.position);
-                    Destroy(piece);
+                    // Let go off the platform, or an illegal drop with no way back.
+                    Fall(piece, velocity, false);
                     break;
             }
+        }
+
+        /// <summary>
+        /// Into the room as a real body, then a puff where it ends up, a few seconds later or the moment it touches the
+        /// board (X19, revised after the XR7 headset check). A throw ends in the bigger burst.
+        /// </summary>
+        private void Fall(GameObject piece, Vector3 velocity, bool thrown)
+        {
+            var steam = _steam;
+            var board = _display == null ? null : _display.transform.parent != null ? _display.transform.parent : _display.transform;
+            XRPieceFlight.Fall(piece, velocity, FallSeconds, board, at =>
+            {
+                if (steam == null) return;
+                if (thrown) steam.Burst(at);
+                else steam.Puff(at);
+            });
         }
 
         private void Update()

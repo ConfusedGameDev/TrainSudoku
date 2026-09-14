@@ -25,6 +25,14 @@ namespace TrainSudoku.XR
         private const string AnchorKey = "tsugi.xr.boardAnchor";
         private const string OnSurfaceKey = "tsugi.xr.boardOnSurface";
         private const float MaxRayDistance = 5f;
+        private const string CellKey = "tsugi.xr.boardCell";
+
+        /// <summary>
+        /// The range the two-hand handle may scale a cell to, in metres (X6, revised 2026-09-14): below 4 cm a piece is
+        /// too small to pinch reliably with hand tracking.
+        /// </summary>
+        public const float MinCellSize = 0.04f;
+        public const float MaxCellSize = 0.09f;
 
         /// <summary>How close to a detected surface a board let go of by the handle must be to settle onto it, in metres.</summary>
         private const float SettleReach = 0.05f;
@@ -65,6 +73,9 @@ namespace TrainSudoku.XR
 
         public Transform BoardRoot { get; private set; }
         public bool IsPlaced { get; private set; }
+
+        /// <summary>The size of one cell in the room, in metres: the board root's scale.</summary>
+        public float CellSize => BoardRoot != null ? BoardRoot.lossyScale.x : cellSize;
 
         /// <summary>The board rests on a detected surface, rather than floating where no surface was found.</summary>
         public bool IsOnSurface { get; private set; }
@@ -129,9 +140,13 @@ namespace TrainSudoku.XR
             BoardRoot.SetParent(null, true);
         }
 
-        public void MoveTo(Pose pose)
+        /// <summary>Carries the board to <paramref name="pose"/> at <paramref name="cell"/> metres to a cell, while the handle holds it.</summary>
+        public void MoveTo(Pose pose, float cell)
         {
-            if (IsMoving) BoardRoot.SetPositionAndRotation(pose.position, pose.rotation);
+            if (!IsMoving) return;
+            BoardRoot.SetPositionAndRotation(pose.position, pose.rotation);
+            // Unparented while it moves, so its local scale is its size in the room.
+            BoardRoot.localScale = Vector3.one * Mathf.Clamp(cell, MinCellSize, MaxCellSize);
         }
 
         /// <summary>
@@ -211,9 +226,11 @@ namespace TrainSudoku.XR
             }
 
             Attach(result.value);
+            // The size the handle last scaled it to comes back with it (X6, revised 2026-09-14).
+            BoardRoot.localScale = Vector3.one * Mathf.Clamp(PlayerPrefs.GetFloat(CellKey, cellSize), MinCellSize, MaxCellSize);
             IsOnSurface = PlayerPrefs.GetInt(OnSurfaceKey, 0) == 1;
             MarkPlaced();
-            Debug.Log($"[XR placement] Board restored at saved anchor {saved} ({(IsOnSurface ? "on a surface" : "floating")}).");
+            Debug.Log($"[XR placement] Board restored at saved anchor {saved} ({(IsOnSurface ? "on a surface" : "floating")}, {CellSize * 100f:F1} cm cells).");
             return true;
         }
 
@@ -260,8 +277,9 @@ namespace TrainSudoku.XR
             {
                 PlayerPrefs.SetString(AnchorKey, saved.value.guid.ToString());
                 PlayerPrefs.SetInt(OnSurfaceKey, IsOnSurface ? 1 : 0);
+                PlayerPrefs.SetFloat(CellKey, CellSize);
                 PlayerPrefs.Save();
-                Debug.Log($"[XR placement] Board anchored and saved as {saved.value.guid}.");
+                Debug.Log($"[XR placement] Board anchored and saved as {saved.value.guid} ({CellSize * 100f:F1} cm cells).");
             }
             else
             {

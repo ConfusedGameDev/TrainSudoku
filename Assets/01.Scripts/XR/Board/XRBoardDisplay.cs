@@ -68,6 +68,7 @@ namespace TrainSudoku.XR
         private Transform _clues;
         private Transform _decor;
         private XRTrainRun _train;
+        private Action _trainFinished;
         private TrackMeshProfile _profile;
         private Mesh _chipDisc;
         private Mesh _chipRing;
@@ -146,6 +147,7 @@ namespace TrainSudoku.XR
             display._clues = display.Group("Clues");
             display._decor = display.Group("Decor");
             display._train = XRTrainRun.Create(go.transform, assets);
+            display._train.Finished += display.OnTrainFinished;
             return display;
         }
 
@@ -223,21 +225,29 @@ namespace TrainSudoku.XR
         /// <summary>Runs the train along the board's route and calls <paramref name="finished"/> when it is through.</summary>
         public void RunTrain(string destination, Action finished)
         {
-            void OnFinished()
-            {
-                _train.Finished -= OnFinished;
-                finished?.Invoke();
-            }
-
+            _trainFinished = finished;
             _train.RevealDistance = TunnelRevealDistance;
             _train.SetDestination(destination);
-            _train.Finished += OnFinished;
             _train.Run(Board);
+        }
+
+        /// <summary>Stops the train where it is, without calling the run's <c>finished</c>: the run was skipped (6.2).</summary>
+        public void StopTrain()
+        {
+            _trainFinished = null;
+            if (_train != null) _train.Stop();
+        }
+
+        private void OnTrainFinished()
+        {
+            var finished = _trainFinished;
+            _trainFinished = null;
+            finished?.Invoke();
         }
 
         public void Clear()
         {
-            if (_train != null) _train.Stop();
+            StopTrain();
             foreach (var group in new[] { _tiles, _pieces, _tunnels, _clues, _decor }) ClearChildren(group);
             // The bent meshes belong to the level that went away, and the next one may use another profile.
             TrackMeshBender.Clear();

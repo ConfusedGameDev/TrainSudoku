@@ -7,6 +7,7 @@
         "Unity.XR.ARSubsystems",
         "Unity.XR.CoreUtils",
         "Unity.XR.OpenXR",
+        "Unity.XR.Interaction.Toolkit",
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime"
     ],

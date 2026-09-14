@@ -38,10 +38,10 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
 
 | Assembly | Location | Holds |
 |---|---|---|
-| `TrainSudoku.XR.Rules` | `Assets/01.Scripts/XR/Rules/` | `PieceDrop` (XR-PRD 4.4): grabbing from the tray or a cell, the ghost tint, and every release outcome. It works on the shared `Board` through `TryPlace`, `TryErase` and `Legality`. `TrayDock` (4.1: slot layout, docking edge, handedness, the 1.5 s dwell), `ThrowGesture` (hand speed over the last 0.1 s against 1.2 m/s) and `BoardPick` (the cell under a point, the hover band). `noEngineReferences`; references only Core |
-| `TrainSudoku.XR` | `Assets/01.Scripts/XR/` | The XR runtime. References Core, `TrainSudoku.Game` (the four level data types only), XR.Rules and the XR packages. Holds: `Board/` (display, materials, assets, occlusion materials, forked mesh code); `Grab/` (the grab interface `IGrabInput` and its XRI implementation, the tray, `XRPieceHands`, flights and steam); `Train/XRTrainRun`; `Room/` (placement, handle, permission, depth occlusion); `XRPalette`; and `XRBoardDemo` until XR7 |
-| `TrainSudoku.XR.Editor` | `Assets/01.Scripts/XR/Editor/` | `XRFoundationSetup`, the Window > TrainSudoku > XR menu (Create Render Pipeline, Build XR Scene, Add Board Demo, Add Board Placement, Add Depth Occlusion, Add Tray and Grab); and `XRManifestPermissions` |
-| `TrainSudoku.XR.Tests.EditMode` | `Assets/99.Test/XR/EditMode/` | `PieceDropTests`, `TrayDockTests`, `ThrowGestureTests` and `BoardPickTests`, with their own fixtures in `XRTestBoards`. It never uses the phone's test assembly, which would pull in Game and Editor |
+| `TrainSudoku.XR.Rules` | `Assets/01.Scripts/XR/Rules/` | `PieceDrop` (XR-PRD 4.4): grabbing from the tray or a cell, the ghost tint, and every release outcome. It works on the shared `Board` through `TryPlace`, `TryErase` and `Legality`. `TrayDock` (4.1: slot layout, docking edge, handedness, the 1.5 s dwell), `ThrowGesture` (hand speed over the last 0.1 s against 1.2 m/s) and `BoardPick` (the cell under a point, the hover band). `MapReveal` (which lines the network map shows, 6.2), `MapFit` (map space onto the platform card) and `MapStroke` (route, loop and stadium polylines); and `QuickBoard`, the testing aid that lays all but a station's last few rails as fixed pieces. `noEngineReferences`; references only Core |
+| `TrainSudoku.XR` | `Assets/01.Scripts/XR/` | The XR runtime. References Core, `TrainSudoku.Game` (the four level data types only), XR.Rules and the XR packages. Holds: `Board/` (display, materials, assets, occlusion materials, forked mesh code); `Grab/` (the grab interface `IGrabInput` and its XRI implementation, the tray, `XRPieceHands`, flights and steam, and `XRTouchPoints`, the fingertips and pinch points read off the rig); `Train/XRTrainRun`; `Room/` (placement, handle, permission, depth occlusion); `Maps/` (the platform card, its maps and roundels); `Signboard/` (the world-space UI Toolkit signboard and `XRSignageAssets`); `XRPalette`; `XRGame`, the shell that owns the flow (XR7); and `XRStarSample` |
+| `TrainSudoku.XR.Editor` | `Assets/01.Scripts/XR/Editor/` | `XRFoundationSetup`, the Window > TrainSudoku > XR menu (Create Render Pipeline, Build XR Scene, Add Game, Add Board Placement, Add Depth Occlusion, Add Tray and Grab, Add Flow); and `XRManifestPermissions` |
+| `TrainSudoku.XR.Tests.EditMode` | `Assets/99.Test/XR/EditMode/` | `PieceDropTests`, `TrayDockTests`, `ThrowGestureTests`, `BoardPickTests`, `MapRevealTests`, `MapFitTests`, `MapStrokeTests` and `QuickBoardTests`, with their own fixtures in `XRTestBoards`. It never uses the phone's test assembly, which would pull in Game and Editor |
 
 - **Every `PieceDrop` call returns a `DropResult`:**
   - `Outcome`: `Taken`, `Lifted`, `Placed`, `Moved`, `Replaced`, `Returned`, `Puffed`, `Thrown` or `Refused`.
@@ -57,19 +57,28 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
   - **Forked mesh code.** `XR/Board/` holds forks of the phone's mesh code (`TrackMeshBender`, `TrackMeshResampler`, `TrackMeshProfile`, `ProceduralTrackMesh`, `ProceduralBoardMesh`, `PieceView`, `PopScale`). Each is marked with a one-line fork note at the top and is never synced with the phone's copy.
   - **`XRBoardAssets`** was seeded field by field from the phone's `TrackAssets` and `TrainAssets`, so it has the same kit and tuning.
 - **The board in the room (XR5).**
-  - **Placement.** `Room/XRBoardPlacement` first tries to restore the saved anchor. The anchor's GUID lives in `PlayerPrefs` under `tsugi.xr.boardAnchor`, never in `save.json`.
+  - **Placement.** `Room/XRBoardPlacement` first tries to restore the saved anchor. The anchor's GUID lives in `PlayerPrefs` under `tsugi.xr.boardAnchor`, never in `save.json`. The cell size the handle last scaled the board to is saved beside it under `tsugi.xr.boardCell`, and clamped to `MinCellSize`–`MaxCellSize` (0.04–0.09 m) on restore.
     - Without one, it asks for spatial data and slides a ghost over detected horizontal planes under the right-hand ray (then the left hand's, then the gaze). If there is no surface, the ghost floats at waist height.
     - A pinch or trigger places it.
   - **`BoardRoot`** is the board's parent:
     - Scaled 0.06, with its origin at the middle of the near edge, on the surface, and +Z pointing away from the player.
     - `XRBoardDisplay` lifts itself by the slab height and puts its near edge on that origin, so a bigger board grows away from the player.
   - **Handle.** `Room/XRBoardHandle` is an `XRSimpleInteractable` (an `XRGrabOnlyInteractable`, which no poke or gaze can select), not a grab interactable.
-    - Since the XR6 headset check it rests as a short knob at the near corner opposite the tray, 4.4 cells from the middle of the near edge, and a close pinch alone takes it (`XRDirectReach`).
-    - Pinched, it grows over 0.15 s into a corner-to-corner bar the other hand can also take. The board follows only once the hand has moved it 3 cm or turned it 12 degrees; a pinch that never leaves that dead zone moves and re-anchors nothing.
+    - **It is an L-shaped rail** (since the second XR7 headset check) round the near corner opposite the tray: a leg 2 cells along the near edge, a quarter circle 0.45 cells out from the corner, and a leg 2 cells up the side, 0.25 cells above the surface. The XR6 knob, and the grown bar before it, gave too many false positives.
+    - **It opens out when touched** (2026-09-14). Once lit, the near-edge leg runs on to the far corner, round it and 2 cells up the far side in 0.25 s. The result is a U with an end for each hand.
+      - 0.8 s after nothing is on, near or hovering it, it folds back in 0.35 s. Hidden, it snaps folded.
+      - The path is the whole U cut to a length (`TracePath`), and the grab volume follows it, rebuilt every frame while it moves.
+      - On an 8x8 board the far leg's volume clears the tray's inner column by about 0.17 cells (1 cm). The tray side never had a rail before, so watch for a pinch at the tray catching it.
+    - It follows the platform on show: `SetFootprint`, called from `XRGame.FitHandle` with `BoardLayout.HalfWidth` for a board and `XRPlatformMap.HalfWidth` for the map card.
+    - The rail and its grab volume are tube meshes built along that path. The volume is a `MeshCollider` 0.25 cells fatter than the rail, taken by a close pinch alone (`XRDirectReach`).
+    - **One hand only lights and opens it; two move it.** A single pinch lights it, and so does a fingertip or pinch point from `XRTouchPoints` within 2 cm of the grab volume (until it is 5 cm away). XRI's hover never came through for a hand merely resting on it.
+    - With both hands on (one at each end), the board follows once they have moved it 3 cm or turned it 12 degrees; a pair that never leaves that dead zone moves and re-anchors nothing. Either hand letting go ends the move.
     - A grab interactable detaches the grabbed object from its parent for the length of the grab, which left the bar in the air while the board moved.
-    - Its own code moves `BoardRoot` freely, height included, turning it about the grab point so the bar stays in the hand.
-    - One hand: wrist twist (roll about the hand's pointing axis) turns the board, at 1.5 degrees per degree (`TwistGain`).
-    - Two hands on the bar: their midpoint carries the board, and the line between them steers it.
+    - Its own code moves `BoardRoot` freely, height included, turning it about the grab point so the rail stays in the hands.
+    - The hands' midpoint carries the board, and the line between them steers it. The XR6 one-hand wrist twist went with the knob.
+    - **Spreading or closing the hands scales it** (since the XR7 check), about their midpoint. The new cell size is the start size times the current span over the start span, clamped to 4–9 cm. It is eased over about 0.08 s, because jitter in the span is magnified at the far edge of a big board. An 8% change in span counts as leaving the dead zone.
+    - `XRBoardPlacement.MoveTo` takes the cell size. The root is unparented while it moves, so its local scale is its size in the room.
+    - Everything under `BoardRoot` scales with it, the signboard included: the sign is sized for the standard 6 cm cell, not for whatever cell the board had when the sign was made.
     - On release, `XRBoardPlacement` settles the board onto a detected surface within 5 cm (`SettleReach`), or leaves it floating. It then re-anchors, saves the new anchor and erases the old one.
     - Surfaces stay enabled (unseen) after an anchor restore so this still works.
   - **Anchor order.** A new anchor is attached before the old one is removed, because removing an anchor destroys its GameObject and anything still parented to it.
@@ -91,7 +100,10 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
     - The controllers' near casters look at Default only, so `XRDirectReach` adds the layer to every near-far interactor's near caster.
     - Before this, a ray aimed at a far piece met a nearer cell's tall volume first.
   - **Trap:** `ProceduralBoardMesh.ChamferedTile` hands one cached mesh to every caller. Never destroy the display's `TileMesh`. The first XR6 build did, on every level change, and every board after the first drew without its slabs.
-  - **The ghost is the whole contract of a release.** A piece lands on the cell its ghost is over. With no ghost (above the 10 cm hover band, or off the grid), letting go is letting go off the platform, and the piece puffs.
+  - **The ghost is the whole contract of a release.** A piece lands on the cell its ghost is over. With no ghost (above the 10 cm hover band, or off the grid), letting go is letting go off the platform, and the piece falls into the room.
+    - **Falling pieces** (since the XR7 headset check). A piece let go or thrown off the platform gets a `BoxCollider`, at least 0.15 cells thick so the flat track cannot slip through a surface, and a continuous-collision `Rigidbody` moving at the hand's release velocity (`XRPieceFlight.Fall`).
+    - It bounces off the room's detected surfaces, whose colliders stay on after placement with only their renderers hidden. After 3 s it puffs, or bursts if it was thrown.
+    - Anything under `BoardRoot` (tiles, tray, handle, sign) ends it at once.
     - A direct hold carries the piece 12 mm below the pinch. A distant hold rides it 0.4 cells above the platform where the ray meets it.
     - Its yaw is always the board's.
   - **The tray** (`XRTray`) stands just outside the platform, off the dominant-hand side of the edge the player is at, with its near row level with that edge. That keeps the whole near edge free for the handle.
@@ -101,11 +113,50 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
     - A fixed piece refuses a grab with the fork's `PieceView` shake, enlarged to 0.1 cells over 300 ms.
     - The handle hides while a piece is held; pieces cannot be grabbed while the handle carries the board.
     - Cues, the whistle and the "that's fixed" note come with XR9 and XR10.
-- **The stand-in (XR4, XR6).** `XRBoardDemo` waits for the placed board, then plays every station in network order: the level with the tray, laid by hand, then the train, then the next station.
-  - The clock starts on the first grab. A placeholder LED clock above the far edge shows the station, the time and the star targets until the XR7 signboard.
-  - Each solve is logged (`[XR play]`) and appended to `xr-star-sample.csv` in `Application.persistentDataPath`: the star-timing sample of XR-PRD 9. On the Quest it is under `/sdcard/Android/data/com.GorillaGonzalez.Tsugi.XR/files/`. Every grab and release is logged as `[XR hands]`.
-  - `autoPlay` brings back the XR4 behaviour: each solution laid along the route, solved on a background thread.
-  - The XR flow replaces it at XR7.
+- **Flow on the platform (XR7).** `XRGame` replaced the XR4-XR6 stand-in (`XRBoardDemo`, deleted).
+  - **The shell.** It owns the shared `GameFlow`, unchanged, with a `FileSaveStore` on `save.json` in `Application.persistentDataPath` (the phone's format; on the Quest under `/sdcard/Android/data/com.GorillaGonzalez.Tsugi.XR/files/`), the level assets' star times and `AwardMissingStars`. It waits for the placed board, builds the display, the map, the signboard, the tray and the hands under `BoardRoot`, and goes straight to `Network`: XR never shows the Concourse (6.1).
+  - **The platform card** (`Maps/XRPlatformMap`) replaces the board in the map states: 9.6 cells square (58 cm), a concrete base the slab height with paper on it, its near edge on the root's origin like the board's. Everything on it is rebuilt on each visit.
+    - **Network:** the lines `MapReveal` returns (earned plus the first closed one), fitted by `MapFit` with the phone's y-down map space flipped so the screen's top is the table's far side. The stroke is 44 map units scaled by the fit, never under 0.1 cell. A raised roundel stands at each revealed line's last node: the line code on its colour, or a padlock on grey for the closed one.
+    - **Line map:** the route (a stadium for Thornemoor), a 0.55-cell (3.3 cm) roundel per station, and the code and name printed flat beside it, on the side the phone's rule picks, reading from the near edge. Cleared stations are filled in the line colour with their stars printed under the name. A saved attempt shows a CONTINUE tag, and the next station to play gets a halo.
+    - **Trap:** printed layers sit 0.3 mm apart, the first 0.3 mm above the paper. A stroke printed flush with the paper's top z-fought down to a few dashes.
+  - **Roundels** (`XRMapRoundel`) are chosen the two ways a piece is grabbed. An `XRSimpleInteractable` sits on a hit volume at the roundel's top face, so a near-far ray with a pinch or grip selects it, and a controller trigger presses it while its ray hovers (`uiPressInput`). A 0.35 s cooldown stops a pinch, which is both a select and a UI press, from pressing twice. A closed roundel shakes.
+    - **A fingertip presses it by touch.** `XRTouchPoints` reads each poke interactor's point, which on a hand is the OpenXR poke pose (a `TrackedPoseDriver` on the rig's hand Poke Interactor). A fingertip seen anywhere higher than 1.5 cm above the face is ready. Reaching 6 mm above a roundel, within 1.4 times its width, presses it, once, until it rises again; one that comes down off the roundels must lift before it can press.
+    - The first rule armed a fingertip only inside the roundel's own 2 cm column, which missed fingers coming in at an angle: the second XR7 check found touch unreliable. The hand poke interactors are never switched off: the rig's `PokeGestureDetector` only toggles the near-far interactors' far casting.
+    - XRI's own poke (an `XRPokeFilter` with `PokeAxis.NegativeY`) never pressed a roundel on the headset, and was removed at the XR7 check.
+    - **Trap:** the map releases each roundel (`CancelInteractableHover` and `CancelInteractableSelection`) before it destroys it. Otherwise XRI ends the hover a frame late, on a destroyed collider, and throws a `NullReferenceException` in `XRUIToolkitHandler.HasUIDocument`. That was logged on roundel presses that changed the view.
+  - **The signboard** (`Signboard/XRSignboard`) is a world-space `UIDocument` 1260 x 720 px at 100 px to a unit, scaled to 42 x 24 cm (the generated collider measures exactly that). It stands on two posts 1.1 cells above the surface, 0.5 cells behind the far edge of whatever is on show, and turns about the vertical to face the head.
+    - **It leans to the eyes** (since the XR7 headset check). The panel tilts back about its bottom edge by the head's elevation over the card's centre, clamped to 0–50 degrees; the posts stay upright. An upright card took rays at a glancing angle, and its bottom row was hard to hit.
+    - **Ways back sit at the top right**: LINE MAP in play, and NETWORK on the line map. The latter was moved up at the XR7 check, because a ray reaching for the bottom of the card skims low over the map and can catch a roundel first.
+    - **Buttons answer a fingertip too** (second XR7 check). The sign keeps each view's buttons with their actions and maps every fingertip into card space: the pivot is the bottom centre, 100 UI pixels to a unit, and the player's side is -z. A fingertip that has been 2 cm or more in front of the card presses the button under it on coming to 6 mm of the face; within 4 cm the button under it swells 6%.
+    - The panel's `XRPokeFilter` was removed: XRI's poke never pressed a button.
+    - **Views:** the masthead with the tsugi mark (network); the line badge, name and "n / 9 CLEARED" (line map); the station, clock and star targets, dimming as `StarTier` drops (play); stars, this run, best, NEW BEST and the verdict stamp, with NEXT STATION or TO THE NETWORK, RUN AGAIN and LINE MAP (arrival). The stamp (ON TIME, SLIGHT DELAY, DELAYED, in green, amber and red) is pressed on with the phone's timing: down from 2.4 times its size and 22 degrees off square, then a rattle to rest 4 degrees off. It is hidden for the train run.
+    - **Copy** is English literals until XR10's `XR` String Table.
+    - **Rebuilt on every show:** switching a `UIDocument` off throws away whatever code built into its root.
+    - **XRI's UI Toolkit support needs two things in the scene.** Add Flow puts both on the `UI Input` object: a `PanelInputConfiguration` with redirection `Never` (no EventSystem), and an `XRUIToolkitManager`.
+    - **The panel settings** (`03.Data/XR/Ui/XRSignboardPanel.asset`, on XR's own copy of the default theme) have `m_ColliderUpdateMode` 0, MatchBoundingBox, which gives a poke some depth. `ColliderUpdateMode` is internal to UI Toolkit, so it is written as the raw value.
+    - The near-far interactors have `blockUIOnInteractableSelection` on, and the panel carries the `XRSimpleInteractable` that XRI prescribes for poke. A ray pinch still clicks a button: checked on the Quest 3 on 2026-09-14.
+  - **Until the wrist menu (XR8)** the sign carries the way back: LINE MAP in play (`PauseGame` then `ShowLevelSelect`, which saves the attempt) and NETWORK on the line map. Losing focus or suspending saves the attempt but does not pause yet.
+  - **Play.** The clock starts on the first grab (`Flow.BoardTouched` on a `Taken` or `Lifted`); a saved attempt is put back with `LevelProgress.ApplyTo` and waits idle at its time. Every board change is written through; the winning one records the star sample and completes the level.
+  - **Train run.** It always runs into the exit tunnel before the arrival shows. The first XR7 build skipped it on a pinch, grip or trigger anywhere; on the headset a stray pinch after the winning drop cut it short, so the skip went, and `XRPinch` with it.
+    - **A hand on the train** (2026-09-14). A fingertip or pinch point within 0.2 cells of a car's box counts as touching it. The box is measured from the car's renderers, without the destination plate, and a car inside a tunnel cannot be touched.
+      - **Shake** (made bigger after the first headset check). The touched car shakes at full turbulence, and 70% of that passes down the couplings for each car either way. The shake is Perlin sway of 0.14 cells, a hop of 0.09 cells, 7° of pitch and 14° of roll at 11 Hz, fading with a 0.5 s time constant. A hurrying train keeps rattling at up to 40% of full turbulence until it is back to cruising.
+      - **Push.** The train speeds up: 0.5 times cruising speed is added at first contact, then 1.5 times cruising per second while the hand stays, capped at 3 times cruising. It eases back with a 1.5 s time constant.
+      - **Squash and stretch, cartoon fashion.**
+        - Each car is a pivot on the rails carrying its model, so the stretch runs along the track whatever the model's yaw offset.
+        - Stretch: a car grows 0.15 longer per unit of push, up to 1.3 times at top speed, and gets thinner as it lengthens so it keeps its volume.
+        - The wave: each car follows the one ahead on a loose spring (stiffness 220, damping 9), and the locomotive follows the push. The stretch runs from front to back and wobbles as it settles.
+        - Couplings: the gaps grow with the cars, so the train draws out rather than the cars overlapping. The run ends on the actual tail position.
+        - A poked car squashes first and then springs out.
+        - Cars rear nose-up as they stretch, 5° per unit a second up to 15°, and lift by whatever the tilt would sink into the rails.
+        - The destination plate hangs off the `Cars` group rather than a pivot, so the stretch never shears its text.
+      - **Steam.** The train has its own `XRSteam`. It puffs where the hand touched, and chuffs from the locomotive's roof once the push passes 0.2: every 0.35 s at top speed, more slowly below it.
+      - It is still no skip: the run always ends in the exit tunnel.
+  - **Star sample (XR-PRD 9).** `XRStarSample` still appends every solve by hand (grabs > 0) to `xr-star-sample.csv` beside the save. Quick-test solves are left out. Each row records the cell size it was played at (`cellCm`); a file from before scaling gains the column, with 6.0 on its old rows, the first time a row is added.
+  - **Quick test.** `XRGame.quickTestRails` (3 in `XR.unity`) plays every station with all but its last that-many rails along the route already laid, as fixed pieces (`QuickBoard`, on the level's in-memory copy, so no level asset changes).
+    - Quick solves count for progress on that device.
+    - The solve runs when the station loads, so a big board may hitch.
+    - **Set it to 0 before XR11.**
+  - **Editor testing.** With no headset, `floatWithoutHeadset` floats the board in front of the camera; `XRBoardPlacement` still runs, and its yellow ghost tints the view. `unlockAllInEditor` opens everything, and the component's context menu has **Debug: Solve This Station**. The Editor's save is the phone's Editor save (`%USERPROFILE%/AppData/LocalLow/GorillaGonzalez/Tsugi/save.json`): back it up before playing `XR.unity` and put it back afterwards.
 - **The rules tests also run outside Unity.** A scratch `net10.0` NUnit project that compiles `Core/**`, `XR/Rules/**` and `99.Test/XR/EditMode/**` runs them with `dotnet test` in well under a second. That also proves the assembly stays engine-free.
 
 ## Driving the Editor
@@ -122,6 +173,8 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
 - **`Unity_RunCommand` refuses `AssetDatabase.DeleteAsset`** as a "user interaction", so delete untracked files from the shell.
   - The Test Runner does work through the bridge: `TestRunnerApi.Execute` with an `ICallbacks` sink that writes its counts to a file, which a background shell loop then waits on. The full EditMode suite ran 390 tests in about 13 s on 2026-09-13.
   - Entering and leaving Play mode work too (`EditorApplication.EnterPlaymode` / `ExitPlaymode`), one call each, because entering Play reloads the domain.
+  - **Never edit a script while the Editor is in Play mode.** The compile waits for Play to end (`ScriptCompilationDuringPlay` 1), but `isCompiling` reads true meanwhile, so the bridge refuses every call, `ExitPlaymode` included, until someone presses Play in the Editor (2026-09-13).
+  - `Unity_Camera_Capture` with no camera captures the Scene view, and that works in Play mode: aim it first with `SceneView.lastActiveSceneView.LookAtDirect`.
 
 ## XR2 Editor setup
 
@@ -209,6 +262,12 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
 - The Editor re-saves `SampleScene` with `GameManager`'s empty `music` and `musicPlayer` fields.
 - It can leave four `preloadedAssets` on the Meta Quest profile's Player settings: the Localization settings, `XRGeneralSettingsPerBuildTarget`, the input actions and the OpenXR package settings. The packages inject them for the build and add them again at every build; the committed profile keeps `preloadedAssets: []`.
 - Building from script with the Meta Quest profile inactive: the 2026-09-13 XR6 build made it the active profile first (`BuildProfile.SetActiveBuildProfile`), so the OpenXR validator read the Quest's values. Built in 6 min 38 s after the first IL2CPP build.
+- The 2026-09-14 XR7 build, or making the profile active before it, also:
+  - switched on the **Meta Quest Touch Pro Controller Profile** (`m_enabled` 0 to 1) in `Assets/XR/Settings/OpenXR Package Settings.asset`. **Decided at XR7: it stays on**, committed with the milestone. Touch Pro controllers pair with a Quest 3, and every Quest build re-enabled it anyway.
+  - wrote an untracked `ProjectSettings/BuildProfileUtilityOpenXR.asset`, and `Assets/03.Data/AddressableAssetsData/link.xml` again.
+  - built in 9 min 39 s; the APK is about 73 MB.
+- **A queued build dies with the Editor.** A `delayCall` does not survive an Editor restart, so a build queued before one never starts. Write a "started" marker at the top of the queued method so a waiting loop can tell *not started* from *still building*.
+- `%LOCALAPPDATA%\Unity\Editor\Editor.log` is shared by every Editor on the machine, so it can hold another project's log. Ask the bridge for `Application.dataPath` instead.
 
 ## Local files that stay out of commits
 

@@ -39,7 +39,7 @@ Settled by interview on 11 Sep 2026. Closed. Do not re-open one without asking f
 | # | Decision | Consequence |
 |---|---|---|
 | X5 | **Hands first; controllers also supported** | Everything is designed around a pinch-grab. Controller grip maps to grab, trigger to UI select |
-| X6 | **Fixed cell size, about 6 cm** | A 6×6 board with its tunnel ring is ~48 cm across; an 8×8 one ~60 cm. Two-hand scaling of the board is later, not v1 |
+| X6 | **Cell size about 6 cm, scalable with both hands from 4 to 9 cm** | A 6×6 board with its tunnel ring is ~48 cm across at 6 cm; an 8×8 one ~60 cm. *Revised 2026-09-14 after the XR7 headset check:* two-hand scaling moved into v1 on the two-hand handle (5.3), and the size is saved with the board's anchor. Below 4 cm a piece is too small to pinch reliably |
 | X7 | The board **snaps to detected horizontal surfaces**; if none are found it **floats** at waist height | Moved at any time, mid-level included, by a handle. Its position **persists across sessions** through a saved anchor |
 | X8 | The tray holds **six slots, one per key, orientation locked, unlimited supply** | A held piece stays aligned to the board's grid whatever the wrist does. Keys map 1:1 onto `Legality` |
 | X9 | Drop rules: see section 4 | Ghost preview. An illegal release returns the piece to where it came from. Dropping on a player piece replaces it if legal. Clues update on release, not while hovering |
@@ -47,7 +47,7 @@ Settled by interview on 11 Sep 2026. Closed. Do not re-open one without asking f
 | X11 | The tray is **attached to the board** at the edge nearest the player, on the dominant-hand side | It moves to whichever edge the player walks to and never follows the head |
 | X16 | Pieces can be grabbed **directly and at a distance** (hand ray on Quest, look-and-pinch on Vision Pro) | A piece held at a distance rides the board surface under the ray. The ghost and snap work the same either way. *Revised 2026-09-13 after the XR6 headset check:* distant grab is for tray pieces; pieces on the board are taken by a close pinch only (4.2) |
 | X17 | The board **grows from its near edge**; clue numbers are **standing signs that turn to face the player** | The tray and handle never jump between levels, and the board can be walked all the way round |
-| X19 | Throw and puff are **steam**: a burst and a whistle for a throw, a small puff for a release | One particle effect in two sizes. The room's shape is never used |
+| X19 | Throw and puff are **steam**: a burst and a whistle for a throw, a small puff for a release | One particle effect in two sizes. *Revised 2026-09-14 after the XR7 headset check:* a piece let go or thrown off the platform first falls into the room, bouncing off its detected surfaces for 3 s before it puffs; touching the board puffs it at once (4.4) |
 
 ### 0.3 Screens and flow
 
@@ -136,13 +136,13 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 | Any held piece | A player piece, and its key is legal once that piece is gone | **Replaced.** The old piece puffs, the new one is placed |
 | Any held piece | A player piece, and its key is still illegal once that piece is gone | Flies back to its origin. The old piece stays |
 | Any held piece | A fixed piece | Flies back to its origin |
-| Any held piece | Off the platform, hand speed below the throw threshold | **Small steam puff**, piece gone |
-| Any held piece | Anywhere, hand speed above the throw threshold (tunable; starts at 1.2 m/s) | **Thrown.** It arcs along the throw, then bursts into steam with a whistle. Same effect as a puff |
+| Any held piece | Off the platform, hand speed below the throw threshold | **Falls into the room**, bouncing off its detected surfaces, and puffs 3 s later, or at once if it touches the board. Piece gone |
+| Any held piece | Anywhere, hand speed above the throw threshold (tunable; starts at 1.2 m/s) | **Thrown.** It flies along the throw and falls into the room the same way, then bursts into steam with a whistle. Same effect as a puff |
 | A board piece | Another empty cell where its key is legal | **Moved.** A remove-then-place, already half done by the lift |
 
 - **An illegal drop never costs the player anything.** A mistake is never confused with "delete".
 - **Throwing and releasing mean the same thing** (X10); only the effect differs.
-- The throw arc uses gravity and ignores the room: pieces never land on real surfaces (X19).
+- **A piece leaving play is a real body under gravity** (X19). It tumbles and bounces off the room's detected surfaces (tables, the floor) and puffs after 3 s. One that touches the board, tray or handle included, puffs at once, so nothing is ever left lying on the platform looking laid. Revised 2026-09-14 after the XR7 headset check; until then the throw ignored the room.
 - The phone's tap flow (`PlacementSession`: neighbour marks, auto-place, long-press erase) is not used in XR.
 
 ### 4.5 Controllers
@@ -163,7 +163,7 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 - The XR edition builds its own board.
   - **Positions** come from the shared `Core`, at **1 unit per cell**: cell, tunnel and clue positions from `BoardLayout`, per-piece centre lines from `TrackCurve`, and the S-to-E route from `TrackPath`.
   - **Art** is the phone's train kit, used in place (X24).
-- The whole board sits under one root scaled to **0.06**, so one cell is 6 cm. No board code learns about metres, and `Core`'s layout maths is used unchanged.
+- The whole board sits under one root scaled to the cell size: **0.06**, so one cell is 6 cm, unless the player has scaled it (4 to 9 cm, 5.3). No board code learns about metres, and `Core`'s layout maths is used unchanged.
 - Tunnels, clue signs, the train and every other board mesh inherit the scale.
 
 ### 5.2 First placement
@@ -177,13 +177,15 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 ### 5.3 Moving and turning
 
 - A **handle** moves the board, and stays in the hand while it does.
-  - At rest it is a short knob at the near corner opposite the tray (near-left for a right-handed player). It is taken by a close pinch only: never a ray, a poke or the gaze.
-  - Pinched, it grows into a bar along the near edge, which the other hand can take too.
-  - The board only follows once the hand has moved the handle about 3 cm or turned it about 12 degrees, so a stray pinch does nothing.
+  - It is a **rounded L-shaped rail** wrapped round the platform's near corner opposite the tray (near-left for a right-handed player): a leg along the near edge, a quarter circle round the corner, and a leg up the side, each leg about 12 cm. It follows the corner of whatever is on show, a board or the map card. It is taken by a close pinch only: never a ray, a poke or the gaze.
+  - **Touched, it opens out** along the near edge to the far corner, round it and up the far side, so there is an end of it for each hand. Left alone for a moment, it folds back to its corner. Added 2026-09-14.
+  - **It takes both hands to move the board**, one at each end. One hand, pinching it or just near it (a fingertip or the pinch point within 2 cm), only turns it yellow, so the player sees it is there to take. Revised 2026-09-14 after the XR7 headset checks: a corner knob taken by one pinch kept moving the board by accident.
+  - The board only follows once the hands have moved the rail about 3 cm or turned it about 12 degrees, so a stray pair of pinches does nothing.
   - Revised 2026-09-13 after the XR6 headset check: the full-length bar at the near edge kept catching rays and pinches aimed at the board, and moved it mid-level.
   - Grab and drag to move the board in any direction, height included.
   - Let go within 5 cm of a detected surface and the board settles onto it, shadows included. Anywhere else it floats where it was left.
-  - To turn it about the vertical, twist the wrist, or hold the bar with both hands and steer.
+  - To turn it about the vertical, steer with the two hands: the line between them turns the board.
+  - **Spread or close the hands to scale the board**, about the point between them, from 4 to 9 cm a cell. Everything on the platform scales with it, the signboard included, and the size is saved with the anchor. Added 2026-09-14 after the XR7 headset check.
   - Revised 2026-09-13 after the XR5 headset check, which asked for height and a reliable turn.
 - The handle is **hidden while any piece is held**, so it can't be caught by accident mid-drop.
 - Moving is allowed at any time, mid-level included. The anchor is re-saved on release.
@@ -237,11 +239,12 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 | Line map (`LevelSelect`) | The line's station map on the 45° grid from `LineDefinition.mapNodes`. Raised station roundels at least 3 cm across; closed stations look closed, and in-progress stations say "Continue" | Line name and code, LED strip in the line colour | Settings, Back to network |
 | Play | The board, clue signs, tunnels and tray | Station name, clock, stars to beat | Resume/Retry/Map/Settings (opens as Pause) |
 | Pause | The board, dimmed; pieces cannot be grabbed | Shows "Paused" | Resume, Retry, Back to map, Settings |
-| Train run | The train runs the finished route in miniature. A pinch or trigger anywhere not on UI skips it | — | — |
-| Arrival (`Win`) | The solved board stays | Time, best, new-best flag, stars. Buttons: Next, Retry, Map | — |
+| Train run | The train runs the finished route in miniature, always into the exit tunnel before the arrival shows. There is no skip (revised 2026-09-14 after the XR7 headset check: a stray pinch after the winning drop cut it short). A hand on the running train shakes it and hurries it on for a moment, cartoon fashion, before it eases back to speed: the cars squash and stretch in a wave from the locomotive back, the train draws out, and it puffs steam (added 2026-09-14, made livelier after the first headset check) | — | — |
+| Arrival (`Win`) | The solved board stays | Time, best, new-best flag, stars, and the verdict stamped on as on the phone: ON TIME, SLIGHT DELAY or DELAYED. Buttons: Next, Retry, Map | — |
 
-- **Selecting on the platform.** Roundels are chosen by **poking with a finger or by ray/look-and-pinch**, the same two ways as grabbing (X16).
-- **Signboard buttons** work by poke or ray.
+- **Selecting on the platform.** Roundels are chosen by **poking with a finger or by ray/look-and-pinch**, the same two ways as grabbing (X16). A fingertip coming down onto a roundel's face presses it. It is read from the hand's poke pose rather than through XRI's poke, which did not press on the headset (revised 2026-09-14 after the XR7 headset check).
+- **Signboard buttons** work by poke or ray. A poke is a fingertip pressed onto the button, read from the hand as on the roundels. The card leans back about its bottom edge to face the player's eyes, up to 50 degrees, as well as turning to them. Seen from above across the platform, an upright card took rays at a glancing angle (revised 2026-09-14 after the XR7 headset check).
+- **Until the wrist menu (XR7 interim).** XR8 brings the wrist menu that carries Back to map and Back to network. Until then the signboard carries both: a LINE MAP button in Play, which pauses and saves on the way out, and a NETWORK button on the line map.
 - **Tutorial briefing.** The three-card rules briefing shows on the signboard, once per session, on the tutorial station with no rails laid (section 7).
 
 ### 6.3 Pause
@@ -434,7 +437,7 @@ Same rules as the phone work: **no `git commit` until a milestone's *Verified by
 | XR4 | Board display | A shared level loads into an XR-built board at 0.06 scale: tiles, tunnels, clue signs facing the player, fixed pieces, bent track from `TrackCurve`, validator colouring, train run along `TrackPath`. Placed in front of the player for now |
 | XR5 | Board in the room | Surface-snapped placement, float fallback, handle move and turn, anchor persistence across launches, growth from the near edge, shadow catcher, environment depth occlusion of the board and train by the player's body and the room (5.6) |
 | XR6 | Tray and grab | Six-slot tray with docking, handedness and moving between edges. Direct and distant grab, ghost, every release outcome, steam puff and throw, timer from the first grab. A level is playable start to finish. Star timing sampled (section 9) |
-| XR7 | Flow on the platform | Network and line maps on the platform, roundel selection by poke and ray, signboard (masthead, station, arrival), train run skip, save and continue, stars |
+| XR7 | Flow on the platform | Network and line maps on the platform, roundel selection by poke and ray, signboard (masthead, station, arrival with its verdict stamp), the train run into the exit tunnel, save and continue, stars |
 | XR8 | Wrist menu and pause | Back-of-wrist menu, pause semantics including focus loss and headset removal, all settings |
 | XR9 | XR tutorial | The XR coach and tutorial per section 7; the phone's `LevelCollectionTests` still green |
 | XR10 | Sound, haptics, language | XR String Table in all four locales, Japanese atlas bake checked on the signboard, spatialised cues, controller haptics |
@@ -452,7 +455,7 @@ Same rules as the phone work: **no `git commit` until a milestone's *Verified by
 | XR4 | Board display | ☑ |
 | XR5 | Board in the room | ☑ |
 | XR6 | Tray and grab | ☑ |
-| XR7 | Flow on the platform | ☐ |
+| XR7 | Flow on the platform | ☑ |
 | XR8 | Wrist menu and pause | ☐ |
 | XR9 | XR tutorial | ☐ |
 | XR10 | Sound, haptics, language | ☐ |
@@ -467,7 +470,7 @@ Same rules as the phone work: **no `git commit` until a milestone's *Verified by
 - A level editor in XR.
 - Syncing progress between phone and headset.
 - Undo.
-- Two-hand board scaling.
+- ~~Two-hand board scaling.~~ Moved into v1 on 2026-09-14 (X6, 5.3).
 - Pieces landing on real surfaces (room-mesh physics).
 - Meta's own SDKs (until they support 6.7).
 - Vision Pro RealityKit mode and the Shared Space.

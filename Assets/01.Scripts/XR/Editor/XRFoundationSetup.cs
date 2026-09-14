@@ -15,7 +15,7 @@ namespace TrainSudoku.XR.Editor
     /// Builds the XR assets that need the Editor's own APIs rather than hand-written YAML. XR2: the Quest render
     /// pipeline, a copy of the phone's mobile one re-tuned per XR-PRD section 8, and <c>Scenes/XR.unity</c> with an AR
     /// Session, the XRI hands-and-controllers rig with a passthrough camera, and a board-scale test cube. XR4: the
-    /// <see cref="XRBoardAssets"/> and the board demo in that scene. The build profile, XR Plug-in Management and the
+    /// <see cref="XRBoardAssets"/> and the game in that scene. The build profile, XR Plug-in Management and the
     /// package samples are set up by hand; <c>Docs/XR-Agent.md</c> lists the steps. None of it touches the phone's
     /// assets or open scene.
     /// </summary>
@@ -32,6 +32,7 @@ namespace TrainSudoku.XR.Editor
         const string BoardAssetsPath = DataFolder + "/XRBoardAssets.asset";
         const string NetworkPath = "Assets/03.Data/Levels/Network.asset";
         const string BoardDemoName = "Board Demo";
+        const string GameName = "Game";
 
         // The phone's art hooks. The XR asset is seeded from them once, field by field, and is XR's own after that.
         static readonly string[] PhoneArtAssets = { "Assets/03.Data/Board/TrackAssets.asset", "Assets/03.Data/Board/TrainAssets.asset" };
@@ -162,12 +163,13 @@ namespace TrainSudoku.XR.Editor
         }
 
         /// <summary>
-        /// XR4: adds the self-running board demo to <c>XR.unity</c>, wired to the shipped network and to
-        /// <see cref="XRBoardAssets"/>, which it seeds from the phone's art hooks the first time. Running it again only
-        /// re-wires the existing demo object.
+        /// XR4, XR7: the game in <c>XR.unity</c>: the <see cref="XRGame"/> shell on a "Game" object, wired to the shipped
+        /// network and to <see cref="XRBoardAssets"/>, which it seeds from the phone's art hooks the first time. A scene from
+        /// before XR7 has a "Board Demo" object that ran the stand-in XR7 deleted; that object is taken over, its missing
+        /// script removed and its grab input kept. Running it again only re-wires.
         /// </summary>
-        [MenuItem("Window/TrainSudoku/XR/Add Board Demo to XR Scene")]
-        static void AddBoardDemo()
+        [MenuItem("Window/TrainSudoku/XR/Add Game to XR Scene")]
+        static void AddGame()
         {
             var boardAssets = EnsureBoardAssets();
             var network = AssetDatabase.LoadAssetAtPath<ScriptableObject>(NetworkPath);
@@ -182,28 +184,40 @@ namespace TrainSudoku.XR.Editor
             if (openedHere) scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
             try
             {
-                var root = scene.GetRootGameObjects().FirstOrDefault(go => go.name == BoardDemoName);
+                var roots = scene.GetRootGameObjects();
+                var root = roots.FirstOrDefault(go => go.name == GameName);
+                if (root == null) root = roots.FirstOrDefault(go => go.name == BoardDemoName);
                 if (root == null)
                 {
-                    root = new GameObject(BoardDemoName);
+                    root = new GameObject(GameName);
                     SceneManager.MoveGameObjectToScene(root, scene);
                 }
-                if (!root.TryGetComponent<XRBoardDemo>(out var demo)) demo = root.AddComponent<XRBoardDemo>();
 
-                var serialized = new SerializedObject(demo);
+                root.name = GameName;
+                var removed = GameObjectUtility.RemoveMonoBehavioursWithMissingScript(root);
+                if (!root.TryGetComponent<XRGame>(out var game)) game = root.AddComponent<XRGame>();
+
+                var serialized = new SerializedObject(game);
                 serialized.FindProperty("network").objectReferenceValue = network;
                 serialized.FindProperty("assets").objectReferenceValue = boardAssets;
+                var placement = roots.Select(go => go.GetComponentInChildren<XRBoardPlacement>(true)).FirstOrDefault(p => p != null);
+                if (placement != null) serialized.FindProperty("placement").objectReferenceValue = placement;
+                if (root.TryGetComponent<XRIGrabInput>(out var input)) serialized.FindProperty("grabInput").objectReferenceValue = input;
                 serialized.ApplyModifiedPropertiesWithoutUndo();
 
                 EditorSceneManager.MarkSceneDirty(scene);
                 EditorSceneManager.SaveScene(scene);
-                Debug.Log($"[XR] '{BoardDemoName}' in {ScenePath} plays the network from {NetworkPath}.");
+                Debug.Log($"[XR] '{GameName}' in {ScenePath} plays the network from {NetworkPath}" +
+                          (removed > 0 ? $"; removed {removed} missing script(s)." : "."));
             }
             finally
             {
                 if (openedHere) EditorSceneManager.CloseScene(scene, true);
             }
         }
+
+        static XRGame FindGame(GameObject[] roots) =>
+            roots.Select(go => go.GetComponentInChildren<XRGame>(true)).FirstOrDefault(game => game != null);
 
         /// <summary>
         /// The XR board's art hooks. Created the first time by copying every field whose name matches from the phone's
@@ -246,7 +260,7 @@ namespace TrainSudoku.XR.Editor
         /// <summary>
         /// XR5: surface placement and the saved anchor (XR-PRD 5.2). Turns on the OpenXR Planes and Anchors features,
         /// makes the ghost and plane materials and the plane prefab, adds the plane and anchor managers to the rig with
-        /// planes off until the spatial-data permission is granted, and hangs the board demo from a new
+        /// planes off until the spatial-data permission is granted, and hangs the game's board from a new
         /// <see cref="XRBoardPlacement"/>. It also switches off the rig's locomotion — the world never moves the player
         /// and the thumbstick is unused (4.5, 8) — and removes the XR2 test cube. Running it again only re-wires.
         /// </summary>
@@ -291,12 +305,12 @@ namespace TrainSudoku.XR.Editor
                 serialized.FindProperty("ghostMaterial").objectReferenceValue = ghost;
                 serialized.ApplyModifiedPropertiesWithoutUndo();
 
-                var demo = roots.Select(go => go.GetComponentInChildren<XRBoardDemo>(true)).FirstOrDefault(d => d != null);
-                if (demo != null)
+                var game = FindGame(roots);
+                if (game != null)
                 {
-                    var demoSerialized = new SerializedObject(demo);
-                    demoSerialized.FindProperty("placement").objectReferenceValue = placement;
-                    demoSerialized.ApplyModifiedPropertiesWithoutUndo();
+                    var gameSerialized = new SerializedObject(game);
+                    gameSerialized.FindProperty("placement").objectReferenceValue = placement;
+                    gameSerialized.ApplyModifiedPropertiesWithoutUndo();
                 }
 
                 var locomotion = origin.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == "Locomotion");
@@ -388,8 +402,7 @@ namespace TrainSudoku.XR.Editor
 
         /// <summary>
         /// XR6: the tray and the hands (XR-PRD 4). Makes the occluded fade material the grab ghost and the steam are made
-        /// from and hands it to the scene's <see cref="XRDepthOcclusion"/>, puts the XRI grab input on the board demo, and
-        /// switches the demo from playing itself to waiting for the player's hands, in network order. Running it again
+        /// from and hands it to the scene's <see cref="XRDepthOcclusion"/>, puts the XRI grab input on the game. Running it again
         /// only re-wires.
         /// </summary>
         [MenuItem("Window/TrainSudoku/XR/Add Tray and Grab to XR Scene")]
@@ -405,10 +418,10 @@ namespace TrainSudoku.XR.Editor
             {
                 var roots = scene.GetRootGameObjects();
                 var depth = roots.Select(go => go.GetComponentInChildren<XRDepthOcclusion>(true)).FirstOrDefault(d => d != null);
-                var demo = roots.Select(go => go.GetComponentInChildren<XRBoardDemo>(true)).FirstOrDefault(d => d != null);
-                if (depth == null || demo == null)
+                var game = FindGame(roots);
+                if (depth == null || game == null)
                 {
-                    Debug.LogError($"[XR] {ScenePath} needs its board demo and depth occlusion; run Add Board Demo and Add Depth Occlusion first.");
+                    Debug.LogError($"[XR] {ScenePath} needs its game and depth occlusion; run Add Game and Add Depth Occlusion first.");
                     return;
                 }
 
@@ -416,21 +429,154 @@ namespace TrainSudoku.XR.Editor
                 depthSettings.FindProperty("occludedFade").objectReferenceValue = fade;
                 depthSettings.ApplyModifiedPropertiesWithoutUndo();
 
-                if (!demo.TryGetComponent<XRIGrabInput>(out var input)) input = demo.gameObject.AddComponent<XRIGrabInput>();
-                var demoSettings = new SerializedObject(demo);
-                demoSettings.FindProperty("grabInput").objectReferenceValue = input;
-                demoSettings.FindProperty("autoPlay").boolValue = false;
-                demoSettings.FindProperty("sizeTour").boolValue = false;
-                demoSettings.ApplyModifiedPropertiesWithoutUndo();
+                if (!game.TryGetComponent<XRIGrabInput>(out var input)) input = game.gameObject.AddComponent<XRIGrabInput>();
+                var gameSettings = new SerializedObject(game);
+                gameSettings.FindProperty("grabInput").objectReferenceValue = input;
+                gameSettings.ApplyModifiedPropertiesWithoutUndo();
 
                 EditorSceneManager.MarkSceneDirty(scene);
                 EditorSceneManager.SaveScene(scene);
-                Debug.Log($"[XR] Tray and grab wired in {ScenePath}: the demo waits for the player's hands.");
+                Debug.Log($"[XR] Tray and grab wired in {ScenePath}: the game waits for the player's hands.");
             }
             finally
             {
                 if (openedHere) EditorSceneManager.CloseScene(scene, true);
             }
+        }
+
+        const string UiFolder = DataFolder + "/Ui";
+        const string ThemePath = UiFolder + "/XRRuntimeTheme.tss";
+        const string SignboardPanelPath = UiFolder + "/XRSignboardPanel.asset";
+        const string SignageAssetsPath = DataFolder + "/XRSignageAssets.asset";
+        const string HeadingFontPath = "Assets/02.Graphics/Fonts/SDF/BarlowCondensed-SemiBold SDF.asset";
+        const string BodyFontPath = "Assets/02.Graphics/Fonts/SDF/Barlow-Medium SDF.asset";
+        const string MarkPath = "Assets/02.Graphics/Ui/Logo/tsugi-mark.png";
+        const string UiInputName = "UI Input";
+
+        /// <summary>
+        /// XR7: the flow on the platform (XR-PRD 6). Makes the signboard's world-space panel settings and theme and the
+        /// <see cref="XRSignageAssets"/> (the phone's Barlow faces and tsugi mark, used in place), makes sure the game is in
+        /// the scene and hands it those, and adds what XRI's UI Toolkit support needs: a Panel Input Configuration that
+        /// takes no input from an EventSystem, an XR UI Toolkit Manager, and UI interaction on every near-far and poke
+        /// interactor in the rig. Running it again only re-wires.
+        /// </summary>
+        [MenuItem("Window/TrainSudoku/XR/Add Flow to XR Scene")]
+        static void AddFlow()
+        {
+            var signage = EnsureSignageAssets();
+            if (signage == null) return;
+            AddGame();
+
+            var scene = SceneManager.GetSceneByPath(ScenePath);
+            var openedHere = !scene.isLoaded;
+            if (openedHere) scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
+            try
+            {
+                var roots = scene.GetRootGameObjects();
+                var game = FindGame(roots);
+                if (game == null)
+                {
+                    Debug.LogError($"[XR] No game in {ScenePath}.");
+                    return;
+                }
+
+                var serialized = new SerializedObject(game);
+                serialized.FindProperty("signage").objectReferenceValue = signage;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+
+                var input = roots.FirstOrDefault(go => go.name == UiInputName);
+                if (input == null)
+                {
+                    input = new GameObject(UiInputName);
+                    SceneManager.MoveGameObjectToScene(input, scene);
+                }
+
+                if (!input.TryGetComponent<UnityEngine.UIElements.PanelInputConfiguration>(out var configuration))
+                    configuration = input.AddComponent<UnityEngine.UIElements.PanelInputConfiguration>();
+                // No EventSystem redirection: the interactors feed the world-space panels themselves (XRI's UI Toolkit notes).
+                configuration.panelInputRedirection = UnityEngine.UIElements.PanelInputConfiguration.PanelInputRedirection.Never;
+                configuration.processWorldSpaceInput = true;
+                if (!input.TryGetComponent<UnityEngine.XR.Interaction.Toolkit.UI.XRUIToolkitManager>(out _))
+                    input.AddComponent<UnityEngine.XR.Interaction.Toolkit.UI.XRUIToolkitManager>();
+
+                var switched = 0;
+                foreach (var nearFar in roots.SelectMany(go => go.GetComponentsInChildren<UnityEngine.XR.Interaction.Toolkit.Interactors.NearFarInteractor>(true)))
+                {
+                    if (nearFar.enableUIInteraction) continue;
+                    nearFar.enableUIInteraction = true;
+                    PrefabUtility.RecordPrefabInstancePropertyModifications(nearFar);
+                    switched++;
+                }
+
+                foreach (var poke in roots.SelectMany(go => go.GetComponentsInChildren<UnityEngine.XR.Interaction.Toolkit.Interactors.XRPokeInteractor>(true)))
+                {
+                    if (poke.enableUIInteraction) continue;
+                    poke.enableUIInteraction = true;
+                    PrefabUtility.RecordPrefabInstancePropertyModifications(poke);
+                    switched++;
+                }
+
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene);
+                Debug.Log($"[XR] Flow wired in {ScenePath}: signboard panel and UI Toolkit input; UI interaction switched on for {switched} interactor(s).");
+            }
+            finally
+            {
+                if (openedHere) EditorSceneManager.CloseScene(scene, true);
+            }
+        }
+
+        /// <summary>
+        /// The signboard's hooks: a world-space panel settings asset whose colliders match the document's box with depth
+        /// (poke needs something to travel through), at 100 UI pixels to a unit, on XR's own copy of the default runtime
+        /// theme; and the <see cref="XRSignageAssets"/> pointing at it and at the phone's fonts and mark.
+        /// </summary>
+        static XRSignageAssets EnsureSignageAssets()
+        {
+            if (!AssetDatabase.IsValidFolder(DataFolder)) AssetDatabase.CreateFolder("Assets/03.Data", "XR");
+            if (!AssetDatabase.IsValidFolder(UiFolder)) AssetDatabase.CreateFolder(DataFolder, "Ui");
+
+            var theme = AssetDatabase.LoadAssetAtPath<UnityEngine.UIElements.ThemeStyleSheet>(ThemePath);
+            if (theme == null)
+            {
+                File.WriteAllText(ThemePath, "@import url(\"unity-theme://default\");\n");
+                AssetDatabase.ImportAsset(ThemePath);
+                theme = AssetDatabase.LoadAssetAtPath<UnityEngine.UIElements.ThemeStyleSheet>(ThemePath);
+            }
+
+            var panel = AssetDatabase.LoadAssetAtPath<UnityEngine.UIElements.PanelSettings>(SignboardPanelPath);
+            if (panel == null)
+            {
+                panel = ScriptableObject.CreateInstance<UnityEngine.UIElements.PanelSettings>();
+                AssetDatabase.CreateAsset(panel, SignboardPanelPath);
+            }
+
+            panel.renderMode = UnityEngine.UIElements.PanelRenderMode.WorldSpace;
+            panel.themeStyleSheet = theme;
+            var panelSettings = new SerializedObject(panel);
+            // ColliderUpdateMode is internal to UI Toolkit; 0 is MatchBoundingBox (then Keep, then MatchDocumentRect).
+            panelSettings.FindProperty("m_ColliderUpdateMode").intValue = 0;
+            panelSettings.FindProperty("m_ColliderIsTrigger").boolValue = false;
+            panelSettings.FindProperty("m_PixelsPerUnit").floatValue = 100f;
+            panelSettings.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(panel);
+
+            var signage = AssetDatabase.LoadAssetAtPath<XRSignageAssets>(SignageAssetsPath);
+            if (signage == null)
+            {
+                signage = ScriptableObject.CreateInstance<XRSignageAssets>();
+                AssetDatabase.CreateAsset(signage, SignageAssetsPath);
+            }
+
+            var fields = new SerializedObject(signage);
+            fields.FindProperty("panelSettings").objectReferenceValue = panel;
+            fields.FindProperty("headingFont").objectReferenceValue = AssetDatabase.LoadAssetAtPath<UnityEngine.TextCore.Text.FontAsset>(HeadingFontPath);
+            fields.FindProperty("bodyFont").objectReferenceValue = AssetDatabase.LoadAssetAtPath<UnityEngine.TextCore.Text.FontAsset>(BodyFontPath);
+            fields.FindProperty("mark").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Texture2D>(MarkPath);
+            fields.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(signage);
+            AssetDatabase.SaveAssets();
+            return signage;
         }
 
         /// <summary>A material on one of the XR shaders, saved as an asset so the shader and its variants ship.</summary>

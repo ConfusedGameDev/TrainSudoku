@@ -26,6 +26,8 @@ namespace TrainSudoku.XR.Tests
         public static Board Corridor() =>
             new Board(new LevelData(3, 3) { Entrance = new Tunnel(Direction.West, 1), Exit = new Tunnel(Direction.East, 1) });
 
-        public static Board PlanExample() => new Board(LevelText.Parse(PlanExampleText));
+        public static Board PlanExample() => new Board(PlanExampleLevel());
+
+        public static LevelData PlanExampleLevel() => LevelText.Parse(PlanExampleText);
     }
 }
