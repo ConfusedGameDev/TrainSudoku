@@ -8,7 +8,10 @@
         "Unity.XR.ARFoundation",
         "Unity.XR.ARSubsystems",
         "Unity.XR.CoreUtils",
-        "Unity.XR.Interaction.Toolkit"
+        "Unity.XR.Interaction.Toolkit",
+        "Unity.XR.Hands",
+        "Unity.InputSystem",
+        "Unity.Localization"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

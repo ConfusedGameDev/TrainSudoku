@@ -53,12 +53,27 @@ namespace TrainSudoku.XR
             return true;
         }
 
-        /// <summary>A hand may start a grab: grabs are open, it is a hand or controller rather than a poke or the gaze, it holds nothing, and the target has something to give.</summary>
-        internal bool CanGrab(IXRInteractor interactor, Func<bool> grabbable) =>
-            CanHover(interactor, grabbable) && _interactors[(int)HandOf(interactor)] == null;
+        /// <summary>
+        /// Where something else has first claim on a pinch: a hand pinching there takes no board piece. The board handle
+        /// claims the space round its rail, which wraps the corner cell; a pinch on the rail kept lifting that cell's piece
+        /// (the second XR8 headset check).
+        /// </summary>
+        public Func<Vector3, bool> Reserved { get; set; }
 
-        internal bool CanHover(IXRInteractor interactor, Func<bool> grabbable) =>
-            AcceptsGrabs && !(interactor is XRPokeInteractor) && !(interactor is XRGazeInteractor) && (grabbable == null || grabbable());
+        /// <summary>A hand may start a grab: grabs are open, it is a hand or controller rather than a poke or the gaze, it holds nothing, and the target has something to give.</summary>
+        internal bool CanGrab(IXRInteractor interactor, GrabTarget target, Func<bool> grabbable) =>
+            CanHover(interactor, target, grabbable) && _interactors[(int)HandOf(interactor)] == null;
+
+        internal bool CanHover(IXRInteractor interactor, GrabTarget target, Func<bool> grabbable) =>
+            AcceptsGrabs && !(interactor is XRPokeInteractor) && !(interactor is XRGazeInteractor) &&
+            (target.IsTray || Reserved == null || !Reserved(PinchPoint(interactor))) && (grabbable == null || grabbable());
+
+        /// <summary>Where the hand takes hold: a near-far interactor's near-cast origin (a hand's pinch point), else the interactor itself.</summary>
+        private static Vector3 PinchPoint(IXRInteractor interactor)
+        {
+            var origin = interactor is NearFarInteractor nearFar && nearFar.nearInteractionCaster != null ? nearFar.nearInteractionCaster.castOrigin : null;
+            return (origin != null ? origin : interactor.transform).position;
+        }
 
         internal void OnSelectEntered(XRGrabTargetInteractable target, IXRSelectInteractor interactor)
         {

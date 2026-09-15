@@ -38,10 +38,10 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
 
 | Assembly | Location | Holds |
 |---|---|---|
-| `TrainSudoku.XR.Rules` | `Assets/01.Scripts/XR/Rules/` | `PieceDrop` (XR-PRD 4.4): grabbing from the tray or a cell, the ghost tint, and every release outcome. It works on the shared `Board` through `TryPlace`, `TryErase` and `Legality`. `TrayDock` (4.1: slot layout, docking edge, handedness, the 1.5 s dwell), `ThrowGesture` (hand speed over the last 0.1 s against 1.2 m/s) and `BoardPick` (the cell under a point, the hover band). `MapReveal` (which lines the network map shows, 6.2), `MapFit` (map space onto the platform card) and `MapStroke` (route, loop and stadium polylines); and `QuickBoard`, the testing aid that lays all but a station's last few rails as fixed pieces. `noEngineReferences`; references only Core |
-| `TrainSudoku.XR` | `Assets/01.Scripts/XR/` | The XR runtime. References Core, `TrainSudoku.Game` (the four level data types only), XR.Rules and the XR packages. Holds: `Board/` (display, materials, assets, occlusion materials, forked mesh code); `Grab/` (the grab interface `IGrabInput` and its XRI implementation, the tray, `XRPieceHands`, flights and steam, and `XRTouchPoints`, the fingertips and pinch points read off the rig); `Train/XRTrainRun`; `Room/` (placement, handle, permission, depth occlusion); `Maps/` (the platform card, its maps and roundels); `Signboard/` (the world-space UI Toolkit signboard and `XRSignageAssets`); `XRPalette`; `XRGame`, the shell that owns the flow (XR7); and `XRStarSample` |
+| `TrainSudoku.XR.Rules` | `Assets/01.Scripts/XR/Rules/` | `PieceDrop` (XR-PRD 4.4): grabbing from the tray or a cell, the ghost tint, and every release outcome. It works on the shared `Board` through `TryPlace`, `TryErase` and `Legality`. `TrayDock` (4.1: slot layout, docking edge, handedness, the 1.5 s dwell), `ThrowGesture` (hand speed over the last 0.1 s against 1.2 m/s) and `BoardPick` (the cell under a point, the hover band). `MapReveal` (which lines the network map shows, 6.2), `MapFit` (map space onto the platform card) and `MapStroke` (route, loop and stadium polylines); `QuickBoard`, the testing aid that lays all but a station's last few rails as fixed pieces; and, from XR8, `WristMenuPlan` (the wrist menu's entries per state and what its button does), `WatchCheck` (when the wrist button shows) and `XRPreferences` (the headset's settings over an `IPreferenceStore`). `noEngineReferences`; references only Core |
+| `TrainSudoku.XR` | `Assets/01.Scripts/XR/` | The XR runtime. References Core, `TrainSudoku.Game` (the four level data types only), XR.Rules, the XR packages (XR Hands among them), the Input System and Localization. Holds: `Wrist/` (the wrist menu, `XRLocale` and `XRPlayerPrefsStore`, XR8); `Board/` (display, materials, assets, occlusion materials, forked mesh code); `Grab/` (the grab interface `IGrabInput` and its XRI implementation, the tray, `XRPieceHands`, flights and steam, and `XRTouchPoints`, the fingertips and pinch points read off the rig); `Train/XRTrainRun`; `Room/` (placement, handle, permission, depth occlusion); `Maps/` (the platform card, its maps and roundels); `Signboard/` (the world-space UI Toolkit signboard, `XRSignageAssets`, and the `XRSignageUi` blocks and `XRPanelTouch` fingertip presses it shares with the wrist menu); `XRPalette`; `XRGame`, the shell that owns the flow (XR7); and `XRStarSample` |
 | `TrainSudoku.XR.Editor` | `Assets/01.Scripts/XR/Editor/` | `XRFoundationSetup`, the Window > TrainSudoku > XR menu (Create Render Pipeline, Build XR Scene, Add Game, Add Board Placement, Add Depth Occlusion, Add Tray and Grab, Add Flow); and `XRManifestPermissions` |
-| `TrainSudoku.XR.Tests.EditMode` | `Assets/99.Test/XR/EditMode/` | `PieceDropTests`, `TrayDockTests`, `ThrowGestureTests`, `BoardPickTests`, `MapRevealTests`, `MapFitTests`, `MapStrokeTests` and `QuickBoardTests`, with their own fixtures in `XRTestBoards`. It never uses the phone's test assembly, which would pull in Game and Editor |
+| `TrainSudoku.XR.Tests.EditMode` | `Assets/99.Test/XR/EditMode/` | `PieceDropTests`, `TrayDockTests`, `ThrowGestureTests`, `BoardPickTests`, `MapRevealTests`, `MapFitTests`, `MapStrokeTests`, `QuickBoardTests`, `WristMenuPlanTests`, `WatchCheckTests` and `XRPreferencesTests`, with their own fixtures in `XRTestBoards`. It never uses the phone's test assembly, which would pull in Game and Editor |
 
 - **Every `PieceDrop` call returns a `DropResult`:**
   - `Outcome`: `Taken`, `Lifted`, `Placed`, `Moved`, `Replaced`, `Returned`, `Puffed`, `Thrown` or `Refused`.
@@ -58,7 +58,7 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
   - **`XRBoardAssets`** was seeded field by field from the phone's `TrackAssets` and `TrainAssets`, so it has the same kit and tuning.
 - **The board in the room (XR5).**
   - **Placement.** `Room/XRBoardPlacement` first tries to restore the saved anchor. The anchor's GUID lives in `PlayerPrefs` under `tsugi.xr.boardAnchor`, never in `save.json`. The cell size the handle last scaled the board to is saved beside it under `tsugi.xr.boardCell`, and clamped to `MinCellSize`–`MaxCellSize` (0.04–0.09 m) on restore.
-    - Without one, it asks for spatial data and slides a ghost over detected horizontal planes under the right-hand ray (then the left hand's, then the gaze). If there is no surface, the ghost floats at waist height.
+    - Without one, it asks for spatial data and slides a ghost over detected horizontal planes where the right hand points (its ray pose; no ray is drawn since 2026-09-15), then the left hand, then the gaze. If there is no surface, the ghost floats at waist height.
     - A pinch or trigger places it.
   - **`BoardRoot`** is the board's parent:
     - Scaled 0.06, with its origin at the middle of the near edge, on the surface, and +Z pointing away from the player.
@@ -90,12 +90,12 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
   - **Locomotion** in the XRI rig is switched off, because the world never moves the player (4.5, 8).
 - **Tray and grab (XR6).**
   - **The grab interface** is `Grab/IGrabInput`: hands grab and release `GrabTarget`s (a tray key or a cell) and report a `GrabHold` each frame (the hand, and a ray for a distant hold). `XRPieceHands` turns those into `PieceDrop` calls and plays the result; nothing else changes the board in play. A later Meta hand grab or visionOS pointer is a second `IGrabInput`.
-  - **The XRI implementation** (`XRIGrabInput`) adds an `XRGrabTargetInteractable` (an `XRSimpleInteractable`) to each target's collider. XRI's near-far interactors then choose what each hand aims at, directly or by ray, and arbitrate with the board handle. Nothing XRI selects moves.
+  - **The XRI implementation** (`XRIGrabInput`) adds an `XRGrabTargetInteractable` (an `XRSimpleInteractable`) to each target's collider. XRI's near-far interactors then choose what each hand takes, and arbitrate with the board handle. Since 2026-09-15 that is up close only: far casting is off (`XRTouchOnly`, below), so the distant hold in `GrabHold` is unused on Quest. Nothing XRI selects moves.
     - A target is hoverable and selectable only while it has something to give, so an empty cell is never a target. Pokes and gaze never grab.
     - **Trap:** XRI asks `IsSelectableBy` on every frame of a selection and drops the selection when it turns false. So a hand already selecting a target must always answer true (`IsSelected`), or lifting a piece (which empties the cell) would end the grab at once.
     - Both hands may select one tray slot at once (`InteractableSelectMode.Multiple`): supply is unlimited.
   - **Cells.** Each tile's cube collider is kept and stretched from the slab's foot to half a cell above its top: that is what a hand aims at to lift a piece.
-  - **Pinch-only targets** (after the XR6 headset check). Board cells and the handle sit on Unity's built-in Ignore Raycast layer (`Grab/XRDirectReach`), and tray pieces stay ray-grabbable.
+  - **Pinch-only targets** (after the XR6 headset check). Board cells and the handle sit on Unity's built-in Ignore Raycast layer (`Grab/XRDirectReach`), and since 2026-09-15 the tray pieces do too.
     - The rig's far casters already leave that layer out: their mask is `0x80000021` (Default, UI and layer 31).
     - The controllers' near casters look at Default only, so `XRDirectReach` adds the layer to every near-far interactor's near caster.
     - Before this, a ray aimed at a far piece met a nearer cell's tall volume first.
@@ -119,14 +119,14 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
     - **Network:** the lines `MapReveal` returns (earned plus the first closed one), fitted by `MapFit` with the phone's y-down map space flipped so the screen's top is the table's far side. The stroke is 44 map units scaled by the fit, never under 0.1 cell. A raised roundel stands at each revealed line's last node: the line code on its colour, or a padlock on grey for the closed one.
     - **Line map:** the route (a stadium for Thornemoor), a 0.55-cell (3.3 cm) roundel per station, and the code and name printed flat beside it, on the side the phone's rule picks, reading from the near edge. Cleared stations are filled in the line colour with their stars printed under the name. A saved attempt shows a CONTINUE tag, and the next station to play gets a halo.
     - **Trap:** printed layers sit 0.3 mm apart, the first 0.3 mm above the paper. A stroke printed flush with the paper's top z-fought down to a few dashes.
-  - **Roundels** (`XRMapRoundel`) are chosen the two ways a piece is grabbed. An `XRSimpleInteractable` sits on a hit volume at the roundel's top face, so a near-far ray with a pinch or grip selects it, and a controller trigger presses it while its ray hovers (`uiPressInput`). A 0.35 s cooldown stops a pinch, which is both a select and a UI press, from pressing twice. A closed roundel shakes.
+  - **Roundels** (`XRMapRoundel`) are pressed by a fingertip only, since 2026-09-15. At XR7 they could also be selected by ray, pinch or grip, and pressed by the controller trigger through `uiPressInput`, all via an `XRSimpleInteractable` on a hit volume. That path went with the rays, and the interactable and hit volume with it. A 0.35 s cooldown keeps a fingertip seen coming down twice to one press. A closed roundel shakes.
     - **A fingertip presses it by touch.** `XRTouchPoints` reads each poke interactor's point, which on a hand is the OpenXR poke pose (a `TrackedPoseDriver` on the rig's hand Poke Interactor). A fingertip seen anywhere higher than 1.5 cm above the face is ready. Reaching 6 mm above a roundel, within 1.4 times its width, presses it, once, until it rises again; one that comes down off the roundels must lift before it can press.
     - The first rule armed a fingertip only inside the roundel's own 2 cm column, which missed fingers coming in at an angle: the second XR7 check found touch unreliable. The hand poke interactors are never switched off: the rig's `PokeGestureDetector` only toggles the near-far interactors' far casting.
     - XRI's own poke (an `XRPokeFilter` with `PokeAxis.NegativeY`) never pressed a roundel on the headset, and was removed at the XR7 check.
-    - **Trap:** the map releases each roundel (`CancelInteractableHover` and `CancelInteractableSelection`) before it destroys it. Otherwise XRI ends the hover a frame late, on a destroyed collider, and throws a `NullReferenceException` in `XRUIToolkitHandler.HasUIDocument`. That was logged on roundel presses that changed the view.
+    - **Trap, if an interactable ever returns to a roundel:** the XR7 map released each roundel (`CancelInteractableHover` and `CancelInteractableSelection`) before it destroyed it. Otherwise XRI ends the hover a frame late, on a destroyed collider, and throws a `NullReferenceException` in `XRUIToolkitHandler.HasUIDocument`. That was logged on roundel presses that changed the view.
   - **The signboard** (`Signboard/XRSignboard`) is a world-space `UIDocument` 1260 x 720 px at 100 px to a unit, scaled to 42 x 24 cm (the generated collider measures exactly that). It stands on two posts 1.1 cells above the surface, 0.5 cells behind the far edge of whatever is on show, and turns about the vertical to face the head.
     - **It leans to the eyes** (since the XR7 headset check). The panel tilts back about its bottom edge by the head's elevation over the card's centre, clamped to 0–50 degrees; the posts stay upright. An upright card took rays at a glancing angle, and its bottom row was hard to hit.
-    - **Ways back sit at the top right**: LINE MAP in play, and NETWORK on the line map. The latter was moved up at the XR7 check, because a ray reaching for the bottom of the card skims low over the map and can catch a roundel first.
+    - **Ways back sat at the top right** at XR7: LINE MAP in play, and NETWORK on the line map, moved up at the XR7 check because a ray reaching for the bottom of the card skims low over the map and can catch a roundel first. XR8 moved both to the wrist menu.
     - **Buttons answer a fingertip too** (second XR7 check). The sign keeps each view's buttons with their actions and maps every fingertip into card space: the pivot is the bottom centre, 100 UI pixels to a unit, and the player's side is -z. A fingertip that has been 2 cm or more in front of the card presses the button under it on coming to 6 mm of the face; within 4 cm the button under it swells 6%.
     - The panel's `XRPokeFilter` was removed: XRI's poke never pressed a button.
     - **Views:** the masthead with the tsugi mark (network); the line badge, name and "n / 9 CLEARED" (line map); the station, clock and star targets, dimming as `StarTier` drops (play); stars, this run, best, NEW BEST and the verdict stamp, with NEXT STATION or TO THE NETWORK, RUN AGAIN and LINE MAP (arrival). The stamp (ON TIME, SLIGHT DELAY, DELAYED, in green, amber and red) is pressed on with the phone's timing: down from 2.4 times its size and 22 degrees off square, then a rattle to rest 4 degrees off. It is hidden for the train run.
@@ -134,8 +134,8 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
     - **Rebuilt on every show:** switching a `UIDocument` off throws away whatever code built into its root.
     - **XRI's UI Toolkit support needs two things in the scene.** Add Flow puts both on the `UI Input` object: a `PanelInputConfiguration` with redirection `Never` (no EventSystem), and an `XRUIToolkitManager`.
     - **The panel settings** (`03.Data/XR/Ui/XRSignboardPanel.asset`, on XR's own copy of the default theme) have `m_ColliderUpdateMode` 0, MatchBoundingBox, which gives a poke some depth. `ColliderUpdateMode` is internal to UI Toolkit, so it is written as the raw value.
-    - The near-far interactors have `blockUIOnInteractableSelection` on, and the panel carries the `XRSimpleInteractable` that XRI prescribes for poke. A ray pinch still clicks a button: checked on the Quest 3 on 2026-09-14.
-  - **Until the wrist menu (XR8)** the sign carries the way back: LINE MAP in play (`PauseGame` then `ShowLevelSelect`, which saves the attempt) and NETWORK on the line map. Losing focus or suspending saves the attempt but does not pause yet.
+    - At XR7 the panel carried the `XRSimpleInteractable` that XRI prescribes, and a ray pinch clicked a button (checked on the Quest 3 on 2026-09-14). Since 2026-09-15 no panel has an interactable, and XRI's UI interaction is off on every interactor (`XRTouchOnly`), so only fingertips press. The `UI Input` object's configuration and toolkit manager are still in the scene, unused.
+  - **The ways back** were on the sign until XR8, which moved them to the wrist menu (below).
   - **Play.** The clock starts on the first grab (`Flow.BoardTouched` on a `Taken` or `Lifted`); a saved attempt is put back with `LevelProgress.ApplyTo` and waits idle at its time. Every board change is written through; the winning one records the star sample and completes the level.
   - **Train run.** It always runs into the exit tunnel before the arrival shows. The first XR7 build skipped it on a pinch, grip or trigger anywhere; on the headset a stray pinch after the winning drop cut it short, so the skip went, and `XRPinch` with it.
     - **A hand on the train** (2026-09-14). A fingertip or pinch point within 0.2 cells of a car's box counts as touching it. The box is measured from the car's renderers, without the destination plate, and a car inside a tunnel cannot be touched.
@@ -157,6 +157,53 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
     - The solve runs when the station loads, so a big board may hitch.
     - **Set it to 0 before XR11.**
   - **Editor testing.** With no headset, `floatWithoutHeadset` floats the board in front of the camera; `XRBoardPlacement` still runs, and its yellow ghost tints the view. `unlockAllInEditor` opens everything, and the component's context menu has **Debug: Solve This Station**. The Editor's save is the phone's Editor save (`%USERPROFILE%/AppData/LocalLow/GorillaGonzalez/Tsugi/save.json`): back it up before playing `XR.unity` and put it back afterwards.
+- **Wrist menu and pause (XR8).**
+  - **Pause** (6.3, X18). `XRGame` pauses play on the wrist menu, on the left controller's menu button, on `OnApplicationFocus(false)` (the headset taken off, the system menu) and on `OnApplicationPause(true)` (suspended). Only play pauses; elsewhere a focus loss just saves. A return from a focus loss stays paused.
+    - The flow stops the clock. `XRBoardDisplay.SetDimmed` darkens every lit material under the board, the tray's included, to 40% through a `MaterialPropertyBlock` on `_BaseColor`; clearing the block puts it back exactly. Clue numerals are text and stay bright.
+    - Grabs were already off outside Play. The handle is made unavailable while paused.
+    - The signboard's paused card shows the station, PAUSED and the stopped clock, and a RESUME button for a return from a focus loss, when the menu is closed.
+  - **The wrist menu** is `Wrist/XRWristMenu`, created by `XRGame` at runtime, so there is no scene step. It shows and asks; `XRGame` decides through `WristMenuPlan`.
+    - **The roundel** is a 3 cm world-space UI Toolkit document carrying the tsugi mark. It sits 3 cm out of the back of the non-dominant wrist and 1.5 cm towards the elbow, facing out of the wrist, upright to the viewer.
+    - The wrist pose comes from the running `XRHandSubsystem`, transformed by the rig's camera offset (joint poses are in session space, where the head's pose driver also writes).
+    - **Check on the headset:** it assumes OpenXR's joint axes (up out of the back of the hand, forward towards the fingertips), which the XR Hands docs do not state. If the roundel shows over the palm, flip `back` in `UpdateRoundel`.
+    - It shows only while `WatchCheck` passes: the back of the wrist within 45 degrees of the eyes, hiding again past 65. Hand tracking only; with controllers the menu button opens the panel.
+    - It is pressed by the other hand's fingertip (`XRPanelTouch`, 8 mm of slop, since it rides a moving wrist) and nothing else. The ray-and-pinch path went on 2026-09-15.
+    - Turning the wrist must never press it against the other hand: a fingertip is ready only over the roundel, within 1.5 cm of its edge, and a roundel just turned into view takes no press for 0.3 s.
+    - A 1 s cooldown makes one touch one press. At 0.35 s the first XR8 check saw double presses: a fingertip on a moving wrist drew back past the arming gap and came down again.
+    - **The panel** is a 20 cm wide document opened 6 cm above the roundel, else above the left controller, else 45 cm ahead of the eyes. It turns to face the eyes and is then world-locked.
+    - It closes on every state change (a pause opened from the wrist reopens it once the pause is in), on the button pressed again, or once the head is 1.2 m away.
+    - **Toggle rules:** opening in play pauses. Closing never resumes; only a RESUME button does. The train run and the arrival hide it.
+    - **The first XR8 headset check (2026-09-14)** found the game resuming wherever the player pressed, and sometimes with no press at all. That build logged no presses, so the cause is unconfirmed. Two changes followed:
+      - Closing the menu used to resume; now it doesn't.
+      - The wrist hand's own fingertips are ignored by the roundel and the panel (`XRPanelTouch.IgnoredHand`, fed from `TouchPoint.Handedness`).
+    - **The second XR8 headset check (2026-09-15)** logged every press. What it found, and what changed:
+      - **Every panel press went to the first button listed on its page**: SETTINGS on the network page, LEFT on the settings page, RESUME in the pause, LINE MAP on the sign's arrival card. `XRPanelTouch` compared the fingertip with `worldBound` as it came but measured its slop in UI pixels. The slop evidently covered the whole card, and the roundel answered a fingertip anywhere in its plane, which is why turning the wrist paused the game.
+      - It now brings each button's `worldBound` into the root's own space (`root.WorldToLocal`), puts the fingertip there in UI pixels, and of the buttons within reach takes the nearest. The Editor bridge was stuck in Play mode at the time, so the proof was the third XR8 headset check (2026-09-15), which passed.
+      - A fingertip is ready only over a panel (2 cm margin) and within 15 cm in front of it. A panel takes one press per 0.35 s.
+      - **Choosing LEFT moved the roundel to the right wrist while the panel was open**, so the right fingertip that chose it was ignored from then on. The open panel now keeps ignoring the hand it opened over; the setting moves only the roundel.
+      - **The roundel sometimes showed for a frame or two at a giant scale** behind the wrist as it came into view. Both documents now stay switched on and are hidden through their root's `style.visibility`, and the roundel is built once.
+      - **A pinch on the handle's rail lifted the corner cell's piece** (`Refused (FixedPiece) at (5, 5)`). `XRIGrabInput.Reserved` now keeps board cells from a hand whose pinch point `XRBoardHandle.Claims`: inside the rail's grab volume, or within 0.2 cell of it. The tray is unaffected.
+    - **Every press is logged:**
+      - `[XR touch] <panel>: <button> by the <hand> fingertip`, where the panel is sign, wrist menu or wrist roundel
+      - `[XR wrist] Pressed by …` (the roundel or the menu button, with its control path)
+      - `[XR touch only] …`, once at start: how many interactors lost their rays
+      - every flow change, as `[XR flow] A -> B`
+    - **Entries:** the network has Settings and Close; the line map Network, Settings and Close; play and pause Resume, Retry, Line map and Settings.
+    - **Settings:** hand (left or right), board height (lower or raise 1 cm), re-place board, language (cycles the project's locales), music and effects volume (0 to 10). The page is rebuilt on every press.
+    - **The height nudge** is `XRBoardPlacement.Nudge`. It lifts the board off its anchor, stops at a detected surface below, and re-anchors 0.6 s after the last press. The handle takes over if it is grabbed meanwhile.
+    - Re-place now also remembers that surfaces are allowed when the board had been restored from its anchor, so the ghost can find a table again.
+    - **The menu button** is an `InputAction` on `<XRController>{LeftHand}/{MenuButton}`. In the Editor, Escape does the same.
+  - **Settings storage.** `XRPreferences` (Rules) sits over `XRPlayerPrefsStore`, under `tsugi.xr.dominantHand`, `tsugi.xr.musicVolume`, `tsugi.xr.effectsVolume` and `tsugi.xr.locale`, beside the anchor and never in `save.json` (X1). It is read once and written through, because PlayerPrefs on Android is not free per frame. `XRGame.dominantHand` is only the default now.
+    - **The volumes are stored, but nothing plays yet.** XR10 brings the audio and reads them.
+    - **The language.** The shared Localization settings take the system's language and remember no choice, and changing them is a shared change (X25). So `XRLocale` applies XR's own stored choice once the board is placed. Until XR10's XR String Table only the settings row shows it.
+  - **No rays** (2026-09-15, after the first XR8 headset check; X16 revised). The player said the ray selector interfered with pausing and with grabbing the handle, and asked for touch everywhere. `Grab/XRTouchOnly.Enforce()` runs at the top of `XRGame.Update` every frame, from launch:
+    - It holds `enableFarCasting` and `enableUIInteraction` off on every near-far interactor, and `enableUIInteraction` off on every poke.
+    - It keeps the ray line visuals and the controllers' teleport rays switched off.
+    - It switches off the rig's `PokeGestureDetector`s (whose events turned far casting back on whenever a hand stopped pointing) and `ControllerInputActionManager`s (teleport mode). Those are sample scripts, so they are matched by type name.
+    - Pieces (tray included) and the handle take a close pinch or grip. Every panel and roundel takes a fingertip, or a controller's tip.
+    - The hand's ray pose still aims the placement ghost; nothing is drawn.
+  - **Shared blocks.** `Signboard/XRSignageUi` (card, text, buttons, LED strip, badge, star tally) and `Signboard/XRPanelTouch` (fingertip presses; the document's pivot must be its bottom centre) came out of `XRSignboard`, which uses them unchanged.
+  - **Editor testing.** With no headset, a lost focus only saves, since clicking another window would otherwise pause. `XRGame`'s context menu adds **Debug: Lose Focus** and **Debug: Press Wrist Menu**, and the panel opens ahead of the camera.
 - **The rules tests also run outside Unity.** A scratch `net10.0` NUnit project that compiles `Core/**`, `XR/Rules/**` and `99.Test/XR/EditMode/**` runs them with `dotnet test` in well under a second. That also proves the assembly stays engine-free.
 
 ## Driving the Editor
@@ -173,8 +220,14 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
 - **`Unity_RunCommand` refuses `AssetDatabase.DeleteAsset`** as a "user interaction", so delete untracked files from the shell.
   - The Test Runner does work through the bridge: `TestRunnerApi.Execute` with an `ICallbacks` sink that writes its counts to a file, which a background shell loop then waits on. The full EditMode suite ran 390 tests in about 13 s on 2026-09-13.
   - Entering and leaving Play mode work too (`EditorApplication.EnterPlaymode` / `ExitPlaymode`), one call each, because entering Play reloads the domain.
+  - **The bridge runs a command again after the domain reload that entering Play causes** (2026-09-14). The second run finds Play already on. Make such commands idempotent (check `isPlaying` first), and read a warning from the second run as that, not as someone else pressing Play.
   - **Never edit a script while the Editor is in Play mode.** The compile waits for Play to end (`ScriptCompilationDuringPlay` 1), but `isCompiling` reads true meanwhile, so the bridge refuses every call, `ExitPlaymode` included, until someone presses Play in the Editor (2026-09-13).
   - `Unity_Camera_Capture` with no camera captures the Scene view, and that works in Play mode: aim it first with `SceneView.lastActiveSceneView.LookAtDirect`.
+  - **An unfocused Editor never repaints the Scene view** (2026-09-14), so that capture comes back stale, sky only, whatever the aim. `ScreenCapture.CaptureScreenshot` writes nothing either, because the Game view does not render unfocused.
+    - What works is a temporary `Camera` rendered into a `RenderTexture` and written out as a PNG from the bridge.
+    - That render leaves out world-space UI Toolkit panels (the signboard, the wrist menu), so check those by their document contents instead.
+  - Write `UnityEditor.Tools` in full in a bridge script, like `CompilationPipeline`: the injected namespace has its own `Tools`.
+  - **In the Editor without a headset, the placement ghost lies exactly over the floating board** and tints it yellow. Hide `Placement Ghost` before judging colours: a dimmed board read as tan until it was hidden.
 
 ## XR2 Editor setup
 
@@ -248,6 +301,7 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
 - Requested extensions the runtime lacks: `XR_FB_scene_capture` and `XR_OCULUS_android_initialize_loader`.
 - `TryGetFrame returned false because camera image support is not enabled`. That is AR Foundation asking for passthrough camera images, which the game does not use. The passthrough itself still shows.
 - `Entitlement for packageName=... not found`. Expected for a sideloaded build.
+- `xrEndFrame failed with error code XR_ERROR_LAYER_LIMIT_EXCEEDED`, once, as a session starts (seen on every launch on 2026-09-14), followed by an OpenXR diagnostic report headed "Uncaught Exception". The game runs on. Not yet explained.
 
 **Store items for XR11**, found in the first APK:
 - `installLocation` is `preferExternal` (inherited). Meta requires `auto`.
@@ -267,6 +321,12 @@ XR Management and Composition Layers come in as dependencies. If a pin breaks, f
   - wrote an untracked `ProjectSettings/BuildProfileUtilityOpenXR.asset`, and `Assets/03.Data/AddressableAssetsData/link.xml` again.
   - built in 9 min 39 s; the APK is about 73 MB.
 - **A queued build dies with the Editor.** A `delayCall` does not survive an Editor restart, so a build queued before one never starts. Write a "started" marker at the top of the queued method so a waiting loop can tell *not started* from *still building*.
+- **A queued build can hang on a pending recompile** (2026-09-14). Making the profile active changes the define symbols, and an unfocused Editor only recompiles once it gets focus, which is also when the queued build runs.
+  - The Editor then logged "Tundra requires additional run", never ran it, and sat on "Compiling Scripts" for 45 minutes with no compiler process alive. Only ending the Editor got it back.
+  - Have the queued method re-queue itself (another `delayCall`) while `EditorApplication.isCompiling` or `isUpdating` is true. The next build, guarded that way, went through in 7 min 57 s.
+- **Restoring the profile's `preloadedAssets` with `git restore` after a build leaves no profile active.** Make Meta Quest active again before the next build, and let any recompile finish before queueing it.
+- **With no profile active, the Editor can switch Quest features off** (2026-09-14, the XR8 session). `Assets/XR/Settings/OpenXR Package Settings.asset` lost four Android features: Meta Quest Support and the Oculus Touch, Touch Plus and Touch Pro profiles.
+  - A Quest build from that state would lack Meta Quest Support. Check the file before every commit and `git restore` it. A refresh then reads all four as on again.
 - `%LOCALAPPDATA%\Unity\Editor\Editor.log` is shared by every Editor on the machine, so it can hold another project's log. Ask the bridge for `Application.dataPath` instead.
 
 ## Local files that stay out of commits

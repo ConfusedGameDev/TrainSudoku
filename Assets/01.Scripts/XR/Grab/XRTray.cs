@@ -106,7 +106,8 @@ namespace TrainSudoku.XR
 
             _slots[slot] = root.transform;
             // Tray pieces stand apart, so a ray can still take them from across the table (X16).
-            _input?.AddTarget(volume, GrabTarget.Tray(key), null, directOnly: false);
+            // A close pinch only, like every piece (XRTouchOnly, the XR8 headset check).
+            _input?.AddTarget(volume, GrabTarget.Tray(key), null, directOnly: true);
         }
 
         private void Update()

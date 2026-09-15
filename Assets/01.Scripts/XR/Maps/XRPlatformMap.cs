@@ -385,10 +385,8 @@ namespace TrainSudoku.XR
             if (_print != null)
                 for (var i = _print.childCount - 1; i >= 0; i--)
                 {
-                    // Out of the hierarchy at once, so a rebuild in the same frame cannot find the old roundels. First let
-                    // go of whatever is hovering or holding them, while their colliders still exist.
+                    // Out of the hierarchy at once, so a rebuild in the same frame cannot find the old roundels.
                     var child = _print.GetChild(i).gameObject;
-                    foreach (var roundel in child.GetComponentsInChildren<XRMapRoundel>(true)) roundel.Release();
                     child.SetActive(false);
                     Kill(child);
                 }

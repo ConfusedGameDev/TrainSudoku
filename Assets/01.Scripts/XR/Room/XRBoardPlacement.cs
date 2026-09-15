@@ -37,6 +37,13 @@ namespace TrainSudoku.XR
         /// <summary>How close to a detected surface a board let go of by the handle must be to settle onto it, in metres.</summary>
         private const float SettleReach = 0.05f;
 
+        /// <summary>
+        /// The height nudge (6.4): how long after the last press the board is anchored where it stands, and how close to
+        /// a surface it must end up to count as resting on it, in metres.
+        /// </summary>
+        private const float NudgeSettleSeconds = 0.6f;
+        private const float OnSurfaceTolerance = 0.002f;
+
         /// <summary>How long locating looks for a surface before the sign suggests the headset's space setup.</summary>
         private const float NoSurfaceHintDelay = 6f;
 
@@ -70,6 +77,8 @@ namespace TrainSudoku.XR
         private bool _aimOnSurface;
         private float _locatingSince;
         private Pose _pose;
+        private bool _nudging;
+        private float _nudgeSettleAt;
 
         public Transform BoardRoot { get; private set; }
         public bool IsPlaced { get; private set; }
@@ -80,7 +89,7 @@ namespace TrainSudoku.XR
         /// <summary>The board rests on a detected surface, rather than floating where no surface was found.</summary>
         public bool IsOnSurface { get; private set; }
 
-        /// <summary>The handle is moving the board; the board is unanchored until it is let go.</summary>
+        /// <summary>The handle or the height nudge is moving the board; the board is unanchored until it settles.</summary>
         public bool IsMoving { get; private set; }
 
         /// <summary>The bar that moves the board, once it is placed.</summary>
@@ -88,7 +97,7 @@ namespace TrainSudoku.XR
 
         public event Action Placed;
 
-        /// <summary><see cref="IsOnSurface"/> changed: the handle settled the board onto a surface, or lifted it off one.</summary>
+        /// <summary><see cref="IsOnSurface"/> changed: the handle or a nudge settled the board onto a surface, or lifted it off one.</summary>
         public event Action SurfaceChanged;
 
         private void Awake()
@@ -127,15 +136,19 @@ namespace TrainSudoku.XR
             BoardRoot.gameObject.SetActive(false);
             IsPlaced = false;
             IsMoving = false;
+            _nudging = false;
+            // A board restored from its anchor never asked for surfaces itself, but switched them on if it could.
+            _surfacesAllowed |= planes != null && planes.enabled;
             BeginLocating();
         }
 
-        // ------------------------------------------------------------------ moving (the handle)
+        // ------------------------------------------------------------------ moving (the handle and the height nudge)
 
-        /// <summary>Lifts the board off its anchor so the handle can carry it.</summary>
+        /// <summary>Lifts the board off its anchor so the handle can carry it. A height nudge in progress gives way.</summary>
         public void BeginMove()
         {
             if (!IsPlaced) return;
+            _nudging = false;
             IsMoving = true;
             BoardRoot.SetParent(null, true);
         }
@@ -161,16 +174,45 @@ namespace TrainSudoku.XR
             await AnchorHereAsync();
         }
 
+        /// <summary>
+        /// Raises or lowers the board by <paramref name="metres"/> (the wrist menu's height nudge, 6.4), never into a
+        /// detected surface under it. Presses in quick succession add up; the board is anchored and saved once they stop.
+        /// Ignored while the handle is carrying the board.
+        /// </summary>
+        public void Nudge(float metres)
+        {
+            if (!IsPlaced || (IsMoving && !_nudging)) return;
+            if (!_nudging)
+            {
+                BeginMove();
+                _nudging = true;
+            }
+
+            var position = BoardRoot.position + Vector3.up * metres;
+            if (TrySurfaceUnder(position, out var surface) && position.y < surface) position.y = surface;
+            BoardRoot.position = position;
+            _nudgeSettleAt = Time.time + NudgeSettleSeconds;
+        }
+
+        /// <summary>The nudging has stopped: the board rests on a surface if it came down onto one, and is anchored where it is.</summary>
+        private async void FinishNudge()
+        {
+            _nudging = false;
+            IsMoving = false;
+            var wasOnSurface = IsOnSurface;
+            IsOnSurface = TrySurfaceUnder(BoardRoot.position, out var surface) && BoardRoot.position.y - surface <= OnSurfaceTolerance;
+            if (IsOnSurface != wasOnSurface) SurfaceChanged?.Invoke();
+            await AnchorHereAsync();
+        }
+
         private void SettleOnSurface()
         {
             var wasOnSurface = IsOnSurface;
             var position = BoardRoot.position;
             var onSurface = false;
-            if (planes != null && planes.enabled
-                && TryHitSurface(new Ray(position + Vector3.up * SettleReach, Vector3.down), out var surface)
-                && position.y - surface.y <= SettleReach)
+            if (TrySurfaceUnder(position, out var surface) && position.y - surface <= SettleReach)
             {
-                position.y = surface.y;
+                position.y = surface;
                 BoardRoot.position = position;
                 onSurface = true;
             }
@@ -179,8 +221,20 @@ namespace TrainSudoku.XR
             if (IsOnSurface != wasOnSurface) SurfaceChanged?.Invoke();
         }
 
+        /// <summary>The height of a detected surface under <paramref name="position"/>, looking down from <see cref="SettleReach"/> above it.</summary>
+        private bool TrySurfaceUnder(Vector3 position, out float height)
+        {
+            height = 0f;
+            if (planes == null || !planes.enabled) return false;
+            if (!TryHitSurface(new Ray(position + Vector3.up * SettleReach, Vector3.down), out var point)) return false;
+            height = point.y;
+            return true;
+        }
+
         private void Update()
         {
+            if (_nudging && Time.time >= _nudgeSettleAt) FinishNudge();
+
             ShowPlanes(_locating);
             if (!_locating) return;
 
@@ -249,7 +303,7 @@ namespace TrainSudoku.XR
 
         /// <summary>
         /// Anchors the board where it stands and saves the anchor, erasing the one saved before. Skipped when the handle
-        /// picks the board up again before the anchor arrives: the next release anchors it instead.
+        /// or a nudge picks the board up again before the anchor arrives: the next release anchors it instead.
         /// </summary>
         private async Awaitable AnchorHereAsync()
         {

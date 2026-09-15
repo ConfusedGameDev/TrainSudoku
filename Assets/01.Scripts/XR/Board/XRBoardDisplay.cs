@@ -192,6 +192,43 @@ namespace TrainSudoku.XR
         }
 
         /// <summary>
+        /// Dims the board while the game is paused (X18, 6.3), or brings it back: every lit material under it, the tray's
+        /// included, darkened through a property block, which clearing puts back exactly. The clue numerals are text and
+        /// keep their colour, so the paused board still reads. Walks the whole board, so call it on the state change only.
+        /// </summary>
+        public void SetDimmed(bool dimmed)
+        {
+            _dimBlock ??= new MaterialPropertyBlock();
+            foreach (var renderer in GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer is ParticleSystemRenderer || renderer.TryGetComponent<TextMesh>(out _)) continue;
+                var materials = renderer.sharedMaterials;
+                for (var i = 0; i < materials.Length; i++)
+                {
+                    if (!dimmed)
+                    {
+                        renderer.SetPropertyBlock(null, i);
+                        continue;
+                    }
+
+                    var material = materials[i];
+                    if (material == null || !material.HasProperty(BaseColourId)) continue;
+                    var colour = material.GetColor(BaseColourId);
+                    _dimBlock.Clear();
+                    _dimBlock.SetColor(BaseColourId, new Color(colour.r * DimFactor, colour.g * DimFactor, colour.b * DimFactor, colour.a));
+                    renderer.SetPropertyBlock(_dimBlock, i);
+                }
+            }
+        }
+
+        private static readonly int BaseColourId = Shader.PropertyToID("_BaseColor");
+
+        /// <summary>How much of its colour a paused board keeps.</summary>
+        private const float DimFactor = 0.4f;
+
+        private MaterialPropertyBlock _dimBlock;
+
+        /// <summary>
         /// Brings the pieces on show in line with <see cref="Board"/> and recolours the clues. With
         /// <paramref name="animate"/>, new player pieces scale in and newly satisfied clues pop.
         /// </summary>

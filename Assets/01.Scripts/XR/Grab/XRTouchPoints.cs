@@ -10,10 +10,14 @@ namespace TrainSudoku.XR
         public readonly int Id;
         public readonly Vector3 Position;
 
-        public TouchPoint(int id, Vector3 position)
+        /// <summary>Which hand or controller it belongs to.</summary>
+        public readonly InteractorHandedness Handedness;
+
+        public TouchPoint(int id, Vector3 position, InteractorHandedness handedness = InteractorHandedness.None)
         {
             Id = id;
             Position = position;
+            Handedness = handedness;
         }
     }
 
@@ -74,7 +78,7 @@ namespace TrainSudoku.XR
                 if (poke.isActiveAndEnabled)
                     // The interactor's identity hash: stable for its lifetime (GetInstanceID is obsolete on this editor).
                     TipPoints.Add(new TouchPoint(System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(poke),
-                        (poke.attachTransform != null ? poke.attachTransform : poke.transform).position));
+                        (poke.attachTransform != null ? poke.attachTransform : poke.transform).position, poke.handedness));
 
             foreach (var nearFar in NearFars)
             {

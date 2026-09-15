@@ -48,6 +48,9 @@ namespace TrainSudoku.XR
         private const float TouchCells = 0.35f;
         private const float LetGoCells = 0.8f;
 
+        /// <summary>How far outside the grab volume a pinch is still the rail's rather than the corner cell's, in cells.</summary>
+        private const float ClaimCells = 0.2f;
+
         /// <summary>How far the two hands must carry the rail, in metres, or turn it, in degrees, before the board follows.</summary>
         private const float DeadZoneMetres = 0.03f;
         private const float DeadZoneDegrees = 12f;
@@ -420,6 +423,13 @@ namespace TrainSudoku.XR
                     return true;
             return false;
         }
+
+        /// <summary>
+        /// Whether a pinch at <paramref name="world"/> is on the rail: inside its grab volume or within
+        /// <see cref="ClaimCells"/> of it. No board piece is taken from there (<see cref="XRIGrabInput.Reserved"/>): the rail
+        /// wraps the corner cell, and a pinch on the rail kept lifting that cell's piece instead (the second XR8 check).
+        /// </summary>
+        public bool Claims(Vector3 world) => _available && NearRail(world, ThicknessCells / 2f + GrabPaddingCells + ClaimCells);
 
         private bool NearRail(Vector3 world, float reach)
         {

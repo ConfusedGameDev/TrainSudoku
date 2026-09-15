@@ -39,9 +39,9 @@ namespace TrainSudoku.XR
         // XRI asks this every frame of a selection too, and ends the selection when it turns false; so a hand holding
         // this target keeps it even once the cell it lifted from is empty.
         public override bool IsSelectableBy(IXRSelectInteractor interactor) =>
-            base.IsSelectableBy(interactor) && (IsSelected(interactor) || (_input != null && _input.CanGrab(interactor, _grabbable)));
+            base.IsSelectableBy(interactor) && (IsSelected(interactor) || (_input != null && _input.CanGrab(interactor, Target, _grabbable)));
 
         public override bool IsHoverableBy(IXRHoverInteractor interactor) =>
-            base.IsHoverableBy(interactor) && _input != null && _input.CanHover(interactor, _grabbable);
+            base.IsHoverableBy(interactor) && _input != null && _input.CanHover(interactor, Target, _grabbable);
     }
 }

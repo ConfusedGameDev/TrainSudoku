@@ -10,16 +10,19 @@ using UnityEngine;
 namespace TrainSudoku.XR
 {
     /// <summary>
-    /// The XR shell (XR-PRD 6). It owns the shared <see cref="GameFlow"/>, unchanged, and keeps the platform and the
-    /// signboard in step with it: the network and line maps printed on the platform, the board and tray in play, the
-    /// train, and the arrival. It also owns the save, the same <c>save.json</c> format as the phone's, local to the headset.
+    /// The XR shell (XR-PRD 6). It owns the shared <see cref="GameFlow"/>, unchanged, and keeps the platform, the
+    /// signboard and the wrist menu in step with it: the network and line maps printed on the platform, the board and
+    /// tray in play, the pause, the train, and the arrival. It also owns the save, the same <c>save.json</c> format as
+    /// the phone's, local to the headset, and the headset's own settings (<see cref="XRPreferences"/>).
     /// </summary>
     /// <remarks>
     /// Placing the board is its precondition, not a flow state (6.1): the flow starts once the board is in the room,
     /// goes straight to the network, and never shows the Concourse. Moving the board later never touches the flow.
     ///
-    /// Until the wrist menu arrives (XR8) the signboard carries the way back: the line map from a station, the network
-    /// from a line. Losing focus saves the attempt; XR8 turns it into the Pause of 6.3.
+    /// Pause (6.3, X18) stops the clock, dims the board and locks the pieces and the handle. The wrist menu, the left
+    /// controller's menu button, losing focus (the headset taken off, the system menu) and being suspended all pause
+    /// play, and a return from a focus loss comes back to the pause, never straight into play. Only a RESUME button,
+    /// on the menu or on the signboard, resumes.
     /// </remarks>
     public sealed class XRGame : MonoBehaviour
     {
@@ -34,7 +37,7 @@ namespace TrainSudoku.XR
         [SerializeField] private XRIGrabInput grabInput;
 
         [Header("Hands (XR-PRD 4)")]
-        [Tooltip("The tray docks on this side of the edge the player stands at (4.1). Becomes a setting at XR8.")]
+        [Tooltip("The dominant hand until the player chooses one in the wrist menu's settings (6.4). The tray docks on its side of the edge the player stands at (4.1); the menu is worn on the other wrist.")]
         [SerializeField] private Hand dominantHand = Hand.Right;
 
         [Tooltip("How high above the platform a held piece shows its ghost and lands on release, in metres (4.3).")]
@@ -66,6 +69,8 @@ namespace TrainSudoku.XR
         private XRSignboard _sign;
         private XRTray _tray;
         private XRPieceHands _hands;
+        private XRWristMenu _menu;
+        private XRPreferences _preferences;
         private bool _quickTest;
         private int _grabs;
         private int _landings;
@@ -74,6 +79,9 @@ namespace TrainSudoku.XR
 
         /// <summary>The board on show in play; empty on the maps.</summary>
         public XRBoardDisplay Display => _display;
+
+        /// <summary>The wrist menu, for tools and tests.</summary>
+        public XRWristMenu Menu => _menu;
 
         public static string SaveFilePath => Path.Combine(Application.persistentDataPath, "save.json");
 
@@ -88,6 +96,7 @@ namespace TrainSudoku.XR
                 yield break;
             }
 
+            _preferences = new XRPreferences(new XRPlayerPrefsStore(), dominantHand);
             BuildFlow();
 
             Transform root;
@@ -104,6 +113,8 @@ namespace TrainSudoku.XR
             }
 
             Build(root);
+            // Localization has long finished starting by now; the player's language replaces the system's.
+            XRLocale.Apply(_preferences);
             Flow.StateChanged += OnStateChanged;
             Flow.LevelStarted += OnLevelStarted;
             // Straight to the network: XR has no Concourse (6.1).
@@ -145,6 +156,13 @@ namespace TrainSudoku.XR
             _map.LineChosen += OnLineChosen;
             _map.StationChosen += OnStationChosen;
 
+            // The wrist menu is worn, not placed: it hangs from nothing under the board.
+            _menu = XRWristMenu.Create(signage, _preferences);
+            _menu.Toggled += OnWristToggled;
+            _menu.Chosen += OnWristChosen;
+            _menu.ReplaceBoard += OnReplaceBoard;
+            _menu.NudgeBoard += OnNudgeBoard;
+
             if (placement != null && root == placement.BoardRoot)
             {
                 // Shadows on the real table only when there is a table under the board.
@@ -159,10 +177,12 @@ namespace TrainSudoku.XR
                 return;
             }
 
+            // A pinch on the board handle's rail is the handle's, never the corner cell's piece under it.
+            grabInput.Reserved = point => placement != null && placement.Handle != null && placement.Handle.Claims(point);
             _hands = XRPieceHands.Create(transform, grabInput, XRSteam.Create(null));
             _hands.Acted += OnActed;
             _hands.BoardChanged += OnBoardChanged;
-            _tray = XRTray.Create(_display, grabInput, dominantHand);
+            _tray = XRTray.Create(_display, grabInput, _preferences.DominantHand);
             _tray.gameObject.SetActive(false);
         }
 
@@ -185,24 +205,35 @@ namespace TrainSudoku.XR
 
         private void Update()
         {
+            // No rays, from first placement on: everything is taken or pressed up close.
+            XRTouchOnly.Enforce();
             if (Flow == null || _display == null) return;
             Flow.Tick(Time.deltaTime);
+            var state = Flow.State;
 
             // Pieces only in play, and never while the handle is carrying the board.
             var moving = placement != null && placement.IsMoving;
-            if (grabInput != null) grabInput.AcceptsGrabs = Flow.State == GameState.Play && !moving && _display.Board != null;
+            if (grabInput != null) grabInput.AcceptsGrabs = state == GameState.Play && !moving && _display.Board != null;
             if (_hands != null)
             {
                 _hands.HoverBand = hoverBand;
                 _hands.ThrowThreshold = throwThreshold;
-                if (placement != null && placement.Handle != null) placement.Handle.SetAvailable(!_hands.IsHolding);
             }
 
-            if (_tray != null) _tray.DominantHand = dominantHand;
-            // The handle's knob rests at the near corner away from the tray.
-            if (placement != null && placement.Handle != null) placement.Handle.DominantHand = dominantHand;
+            var hand = _preferences.DominantHand;
+            if (_tray != null) _tray.DominantHand = hand;
+            if (placement != null && placement.Handle != null)
+            {
+                // Paused, the handle locks with the pieces (X18); a piece in a hand hides it too.
+                placement.Handle.SetAvailable(state != GameState.Pause && (_hands == null || !_hands.IsHolding));
+                // The rail wraps the near corner away from the tray.
+                placement.Handle.DominantHand = hand;
+            }
 
-            if (Flow.State == GameState.Play) _sign.UpdateClock(Flow.Timer.Elapsed, Flow.StarTier);
+            _menu.WristHand = _preferences.WristHand;
+            _menu.Offered = WristMenuPlan.Offered(state);
+
+            if (state == GameState.Play || state == GameState.Pause) _sign.UpdateClock(Flow.Timer.Elapsed, Flow.StarTier);
         }
 
         private void OnDestroy()
@@ -218,22 +249,52 @@ namespace TrainSudoku.XR
                 _hands.Acted -= OnActed;
                 _hands.BoardChanged -= OnBoardChanged;
             }
+
+            if (_menu != null)
+            {
+                _menu.Toggled -= OnWristToggled;
+                _menu.Chosen -= OnWristChosen;
+                _menu.ReplaceBoard -= OnReplaceBoard;
+                _menu.NudgeBoard -= OnNudgeBoard;
+            }
         }
 
-        // ------------------------------------------------------------------ saving
+        // ------------------------------------------------------------------ focus and saving
 
-        /// <summary>Taking the headset off, the system menu, or suspending: the attempt is saved (6.3; XR8 adds the pause).</summary>
+        /// <summary>Suspended (6.3): play pauses, which saves the attempt; anywhere else the attempt is only saved.</summary>
         private void OnApplicationPause(bool paused)
         {
-            if (paused) SaveProgress();
+            if (paused) LoseFocus();
         }
 
+        /// <summary>The headset taken off, the system menu or passthrough settings opened (6.3).</summary>
         private void OnApplicationFocus(bool focused)
         {
-            if (!focused) SaveProgress();
+            if (!focused) LoseFocus();
         }
 
         private void OnApplicationQuit() => SaveProgress();
+
+        private void LoseFocus()
+        {
+            if (Flow == null) return;
+#if UNITY_EDITOR
+            // An Editor with no headset loses focus whenever another window is clicked; only a headset session pauses on it.
+            if (!UnityEngine.XR.XRSettings.isDeviceActive)
+            {
+                SaveProgress();
+                return;
+            }
+#endif
+            PauseForFocusLoss();
+        }
+
+        /// <summary>Play pauses, and the pause saves the attempt (OnStateChanged). Coming back finds it paused, never playing.</summary>
+        private void PauseForFocusLoss()
+        {
+            if (WristMenuPlan.PausesOnFocusLoss(Flow.State)) Flow.PauseGame();
+            else SaveProgress();
+        }
 
         private void SaveProgress()
         {
@@ -245,8 +306,12 @@ namespace TrainSudoku.XR
 
         private void OnStateChanged(GameState previous, GameState current)
         {
+            Debug.Log($"[XR flow] {previous} -> {current}");
             if (previous == GameState.Play && current == GameState.Pause) SaveProgress();
             if (previous == GameState.Play && current != GameState.Play && _hands != null) _hands.End();
+            if (previous == GameState.Pause) _display.SetDimmed(false);
+            // Every change of state closes the menu. Opening it as the pause reopens it once the pause is in (OnWristToggled).
+            _menu.Close();
 
             switch (current)
             {
@@ -265,8 +330,7 @@ namespace TrainSudoku.XR
                     var line = network.Line(lineIndex);
                     _map.ShowLine(line, station => MarkOf(lineIndex, station));
                     FitHandle(XRPlatformMap.HalfWidth);
-                    _sign.ShowLine(line, ClearedOn(lineIndex), Flow.Layout.StationCount(lineIndex), Flow.StarsOnLine(lineIndex),
-                        () => When(GameState.LevelSelect, Flow.ShowNetwork));
+                    _sign.ShowLine(line, ClearedOn(lineIndex), Flow.Layout.StationCount(lineIndex), Flow.StarsOnLine(lineIndex));
                     _sign.PlaceBehind(XRPlatformMap.FarEdge);
                     break;
                 }
@@ -280,7 +344,10 @@ namespace TrainSudoku.XR
                     break;
 
                 case GameState.Pause:
-                    // XR8: the board dims and the wrist menu opens. At XR7 the flow only passes through on its way to the map.
+                    // The flow has stopped the clock; the board dims, and its pieces and the handle lock (X18).
+                    _display.SetDimmed(true);
+                    _sign.ShowPaused(CurrentLevel, CurrentLine, Flow.CurrentStationIndex, () => When(GameState.Pause, Flow.ResumeGame));
+                    _sign.PlaceBehind(BoardFarEdge);
                     break;
 
                 case GameState.TrainRun:
@@ -333,12 +400,7 @@ namespace TrainSudoku.XR
 
         private void ShowStationSign()
         {
-            _sign.ShowStation(CurrentLevel, CurrentLine, Flow.CurrentStationIndex, () => When(GameState.Play, () =>
-            {
-                // Pause first: that is the flow's only way out of play, and it saves the attempt on the way.
-                Flow.PauseGame();
-                Flow.ShowLevelSelect();
-            }));
+            _sign.ShowStation(CurrentLevel, CurrentLine, Flow.CurrentStationIndex);
             _sign.PlaceBehind(BoardFarEdge);
         }
 
@@ -364,10 +426,92 @@ namespace TrainSudoku.XR
             if (Flow.State == GameState.TrainRun) Flow.FinishTrainRun();
         }
 
-        /// <summary>A sign button acts only in the state that drew it: a double press must not hit the flow twice.</summary>
+        /// <summary>A button acts only in the state that drew it: a double press must not hit the flow twice.</summary>
         private void When(GameState state, Action action)
         {
             if (Flow.State == state) action();
+        }
+
+        // ------------------------------------------------------------------ the wrist menu
+
+        private void OnWristToggled()
+        {
+            switch (WristMenuPlan.Toggle(Flow.State, _menu.IsOpen))
+            {
+                case WristToggle.OpenAndPause:
+                    // The pause closes the menu on its way in (OnStateChanged), so it opens after.
+                    Flow.PauseGame();
+                    OpenMenu();
+                    break;
+                case WristToggle.Open:
+                    OpenMenu();
+                    break;
+                case WristToggle.Close:
+                    _menu.Close();
+                    break;
+            }
+        }
+
+        private void OpenMenu()
+        {
+            string title;
+            switch (Flow.State)
+            {
+                case GameState.Pause:
+                    title = "PAUSED";
+                    break;
+                case GameState.LevelSelect:
+                {
+                    var line = network.Line(Flow.SelectedLineIndex);
+                    title = line != null ? line.DisplayName.ToUpperInvariant() : "LINE MAP";
+                    break;
+                }
+                default:
+                    title = "NETWORK";
+                    break;
+            }
+
+            _menu.Open(WristMenuPlan.Items(Flow.State), title);
+        }
+
+        /// <summary>An entry acts only in the state that offers it; the state change it makes closes the menu.</summary>
+        private void OnWristChosen(WristItem item)
+        {
+            switch (item)
+            {
+                case WristItem.Resume:
+                    When(GameState.Pause, Flow.ResumeGame);
+                    break;
+                case WristItem.Retry:
+                    When(GameState.Pause, Flow.Retry);
+                    break;
+                case WristItem.BackToMap:
+                    // From the pause, which saved the attempt on the way in.
+                    When(GameState.Pause, Flow.ShowLevelSelect);
+                    break;
+                case WristItem.BackToNetwork:
+                    When(GameState.LevelSelect, Flow.ShowNetwork);
+                    break;
+                case WristItem.Close:
+                    _menu.Close();
+                    break;
+            }
+        }
+
+        /// <summary>Re-place board (5.3, 6.4): first placement runs again; the flow stays where it is, paused if it was playing.</summary>
+        private void OnReplaceBoard()
+        {
+            _menu.Close();
+            if (Flow.State == GameState.Play) Flow.PauseGame();
+            if (UsePlacement) placement.Replace();
+            else FloatInFrontOfHead();
+        }
+
+        /// <summary>The height nudge (6.4): up or down by <paramref name="metres"/>.</summary>
+        private void OnNudgeBoard(float metres)
+        {
+            if (UsePlacement) placement.Nudge(metres);
+            else transform.position += Vector3.up * metres;
         }
 
         // ------------------------------------------------------------------ the platform maps
@@ -487,6 +631,20 @@ namespace TrainSudoku.XR
 
             _display.Sync(true);
             OnBoardChanged();
+        }
+
+        /// <summary>Editor only: what taking the headset off does (6.3), without a headset to take off.</summary>
+        [ContextMenu("Debug: Lose Focus")]
+        public void DebugLoseFocus()
+        {
+            if (Flow != null) PauseForFocusLoss();
+        }
+
+        /// <summary>Editor only: what pressing the wrist roundel or the menu button does (6.4).</summary>
+        [ContextMenu("Debug: Press Wrist Menu")]
+        public void DebugPressWristMenu()
+        {
+            if (Flow != null && _menu != null) OnWristToggled();
         }
 #endif
     }

@@ -38,14 +38,14 @@ Settled by interview on 11 Sep 2026. Closed. Do not re-open one without asking f
 
 | # | Decision | Consequence |
 |---|---|---|
-| X5 | **Hands first; controllers also supported** | Everything is designed around a pinch-grab. Controller grip maps to grab, trigger to UI select |
+| X5 | **Hands first; controllers also supported** | Everything is designed around a pinch-grab. Controller grip maps to grab. *Revised 2026-09-15:* there are no rays, so menus are pressed with the controller's tip as with a fingertip, and the trigger is unused |
 | X6 | **Cell size about 6 cm, scalable with both hands from 4 to 9 cm** | A 6×6 board with its tunnel ring is ~48 cm across at 6 cm; an 8×8 one ~60 cm. *Revised 2026-09-14 after the XR7 headset check:* two-hand scaling moved into v1 on the two-hand handle (5.3), and the size is saved with the board's anchor. Below 4 cm a piece is too small to pinch reliably |
 | X7 | The board **snaps to detected horizontal surfaces**; if none are found it **floats** at waist height | Moved at any time, mid-level included, by a handle. Its position **persists across sessions** through a saved anchor |
 | X8 | The tray holds **six slots, one per key, orientation locked, unlimited supply** | A held piece stays aligned to the board's grid whatever the wrist does. Keys map 1:1 onto `Legality` |
 | X9 | Drop rules: see section 4 | Ghost preview. An illegal release returns the piece to where it came from. Dropping on a player piece replaces it if legal. Clues update on release, not while hovering |
 | X10 | Lifting a placed piece erases it; dropping it on another legal cell is a **move**. **Throw vs. release is purely visual** | Fixed pieces refuse the grab with a wobble and the "that's fixed" note. Removal is always allowed, as on the phone |
 | X11 | The tray is **attached to the board** at the edge nearest the player, on the dominant-hand side | It moves to whichever edge the player walks to and never follows the head |
-| X16 | Pieces can be grabbed **directly and at a distance** (hand ray on Quest, look-and-pinch on Vision Pro) | A piece held at a distance rides the board surface under the ray. The ghost and snap work the same either way. *Revised 2026-09-13 after the XR6 headset check:* distant grab is for tray pieces; pieces on the board are taken by a close pinch only (4.2) |
+| X16 | Pieces can be grabbed **directly and at a distance** (hand ray on Quest, look-and-pinch on Vision Pro) | A piece held at a distance rides the board surface under the ray. The ghost and snap work the same either way. *Revised 2026-09-13 after the XR6 headset check:* distant grab is for tray pieces; pieces on the board are taken by a close pinch only (4.2). *Revised 2026-09-15 after the first XR8 headset check:* **no rays on Quest at all.** Every piece, tray pieces included, and the handle are taken by a close pinch or grip, and every menu (maps, signboard, wrist menu) is pressed with a fingertip. A ray reaching for one thing kept catching another: RESUME was pressed from anywhere, and the wrist button and the handle were hard to reach past it. Vision Pro's look-and-pinch is for XR12 to decide |
 | X17 | The board **grows from its near edge**; clue numbers are **standing signs that turn to face the player** | The tray and handle never jump between levels, and the board can be walked all the way round |
 | X19 | Throw and puff are **steam**: a burst and a whistle for a throw, a small puff for a release | One particle effect in two sizes. *Revised 2026-09-14 after the XR7 headset check:* a piece let go or thrown off the platform first falls into the room, bouncing off its detected surfaces for 3 s before it puffs; touching the board puffs it at once (4.4) |
 
@@ -111,7 +111,7 @@ Unchanged: PRD 3, including placement legality, the adjacency rule and the win c
 ### 4.2 Grabbing
 
 - **Direct**: pinch (or controller grip) on a tray piece or a placed player piece.
-- **Distant**: hand ray on Quest, controller ray, or look-and-pinch on Vision Pro, aimed at a tray piece. A piece held at a distance rides the platform surface under the ray.
+- **Distant**: removed on Quest on 2026-09-15 (X16): there are no rays, and every piece is taken by a close pinch. The grab interface keeps its distant hold, where a piece rides the platform surface under a ray, for Vision Pro's look-and-pinch at XR12.
 - **Placed pieces are taken by a close pinch only.** Revised 2026-09-13 after the XR6 headset check: on the board the pieces sit a cell apart, and a ray aimed at one kept landing on a neighbour.
 - Each hand holds at most one piece, and both hands may hold at once.
 - **Fixed pieces (`K`) refuse the grab.** They wobble, play the "that's fixed" note, and stay put.
@@ -150,7 +150,7 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 | Input | Action |
 |---|---|
 | Grip | Grab and release a piece; grab the board handle |
-| Trigger | Select UI (signboard, map roundels, wrist menu) by ray |
+| Trigger | Unused. *Revised 2026-09-15:* there are no rays; the controller's tip presses the signboard, map roundels and wrist menu as a fingertip does |
 | Menu button | Opens the wrist menu |
 | Thumbstick | Unused in v1 |
 
@@ -170,7 +170,7 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 
 1. The app opens in passthrough. The first time, it asks for the headset's scene/spatial permission. If refused, placement falls back to floating.
 2. A floating sign says "look at a table".
-3. A ghost platform slides over detected horizontal surfaces, following the hand ray, controller ray or gaze. If no surface is detected (no room scan, permission refused), it floats at waist height in front of the player, and the sign suggests running the headset's space setup.
+3. A ghost platform slides over detected horizontal surfaces, following where the hand or controller points (no ray is drawn), or the gaze. If no surface is detected (no room scan, permission refused), it floats at waist height in front of the player, and the sign suggests running the headset's space setup.
 4. A pinch (or trigger) places it. The platform faces the player: its near edge is the one nearest them.
 5. The placement is saved as an anchor. On later launches the board reappears where it was left. If the anchor cannot be found (a different room, anchor lost), step 2 runs again.
 
@@ -238,13 +238,13 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 | Network | The network map, printed flat, lines as coloured track, raised line roundels. Revealed by the same progress rules as the phone overworld | Masthead: `TSUGI` / `NEXT STATION` with the app mark | Settings |
 | Line map (`LevelSelect`) | The line's station map on the 45° grid from `LineDefinition.mapNodes`. Raised station roundels at least 3 cm across; closed stations look closed, and in-progress stations say "Continue" | Line name and code, LED strip in the line colour | Settings, Back to network |
 | Play | The board, clue signs, tunnels and tray | Station name, clock, stars to beat | Resume/Retry/Map/Settings (opens as Pause) |
-| Pause | The board, dimmed; pieces cannot be grabbed | Shows "Paused" | Resume, Retry, Back to map, Settings |
+| Pause | The board, dimmed; pieces and the handle cannot be grabbed | Shows "Paused" with the stopped clock, and a RESUME button for a return from a focus loss, when the menu is closed (added at XR8) | Resume, Retry, Back to map, Settings |
 | Train run | The train runs the finished route in miniature, always into the exit tunnel before the arrival shows. There is no skip (revised 2026-09-14 after the XR7 headset check: a stray pinch after the winning drop cut it short). A hand on the running train shakes it and hurries it on for a moment, cartoon fashion, before it eases back to speed: the cars squash and stretch in a wave from the locomotive back, the train draws out, and it puffs steam (added 2026-09-14, made livelier after the first headset check) | — | — |
 | Arrival (`Win`) | The solved board stays | Time, best, new-best flag, stars, and the verdict stamped on as on the phone: ON TIME, SLIGHT DELAY or DELAYED. Buttons: Next, Retry, Map | — |
 
-- **Selecting on the platform.** Roundels are chosen by **poking with a finger or by ray/look-and-pinch**, the same two ways as grabbing (X16). A fingertip coming down onto a roundel's face presses it. It is read from the hand's poke pose rather than through XRI's poke, which did not press on the headset (revised 2026-09-14 after the XR7 headset check).
-- **Signboard buttons** work by poke or ray. A poke is a fingertip pressed onto the button, read from the hand as on the roundels. The card leans back about its bottom edge to face the player's eyes, up to 50 degrees, as well as turning to them. Seen from above across the platform, an upright card took rays at a glancing angle (revised 2026-09-14 after the XR7 headset check).
-- **Until the wrist menu (XR7 interim).** XR8 brings the wrist menu that carries Back to map and Back to network. Until then the signboard carries both: a LINE MAP button in Play, which pauses and saves on the way out, and a NETWORK button on the line map.
+- **Selecting on the platform.** Roundels are chosen by **a fingertip** coming down onto a roundel's face, and by nothing else: the ray and look-and-pinch went on 2026-09-15 (X16). It is read from the hand's poke pose rather than through XRI's poke, which did not press on the headset (revised 2026-09-14 after the XR7 headset check).
+- **Signboard buttons** are pressed with a fingertip, read from the hand as on the roundels (rays removed on 2026-09-15). The card leans back about its bottom edge to face the player's eyes, up to 50 degrees, as well as turning to them. Seen from above across the platform, an upright card took rays at a glancing angle (revised 2026-09-14 after the XR7 headset check).
+- **The ways back are on the wrist menu (XR8).** The XR7 interim put a LINE MAP button on the signboard in Play and a NETWORK button on the line map. XR8 moved both to the wrist menu: Back to map in the pause, Back to network on the line map.
 - **Tutorial briefing.** The three-card rules briefing shows on the signboard, once per session, on the tutorial station with no rails laid (section 7).
 
 ### 6.3 Pause
@@ -255,13 +255,19 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
   - The controller menu button.
   - The app losing focus: headset off, the system menu or passthrough settings opened.
   - The app being suspended.
+- **Only play pauses.** Losing focus on a map or at the arrival saves what there is to save and changes nothing else. The controller menu button is the left controller's: the right one's belongs to the system.
 - **Saving.** Pausing snapshots progress through the shared `GameFlow.SaveProgress`. Returning from a focus loss comes back to the Pause state, not straight into play.
 
 ### 6.4 The wrist menu
 
-- **Where it lives.** A small button on the **back of the non-dominant wrist**, where a watch would be. Poke it or look-and-pinch it to open a compact panel above the wrist.
+- **Where it lives.** A small button on the **back of the non-dominant wrist**, where a watch would be. Press it with the other hand's fingertip to open a compact panel above the wrist. One press counts once: presses within a second of it are ignored (a double press was seen at the first XR8 check). Turning the wrist never presses it: the fingertip must be over it first, and it takes no press until it has shown for 0.3 s (the second XR8 check found a turn of the wrist pausing the game).
 - **Why not the palm.** Both headsets use the palm for system gestures: palm-up and pinch opens the Quest system menu, and looking at the palm on visionOS opens the home and control shortcuts. So the menu stays off the palm.
 - **Contents.** Resume, Retry, Back to map, and Settings. Settings holds dominant hand, Re-place board, height nudge, language, and music and effects volume.
+- **When the button shows** (XR8). Only while the back of the wrist is turned to the eyes, as when checking a watch: within 45 degrees, hiding again past 65. A hand at work on the board never shows it.
+- **The button toggles.** In play, opening the menu is the pause. Closing it leaves the game paused: only RESUME, on the menu or on the signboard, restarts the clock. The train run and the arrival have no menu, and the button hides. (Revised after the first XR8 headset check, where the game resumed on its own: at first, closing the menu while paused resumed.)
+- **Only the other hand presses it.** The fingertips of the hand wearing the menu press nothing on the button or the panel, which opens right over that hand.
+- **The panel stays where it opened** (XR8). It opens above the wrist, or above the left controller, turned to the eyes, and is world-locked from then on: a panel riding one wrist moves under the other hand's finger. It closes when a choice changes the state, when the button is pressed again, or when the player walks away from it.
+- **Where the settings live.** Dominant hand, the two volumes and the language are kept in PlayerPrefs beside the board's anchor, never in the shared save (X1). The volumes take effect with XR10's audio, and the language shows with XR10's XR String Table.
 
 ---
 
@@ -368,7 +374,7 @@ The XR input layer turns hardware events into a small set of calls on `PieceDrop
 - **`PieceDrop` works on the shared `Board`**, through `TryPlace`, `TryErase` and `Legality`. It returns an outcome from section 4.4's table (Placed, Returned, Replaced, Moved, Puffed, Thrown, Refused). The board display plays it and the tutorial coach reads it.
 - **`PieceDrop` owns the edge cases.** The move rollback, "re-place at origin if still legal, else puff", replace, and two hands at once all live in `XR.Rules` and are unit-tested.
 - **Implementations**: XRI direct and near-far interactors with XR Hands on Quest; XRI plus the visionOS spatial pointer on Vision Pro. Meta's hand grab can later be a second Quest implementation.
-- The platform maps, signboard and wrist menu use XRI's UI interaction (poke and ray) against world-space UI Toolkit panels.
+- The platform maps, signboard and wrist menu read the fingertips themselves against world-space UI Toolkit panels. XRI's UI interaction and every ray are switched off at runtime (revised 2026-09-15).
 
 ### 10.5 Packages, scenes and builds
 
@@ -456,7 +462,7 @@ Same rules as the phone work: **no `git commit` until a milestone's *Verified by
 | XR5 | Board in the room | ☑ |
 | XR6 | Tray and grab | ☑ |
 | XR7 | Flow on the platform | ☑ |
-| XR8 | Wrist menu and pause | ☐ |
+| XR8 | Wrist menu and pause | ☑ |
 | XR9 | XR tutorial | ☐ |
 | XR10 | Sound, haptics, language | ☐ |
 | XR11 | Quest release readiness | ☐ |
@@ -484,7 +490,7 @@ Same rules as the phone work: **no `git commit` until a milestone's *Verified by
 - **Merge drift.** `feat/MetaXR` lives apart from `main` for months while the phone keeps changing. Mitigation: the fork rules (10.2) keep XR's changes in its own paths and on the build profile, and `main` is merged in at the start of every milestone so conflicts stay small.
 - **Shared-code drift.** Two teams (or two sessions) changing Core can break each other. Mitigation: shared changes land on `main` first (X25), both suites run on the branch, and XR-only rules stay in `XR.Rules` (X22).
 - **Meta SDKs unavailable on 6.7.** We lose Meta's better hand grab and instant placement. Mitigation: the grab interface (10.4) lets either be added later without touching the rules or board.
-- **Hand-tracking precision at 6 cm pieces.** Grabs at this size can miss. Mitigation: the tray spaces its slots generously, distant grab is always available, the ghost confirms the target before release, and XR6 tunes the hover band and snap on device.
+- **Hand-tracking precision at 6 cm pieces.** Grabs at this size can miss. Mitigation: the tray spaces its slots generously, the ghost confirms the target before release, the handle scales the board up to 9 cm cells, and XR6 tunes the hover band and snap on device.
 - **Direct grab on Vision Pro is not documented for XRI.** Expect custom work in XR12 behind the same interface. Look-and-pinch is the fallback that is documented.
 - **World-space UI Toolkit on Vision Pro Metal mode is unverified.** XR12 checks it first. If it fails, the signboard and wrist menu need a uGUI fallback on Vision Pro only.
 - **Quest performance.** The board is many small meshes (bent track per piece, tiles, decor). Mitigation: XR's own render pipeline asset, and profiling in XR6, not XR11.
