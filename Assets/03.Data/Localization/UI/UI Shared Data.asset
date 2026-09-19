@@ -259,6 +259,14 @@ MonoBehaviour:
     m_Key: tutorial.brief_start
     m_Metadata:
       m_Items: []
+  - m_Id: 296786445983800
+    m_Key: arrival.share
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983801
+    m_Key: arrival.copied
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

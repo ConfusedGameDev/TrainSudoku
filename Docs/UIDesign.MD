@@ -1,6 +1,6 @@
 TSUGI · UI WORK ORDER
 v0.4 · 10 SEP 2026 · main @ 3947585
-STATUS: M22 awaiting human verification · M11–M21 done · progress table in 11.0
+STATUS: M22–M23 awaiting human verification · M11–M21 done · progress table in 11.0
 
 # Station UI — implementation work order
 
@@ -551,7 +551,8 @@ scope — nothing in M11–M21 may grow a dependency on one.
 | M19 | Motion and board re-skin | ☑ |
 | M20 | Translation pass | ☑ |
 | M21 | Tutorial station | ☑ |
-| M22 | Audio layer | ☐ |
+| M22 | Audio layer | ☑ |
+| M23 | Result sharing | ☑ |
 
 **Optional, not scheduled** — planned in 11.1, built only if and when it is called for.
 
@@ -1297,14 +1298,14 @@ screen change can cut, pause that pauses — with **every slot left empty** for 
 **Done when**
 
 - [x] 390 EditMode tests pass, 29 of them new (`AudioLayerTests`, `AudioAssetTests`)
-- [ ] The whole flow runs **silently** with every slot empty: nothing throws, nothing warns, every button clicks
-- [ ] With placeholders wired: the play tracks step down as the clock passes each threshold
-- [ ] Pause stops the music mid-bar, Resume picks it up at the same point, the pause menu still clicks
-- [ ] The button that causes a transition is heard in full; a rapid double-tap cuts the first click, not the second
-- [ ] A rail that satisfies a row and a column dings once; the winning rail does not ding at all
-- [ ] The beat from the final piece, through the train, to the stamp reads as one thing
-- [ ] Mute round-trips through a relaunch
-- [ ] **Verified by human** ☐ &nbsp;&nbsp; date:
+- [x] The whole flow runs **silently** with every slot empty: nothing throws, nothing warns, every button clicks
+- [ ] With placeholders wired: the play tracks step down as the clock passes each threshold — **not exercised:** `Music.asset` holds no clips yet, so this waits for the tracks
+- [ ] Pause stops the music mid-bar, Resume picks it up at the same point, the pause menu still clicks — **not exercised:** `Music.asset` holds no clips yet, so this waits for the tracks
+- [x] The button that causes a transition is heard in full; a rapid double-tap cuts the first click, not the second
+- [x] A rail that satisfies a row and a column dings once; the winning rail does not ding at all
+- [x] The beat from the final piece, through the train, to the stamp reads as one thing
+- [x] Mute round-trips through a relaunch
+- [x] **Verified by human** ☑ &nbsp;&nbsp; date: 19 Sep 2026 (on device)
 
 #### M22 notes
 
@@ -1355,6 +1356,69 @@ screen change can cut, pause that pauses — with **every slot left empty** for 
 4. `Music.asset`: five clips and their five groups. **Import them as Streaming with Preload off** — all five
    sources exist at once.
 5. Drag `Music.asset` into the `Game` object's **Music** field, click **Generate Scene Objects**, save the scene.
+
+---
+
+### M23 · Result sharing
+
+**Goal:** a finished run can be posted into a chat as a Wordle-style card — one line naming the station and the
+run, and a grid of squares showing the board — **without giving the solution away**.
+**Touches:** `Core/ShareCard.cs` (new), `Game/ShareSheet.cs` (new), `00.Plugins/iOS/TrainSudokuShare.mm` (new),
+`Ui/Screens/ArrivalScreen.cs`, the `UI` String Table, the `ja` atlas, `99.Test/EditMode/ShareCardTests.cs` (new).
+
+- [x] `ShareCard` in Core — header, time, stars, grid. Plain C# with no `UnityEngine`, so the format is a unit
+      test rather than something only checkable by pasting into a chat
+- [x] The grid draws **the level's own fixed pieces and nothing else**: green in the body of the board, blue at
+      the two tunnel mouths. It therefore states the puzzle, never the route the player found
+- [x] Keycap emoji (`0️⃣`–`8️⃣`) for the clue numbers — the one numeral form that is emoji-width, so the digits
+      line up with the squares in the clients this actually gets pasted into
+- [x] `ShareSheet` in Game — `UIActivityViewController` on an iOS device, `GUIUtility.systemCopyBuffer` elsewhere
+- [x] `TrainSudokuShare.mm`, iOS-only in its importer, beside `TrainSudokuHaptics.mm`
+- [x] A SHARE button on the arrival card, paired in a row with MAP so the screen gains no height
+- [x] `arrival.share` and `arrival.copied`, filled in for en/ja/es/fr
+- [x] **Re-run Window > TrainSudoku > Rebuild ja Font Atlas** — `シェア` and `コピーしました` are new ja copy, and
+      an un-rebaked atlas draws both as missing-glyph boxes in the Japanese build
+- [ ] **Deferred until the app is accepted: the download links go in the card.** Once Tsugi is live on both
+      stores, the card ends with a link for **iOS and Android** so a reader who has not got the game can act on
+      it — which is the whole point of a shareable result. It is deliberately not in v1: a URL invented before
+      the listings exist is a dead link in every message already sent, and **shared text cannot be recalled**.
+      One line appended in `ShareCard.Build` below the grid, plus its test. Do this when the store records are
+      real, not when they are expected
+
+**Done when**
+
+- [x] The full EditMode suite is green — 409 tests, 0 failures, clean compile
+- [x] A solved board and an untouched one produce the same card, asserted by test
+- [x] Tapping SHARE on a device opens the system sheet; in the Editor it copies and the button reads COPIED
+- [x] A pasted card's digits sit squarely over its squares in Messages
+- [x] **Verified by human** ☑ &nbsp;&nbsp; date: 19 Sep 2026 (on device)
+
+#### M23 notes — why the card is shaped this way
+
+- **The grid is the level, not the play.** The obvious reading of "share your result" is to draw the finished
+  track, and that is exactly what must not ship: the whole thread then has the answer. So the squares come from
+  `LevelData.FixedPieces`, which is what the player was *given*. `SolvingTheBoardDoesNotChangeTheCard` fills
+  every empty cell and asserts the card does not move, which is the invariant stated as a test.
+- **Blue costs nothing.** The tunnel cells always carry a fixed piece (`TunnelPieceBaker`), so marking where the
+  train enters and leaves is a recolour of two squares that were already in the grid — no border ring, no extra
+  row or column. A tunnel cell with no piece stays black: a coloured square means "the level gave you this", and
+  colouring an empty one would claim a given that is not there.
+- **The card carries no translated copy at all.** Station and line names are untranslated proper nouns (D14),
+  `TSUGI` is the product's name, and the rest is digits and symbols — so one build's card is every build's card
+  and there is nothing here for the String Table to hold. **It must never be rendered in a `VisualElement`** —
+  not as a preview, not as a confirmation — or every square in it becomes a missing-glyph box in the ja build.
+  This is the same rule as D13, reached from the other direction.
+- **The clipboard branch is not a stub.** It is the real path in the Editor and on Android and desktop, which is
+  where nearly all of this gets tested. The button becomes its own confirmation there rather than a toast: this
+  screen has no transient-message element, and adding one to confirm something only visible off device would be
+  a poor trade. `Refresh` restores the label, because a scheduled item stops when its element leaves the panel.
+- **When the download links land, they must not cost the card its one nice property.** Nothing on it is
+  translated today, which is why it is identical in all four builds and holds no String Table rows. A *labelled*
+  link — `Download: …`, `ダウンロード: …` — would be the first string on the card needing four locales, and would
+  put translated copy into a grid full of emoji that must never reach a `VisualElement` anyway. **Bare URLs keep
+  the property intact.** Whether that is two lines (iOS and Android) or one short link that redirects on
+  platform is a decision for when the listings exist: two lines are honest and obvious, one is shorter in a chat
+  window and is the thing most games ship. Either way it is appended text, so the grid above it does not move.
 
 ---
 

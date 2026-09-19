@@ -262,6 +262,14 @@ MonoBehaviour:
     m_Localized: "START"
     m_Metadata:
       m_Items: []
+  - m_Id: 296786445983800
+    m_Localized: "SHARE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983801
+    m_Localized: "COPIED"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []
