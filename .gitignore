@@ -105,3 +105,9 @@ InitTestScene*.unity*
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
 /.claude/skills
+
+# Store screenshots captured from the Game view (StoreScreenshots.cs). Build output, not source.
+/StoreScreenshots/
+
+# Simulator Xcode export (BuildScript -simulator). Build output, not source.
+/Builds-Simulator/

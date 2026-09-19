@@ -11,15 +11,34 @@ namespace TrainSudoku.Core
     /// </summary>
     public sealed class SaveData
     {
-        public const int CurrentVersion = 2;
+        public const int CurrentVersion = 3;
 
-        /// <summary>The version this file was read from. A v1 file is rewritten as v2 on the next save.</summary>
+        /// <summary>The version this file was read from. A v1 or v2 file is rewritten as v3 on the next save.</summary>
         public int Version { get; set; } = CurrentVersion;
         public Dictionary<string, double> BestTimes { get; } = new Dictionary<string, double>(StringComparer.Ordinal);
 
         /// <summary>Stars per level id, 1 to 3. Added in version 2; a v1 file has none and they are awarded on load.</summary>
         public Dictionary<string, int> Stars { get; } = new Dictionary<string, int>(StringComparer.Ordinal);
         public Dictionary<string, LevelProgress> InProgress { get; } = new Dictionary<string, LevelProgress>(StringComparer.Ordinal);
+
+        /// <summary>Whether this player owns every station outright. Added in version 3, and <b>true by default</b>.</summary>
+        /// <remarks>
+        /// <b>This records something that is true now so that a later build can still tell.</b> v1 ships paid, so
+        /// everyone who holds a save file bought the whole game. If a later version moves to free-with-a-daily-station
+        /// plus an unlock purchase, Apple does not permit taking content away from someone who already paid — and by
+        /// then there is no way to look at a save file and know whether its owner was an early buyer. Writing the flag
+        /// costs nothing today and cannot be reconstructed later except from original purchase receipts.
+        ///
+        /// <b>An absent flag means true, permanently.</b> A file with no <c>purchasedFullVersion</c> member was written
+        /// by a build that predates the field, and every build that predates it is paid, so the migration is a fact
+        /// rather than a guess. That rule must never be softened later, or the first freemium release silently
+        /// downgrades every existing player.
+        ///
+        /// The default here is true for the same reason, which means <b>the freemium build must set it to false
+        /// explicitly</b> on a save it creates itself rather than leaning on this default. That is the one line whoever
+        /// writes that build has to remember; everything else about the migration is already handled.
+        /// </remarks>
+        public bool PurchasedFullVersion { get; set; } = true;
     }
 
     /// <summary>
@@ -42,6 +61,7 @@ namespace TrainSudoku.Core
             var sb = new StringBuilder();
             // Always the current version: reading a v1 file and writing it back is the migration.
             sb.Append("{\n  \"version\": ").Append(SaveData.CurrentVersion.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\n  \"purchasedFullVersion\": ").Append(data.PurchasedFullVersion ? "true" : "false");
             sb.Append(",\n  \"bestTimes\": {");
             var first = true;
             var ids = new List<string>(data.BestTimes.Keys);
@@ -116,6 +136,13 @@ namespace TrainSudoku.Core
 
                 var result = new SaveData();
                 if (obj.TryGetValue("version", out var version) && version is double v) result.Version = (int)v;
+
+                // Absent means true — the file predates the field and every build that predates it was paid. A
+                // malformed value is also true: entitlement fails open, because wrongly stripping a paying player of
+                // 216 stations is unrecoverable, where wrongly granting them is merely generous.
+                result.PurchasedFullVersion = !obj.TryGetValue("purchasedFullVersion", out var purchased)
+                                              || !(purchased is bool owned)
+                                              || owned;
 
                 if (obj.TryGetValue("bestTimes", out var times))
                 {

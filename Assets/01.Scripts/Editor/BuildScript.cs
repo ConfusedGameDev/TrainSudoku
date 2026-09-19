@@ -34,17 +34,35 @@ namespace TrainSudoku.Editor
         /// </summary>
         private const string DefaultOutputPath = "Builds";
 
+        /// <summary>
+        /// Where a simulator export goes. Deliberately <b>not</b> <see cref="DefaultOutputPath"/>: the export is a
+        /// Replace, so sharing the folder would destroy the real device project every time somebody wanted to look
+        /// at the iPad layout.
+        /// </summary>
+        private const string SimulatorOutputPath = "Builds-Simulator";
+
         /// <summary>The command line writes the outcome here so a shell can poll it; a batchmode build outlives the call.</summary>
         private const string ResultFile = "BuildResult.txt";
 
         [MenuItem("Window/TrainSudoku/Build iOS")]
-        public static void BuildIOSMenu() => BuildIOS();
+        public static void BuildIOSMenu() => Build(false);
 
         /// <summary>
-        /// Command-line entry. Accepts <c>-buildNumber N</c> and <c>-bundleVersion X.Y.Z</c>; without them the
-        /// values already in Player Settings are used, so a careless run cannot silently renumber a release.
+        /// A build that runs in the iOS Simulator rather than on a phone. Its only purpose is looking at the game on
+        /// a screen nobody owns — the 13" iPad, which the App Store demands screenshots of because the export is
+        /// Universal. It is never the build that ships.
         /// </summary>
-        public static void BuildIOS()
+        [MenuItem("Window/TrainSudoku/Build iOS (Simulator)")]
+        public static void BuildIOSSimulatorMenu() => Build(true);
+
+        /// <summary>
+        /// Command-line entry. Accepts <c>-buildNumber N</c>, <c>-bundleVersion X.Y.Z</c> and <c>-simulator</c>;
+        /// without them the values already in Player Settings are used, so a careless run cannot silently renumber a
+        /// release.
+        /// </summary>
+        public static void BuildIOS() => Build(HasFlag("-simulator"));
+
+        private static void Build(bool simulator)
         {
             var summary = new StringBuilder();
             try
@@ -58,11 +76,39 @@ namespace TrainSudoku.Editor
                 // The spec is a portrait game (PRD). An auto-rotating build is a bug that only shows on device.
                 PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
 
+                // Set explicitly on every build, never inherited. sdkVersion is a *persistent* Player Setting, so a
+                // simulator build leaves it flipped behind it: without this line the next device build would quietly
+                // produce a binary that cannot install on a phone and is rejected on upload, with nothing in the
+                // build log saying why. Naming it on both paths is what makes the simulator build safe to run.
+                PlayerSettings.iOS.sdkVersion = simulator ? iOSSdkVersion.SimulatorSDK : iOSSdkVersion.DeviceSDK;
+                summary.AppendLine($"sdk={PlayerSettings.iOS.sdkVersion}");
+
+                // A simulator build has to be arm64, or it cannot be installed on an Apple Silicon Mac — and Unity
+                // defaults this to 0, x86_64. The failure it causes is thoroughly misleading: the export succeeds,
+                // xcodebuild reports BUILD SUCCEEDED, and only `simctl install` objects, with "This app needs to be
+                // updated by the developer to work on this version of iPadOS". The real cause is the line beneath
+                // that one, "Failed to find matching arch". Forcing ARCHS=arm64 on xcodebuild does not rescue it
+                // either, because Unity ships its own prebuilt simulator libraries (baselib.a, lib_burst_generated.a)
+                // carrying only the slice this setting asked for, so the link fails instead of the install.
+                //
+                // NOT through PlayerSettings.SetPropertyInt. That call compiles, runs, throws nothing, and silently
+                // does nothing at all: it no-ops on a property name it does not recognise, and the serialized YAML
+                // key "iOSSimulatorArchitecture" is evidently not the name it wants. A build driven through it came
+                // out x86_64 with the setting still sitting at 0. simulatorSdkArchitecture is the real, typed,
+                // public property.
+                if (simulator) PlayerSettings.iOS.simulatorSdkArchitecture = AppleMobileArchitectureSimulator.ARM64;
+
+                // Read back, never echoed. The first version of this line printed "simulatorArchitecture=arm64"
+                // unconditionally, and that is exactly what hid the silent failure above — a log that states an
+                // intention cannot report a setting that declined to change. Anything here that reports what was
+                // asked for rather than what is true is worse than no log at all.
+                summary.AppendLine($"simulatorArchitecture={PlayerSettings.iOS.simulatorSdkArchitecture}");
+
                 var scenes = EnabledScenes();
                 if (scenes.Length == 0) throw new InvalidOperationException("No enabled scenes in Build Settings.");
 
                 var outputPath = Argument("-outputPath");
-                if (string.IsNullOrEmpty(outputPath)) outputPath = DefaultOutputPath;
+                if (string.IsNullOrEmpty(outputPath)) outputPath = simulator ? SimulatorOutputPath : DefaultOutputPath;
                 summary.AppendLine($"outputTo={outputPath}");
 
                 summary.AppendLine($"version={PlayerSettings.bundleVersion}");
@@ -111,6 +157,15 @@ namespace TrainSudoku.Editor
             foreach (var scene in EditorBuildSettings.scenes)
                 if (scene.enabled && !string.IsNullOrEmpty(scene.path)) scenes.Add(scene.path);
             return scenes.ToArray();
+        }
+
+        /// <summary>Whether a bare <c>-name</c> switch is present on the command line.</summary>
+        private static bool HasFlag(string name)
+        {
+            foreach (var arg in Environment.GetCommandLineArgs())
+                if (string.Equals(arg, name, StringComparison.Ordinal))
+                    return true;
+            return false;
         }
 
         /// <summary>One <c>-name value</c> pair off the command line, or null.</summary>

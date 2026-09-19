@@ -60,6 +60,22 @@ namespace TrainSudoku.Core
             Save();
         }
 
+        /// <summary>
+        /// See <see cref="SaveData.PurchasedFullVersion"/>. The setter writes through like every other change, but
+        /// only when the value actually moves: this is set once in a player's lifetime, and a no-op write on every
+        /// launch would rewrite the save file for nothing.
+        /// </summary>
+        public bool PurchasedFullVersion
+        {
+            get => _data.PurchasedFullVersion;
+            set
+            {
+                if (_data.PurchasedFullVersion == value) return;
+                _data.PurchasedFullVersion = value;
+                Save();
+            }
+        }
+
         public bool TryGetProgress(string levelId, out LevelProgress progress)
         {
             progress = null;

@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support — Tsugi</title>
+<meta name="description" content="Help and contact for Tsugi, a railway puzzle in the spirit of sudoku.">
+<link rel="icon" href="assets/icon-1024.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="wrap masthead">
+  <img class="masthead-mark" src="assets/tsugi-mark.png" alt="">
+  <div class="masthead-text">
+    <span class="masthead-name">Tsugi</span>
+    <span class="masthead-strap">Next Station</span>
+  </div>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/support" aria-current="page">Support</a>
+    <a href="/privacy">Privacy</a>
+  </nav>
+</header>
+
+<main class="wrap">
+
+<section>
+  <h2>Support</h2>
+  <div class="rule"></div>
+
+  <div class="contact prose">
+    <p style="margin-top:0">
+      Something broken, something confusing, or an idea for a line? Write to a real person:
+    </p>
+    <p style="margin-bottom:0">
+      <a href="mailto:confusedgamedevsupport@gmail.com">confusedgamedevsupport@gmail.com</a>
+    </p>
+  </div>
+
+  <div class="prose">
+    <p>
+      Tsugi is made by one person. Replies are not instant, but every message is read. If you are
+      reporting a problem, the two things that help most are your device model and what you were doing
+      when it happened — and, if a board looks wrong, the station name at the top of the screen.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>Questions</h2>
+  <div class="rule"></div>
+
+  <div class="prose">
+    <h3>Where is my progress saved?</h3>
+    <p>
+      On your device, and nowhere else. Tsugi has no account and no server — your times and your
+      half-finished boards live in a single file inside the app. That means nothing to sign into, and
+      it also means <strong>deleting the app deletes your progress</strong>. It is included in an
+      encrypted iPhone or iTunes backup, so a restore brings it back.
+    </p>
+
+    <h3>I am stuck. Where is the hint button?</h3>
+    <p>
+      There isn't one, on purpose. Every board in Tsugi has been checked by solver to have exactly one
+      solution, and every one of them can be reached by deduction alone — there is never a point where
+      you have to guess and hope. If you are stuck, the piece you need is somewhere you have not looked
+      yet. Try reading a row or column whose number is nearly satisfied: those constrain hardest.
+    </p>
+
+    <h3>Can I erase a piece?</h3>
+    <p>
+      Press and hold it. A ring fills around the piece, and when it completes the piece lifts. Track
+      that came with the board is fixed and cannot be erased — that is what makes it a given.
+    </p>
+
+    <h3>What do the coloured squares mean when I tap a cell?</h3>
+    <p>
+      They tell you what that side is allowed to do. <strong>Green</strong>: you may connect this way.
+      <strong>Red</strong>: you may not — there is a wall or a piece that does not point back at you.
+      <strong>The line's own colour</strong>: you <em>must</em> connect this way, because a neighbour
+      or a tunnel is already pointing at this cell.
+    </p>
+
+    <h3>How do I open the next line?</h3>
+    <p>
+      Earn at least one star at every station on the line you are on. The next line then joins the
+      network map.
+    </p>
+
+    <h3>How do I reset my progress?</h3>
+    <p>
+      Delete and reinstall the app. There is deliberately no in-game "wipe everything" button, because
+      an accidental tap on one would be unrecoverable.
+    </p>
+
+    <h3>Does Tsugi work offline?</h3>
+    <p>
+      Always. The app has no networking code in it whatsoever, so there is nothing to lose when the
+      signal goes — which is convenient, given where most of it gets played.
+    </p>
+
+    <h3>Is it on Android?</h3>
+    <p>
+      Not yet. iPhone and iPad first; Android is planned.
+    </p>
+  </div>
+</section>
+
+</main>
+
+<footer class="wrap">
+  <span>© 2026 GorillaGonzalez</span>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/privacy">Privacy</a>
+  </nav>
+</footer>
+
+</body>
+</html>

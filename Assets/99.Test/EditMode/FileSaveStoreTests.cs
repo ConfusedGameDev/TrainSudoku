@@ -55,7 +55,7 @@ namespace TrainSudoku.Tests
         }
 
         [Test]
-        public void AVersionOneFileOnDiskStillLoadsAndIsRewrittenAsVersionTwo()
+        public void AVersionOneFileOnDiskStillLoadsAndIsRewrittenAsTheCurrentVersion()
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_path));
             File.WriteAllText(_path, "{\"version\":1,\"bestTimes\":{\"first\":42.5},\"inProgress\":{}}");
@@ -68,7 +68,10 @@ namespace TrainSudoku.Tests
 
             // Any write migrates the file.
             store.SetStars("first", 2);
-            StringAssert.Contains("\"version\": 2", File.ReadAllText(_path));
+            var migrated = File.ReadAllText(_path);
+            StringAssert.Contains("\"version\": 3", migrated);
+            StringAssert.Contains("\"purchasedFullVersion\": true", migrated,
+                "migrating a pre-flag file must write the entitlement down, not leave it implied");
 
             var reopened = Open();
             Assert.IsTrue(reopened.TryGetStars("first", out var stars));

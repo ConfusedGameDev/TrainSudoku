@@ -1,0 +1,259 @@
+/* Tsugi — station signage, on paper.
+   Every colour here is a token from Assets/01.Scripts/Game/Ui/Palette.cs, so the site and the game
+   cannot drift apart. If the game is re-skinned, re-read that file and change these eight values. */
+
+:root {
+  --paper: #f4f5f2;
+  --ink: #1f2321;
+  --ink-dim: #5a615d;
+  --closed: #9aa3a0;
+  --closed-light: #b9c0bc;
+  --led: #ffb020;
+  --led-ground: #0d0f0e;
+  --stop: #d0342c;
+
+  --measure: 42rem;
+  --gutter: clamp(1.25rem, 5vw, 3rem);
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 17px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+img { max-width: 100%; display: block; }
+
+a { color: var(--ink); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+a:hover { color: var(--stop); }
+
+.wrap {
+  max-width: 62rem;
+  margin: 0 auto;
+  padding-inline: var(--gutter);
+}
+
+.prose { max-width: var(--measure); }
+
+/* ---- The masthead card: TSUGI over NEXT STATION, the mark beside it.
+       This is the game's own concourse sign, and the kana in the mark is art, never a label. ---- */
+
+.masthead {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-block: 1.75rem;
+  border-bottom: 2px solid var(--ink);
+}
+
+.masthead-mark {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border-radius: 50%;
+}
+
+.masthead-text { display: flex; flex-direction: column; line-height: 1; }
+
+.masthead-name {
+  font-family: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 2rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.masthead-strap {
+  font-family: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-top: 0.4rem;
+}
+
+.masthead nav {
+  margin-left: auto;
+  display: flex;
+  gap: 1.25rem;
+  font-family: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.masthead nav a { text-decoration: none; color: var(--ink-dim); }
+.masthead nav a:hover,
+.masthead nav a[aria-current="page"] { color: var(--ink); }
+
+/* ---- Hero ---- */
+
+.hero { padding-block: clamp(2.5rem, 8vw, 4.5rem); }
+
+.hero h1 {
+  font-family: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: clamp(2.1rem, 7vw, 3.4rem);
+  line-height: 1.08;
+  letter-spacing: -0.005em;
+  margin: 0 0 1.25rem;
+  max-width: 18ch;
+}
+
+.hero p {
+  font-size: clamp(1.05rem, 2.4vw, 1.2rem);
+  color: var(--ink-dim);
+  max-width: var(--measure);
+  margin: 0 0 1.5rem;
+}
+
+/* The LED strip: the one piece of the game's signage that glows. */
+.led {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  background: var(--led-ground);
+  color: var(--led);
+  font-family: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  padding: 0.55rem 1.1rem;
+  border-radius: 2px;
+}
+
+.led::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--led);
+  box-shadow: 0 0 8px var(--led);
+}
+
+/* ---- Sections ---- */
+
+section { padding-block: clamp(2rem, 6vw, 3.5rem); }
+
+h2 {
+  font-family: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: clamp(1.4rem, 3.5vw, 1.8rem);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0 0 0.35rem;
+}
+
+/* The rule under a header is the signage device that replaced the stacked kana pair (D5). */
+h2 + .rule {
+  height: 2px;
+  background: var(--ink);
+  width: 3rem;
+  margin-bottom: 1.5rem;
+}
+
+h3 {
+  font-family: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  margin: 2rem 0 0.4rem;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1.5rem;
+}
+
+.card {
+  border-top: 2px solid var(--ink);
+  padding-top: 1rem;
+}
+
+.card h3 { margin-top: 0; }
+.card p { margin: 0; color: var(--ink-dim); }
+
+/* ---- Shots ---- */
+
+.shots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1.25rem;
+}
+
+.shots img {
+  width: 100%;
+  border: 1px solid var(--closed-light);
+  border-radius: 14px;
+}
+
+/* A slot with no screenshot in it yet. Deliberately obvious rather than an empty gap. */
+.shot-pending {
+  aspect-ratio: 1320 / 2868;
+  border: 1px dashed var(--closed);
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: var(--closed);
+  font-family: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+
+/* ---- Prose bits for support / privacy ---- */
+
+.prose p, .prose li { color: var(--ink-dim); }
+.prose strong { color: var(--ink); }
+.prose ul { padding-left: 1.1rem; }
+.prose li { margin-bottom: 0.4rem; }
+
+.meta {
+  font-family: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  color: var(--closed);
+}
+
+.contact {
+  border: 2px solid var(--ink);
+  padding: 1.25rem 1.5rem;
+  margin-block: 1.5rem;
+  max-width: var(--measure);
+}
+
+.contact a { font-weight: 600; }
+
+/* ---- Footer ---- */
+
+footer {
+  border-top: 2px solid var(--ink);
+  margin-top: 2rem;
+  padding-block: 2rem 3rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  align-items: baseline;
+  font-size: 0.9rem;
+  color: var(--ink-dim);
+}
+
+footer nav { display: flex; gap: 1.25rem; margin-left: auto; }
+
+@media (max-width: 34rem) {
+  .masthead { flex-wrap: wrap; }
+  .masthead nav { margin-left: 0; width: 100%; }
+  footer nav { margin-left: 0; width: 100%; }
+}

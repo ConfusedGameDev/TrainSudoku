@@ -23,6 +23,13 @@ namespace TrainSudoku.Core
         bool TryGetProgress(string levelId, out LevelProgress progress);
         void SetProgress(string levelId, LevelProgress progress);
         void ClearProgress(string levelId);
+
+        /// <summary>
+        /// Whether the player owns every station outright — true for anyone who has run a paid build. Unlike
+        /// everything else here it is not keyed by level, because it is a fact about the player, not the progress.
+        /// See <see cref="SaveData.PurchasedFullVersion"/> for why it is recorded now rather than derived later.
+        /// </summary>
+        bool PurchasedFullVersion { get; set; }
     }
 
     public sealed class InMemorySaveStore : ISaveStore
@@ -42,6 +49,9 @@ namespace TrainSudoku.Core
         }
 
         public void SetStars(string levelId, int stars) => _stars[levelId] = stars;
+
+        /// <summary>True by default, matching <see cref="SaveData.PurchasedFullVersion"/>: the paid build is what ships.</summary>
+        public bool PurchasedFullVersion { get; set; } = true;
 
         public bool TryGetProgress(string levelId, out LevelProgress progress) => _progress.TryGetValue(levelId, out progress);
 
