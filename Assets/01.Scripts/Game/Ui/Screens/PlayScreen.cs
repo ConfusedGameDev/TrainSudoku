@@ -223,6 +223,17 @@ namespace TrainSudoku.Game
             _roundel.Number = Flow.CurrentStationIndex + 1;
             _roundel.State = StationState.Current;
             _pause.SetEnabled(state == GameState.Play);
+
+            // The hint is a Play-only control, and taking it away elsewhere is what keeps it out of the arrival card.
+            // This screen deliberately stays up through Pause, the train run and Arrival so the board never loses its
+            // frame — but the hint hangs off the camera strip's bottom right, and on a 4:3 iPad the arrival card is
+            // proportionally taller than on a phone, so its corner reaches that spot and the disabled button shows
+            // through it. Gating by state is what the pause button and the coach either side of this line already do,
+            // and unlike resizing the card it costs no height, which is the one thing that card has none to spare.
+            // Hidden rather than merely disabled: it is already disabled, and a dimmed control under a modal card
+            // still reads as a control.
+            _hint.style.display = state == GameState.Play ? DisplayStyle.Flex : DisplayStyle.None;
+
             SetCoachVisible(state == GameState.Play);
             _coach.Refresh();
             _briefing.Refresh();

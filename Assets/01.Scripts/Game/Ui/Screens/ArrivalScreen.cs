@@ -49,6 +49,9 @@ namespace TrainSudoku.Game
         private const float StampRest = -4f;
         private const float StampEntryTilt = -22f;
 
+        /// <summary>How long the share button reads COPIED before going back to its own label, in milliseconds.</summary>
+        private const long CopiedDuration = 1600;
+
         private Label _title;
         private Label _stationName;
         private Label _thisRun;
@@ -58,6 +61,7 @@ namespace TrainSudoku.Game
         private VisualElement _stamp;
         private Label _stampText;
         private Button _next;
+        private Button _share;
 
         public override bool IsVisibleIn(GameState state) => state == GameState.Win;
 
@@ -114,7 +118,44 @@ namespace TrainSudoku.Game
             Signage.Margins(retry, 0f, 0f, 0f, 18f);
             card.Add(retry);
 
-            card.Add(Signage.LocalizedButton("arrival.map", AudioCue.MapOpen, () => Flow.ShowLevelSelect()));
+            // Share and map go side by side rather than stacked, so the fourth button costs the card no height.
+            // A button is 132 px tall before margins, and this card already carries a title, a station name, the
+            // stars, the stamp and two read-outs; another full-width row starts pushing the stamp off a short screen.
+            _share = Signage.LocalizedButton("arrival.share", AudioCue.UiClick, Share);
+            _share.style.flexGrow = 1f;
+            _share.style.marginRight = 18f;
+
+            var map = Signage.LocalizedButton("arrival.map", AudioCue.MapOpen, () => Flow.ShowLevelSelect());
+            map.style.flexGrow = 1f;
+
+            var ways = Signage.Row(_share, map);
+            ways.style.alignItems = Align.Stretch;
+            card.Add(ways);
+        }
+
+        /// <summary>
+        /// Hands the run's card to the system share sheet, or to the clipboard where there is no sheet.
+        /// </summary>
+        /// <remarks>
+        /// The two need different things said. A sheet is on screen and speaks for itself; a copy is invisible, so
+        /// the button reports it by becoming its own confirmation for a moment. That is deliberately not a toast:
+        /// this screen has no transient-message element, and adding one — plus its USS, its motion and its two
+        /// string rows — to confirm something the player only sees off device would be a poor trade.
+        ///
+        /// The label is restored by <see cref="Refresh"/> as well as by the timer, because a scheduled item stops
+        /// when its element leaves the panel: a player who taps share and then leaves would otherwise come back to
+        /// a button still reading COPIED.
+        /// </remarks>
+        private void Share()
+        {
+            var result = Flow.LastResult;
+            if (!result.HasValue) return;
+
+            if (ShareSheet.ShareResult(Game.CurrentLevel, Game.CurrentLine, result.Value)
+                != ShareSheet.Delivery.Clipboard) return;
+
+            _share.text = Signage.Text("arrival.copied");
+            _share.schedule.Execute(() => _share.text = Signage.Text("arrival.share")).StartingIn(CopiedDuration);
         }
 
         /// <summary>
@@ -287,6 +328,9 @@ namespace TrainSudoku.Game
 
             // At a terminus there is no next station: NextLevel routes to the network instead, so say so.
             _next.text = Signage.Text(Flow.IsLineComplete ? "arrival.to_network" : "arrival.next");
+
+            // Back to its resting label, in case the last arrival left it mid-confirmation.
+            _share.text = Signage.Text("arrival.share");
         }
     }
 }

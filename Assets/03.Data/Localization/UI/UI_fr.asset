@@ -262,6 +262,14 @@ MonoBehaviour:
     m_Localized: "COMMENCER"
     m_Metadata:
       m_Items: []
+  - m_Id: 296786445983800
+    m_Localized: "PARTAGER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 296786445983801
+    m_Localized: "COPI\u00C9"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

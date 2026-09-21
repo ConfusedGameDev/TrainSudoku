@@ -56,6 +56,12 @@ namespace TrainSudoku.Game
         /// <summary>Tap radius in map units: half the 150 node pitch, so two neighbours never both answer a tap.</summary>
         private const float HitMapRadius = 75f;
 
+        /// <summary>
+        /// The interchange ring's radius as a share of the stroke. One constant because the ring is both drawn and
+        /// tapped at this size — the tap target is the circle the player can see, and two expressions would drift.
+        /// </summary>
+        private const float RingRadiusShare = 0.95f;
+
         private NetworkDefinition _network;
         private Func<int, bool> _unlocked;
         private float _padding = -1f;
@@ -256,6 +262,9 @@ namespace TrainSudoku.Game
         /// The transform in force this frame: the fit over the revealed lines, or — while a pan-out runs — a point
         /// between that and the fit over the smaller set it grew from.
         /// </summary>
+        /// <summary>The route's stroke at a given fit. Shared by the draw and the hit test so the two agree.</summary>
+        private float StrokeWidth(float scale) => Mathf.Max(MinStrokePixels, DesignStroke * scale);
+
         private bool TryGetTransform(out Vector2 offset, out float scale)
         {
             offset = Vector2.zero;
@@ -319,7 +328,7 @@ namespace TrainSudoku.Game
             if (!TryGetTransform(out var offset, out var scale)) return;
 
             var painter = context.painter2D;
-            var activeWidth = Mathf.Max(MinStrokePixels, DesignStroke * scale);
+            var activeWidth = StrokeWidth(scale);
             var inactiveWidth = activeWidth * 0.79f;   // section 6: 26-30 active against 22 inactive
 
             foreach (var index in Revealed())
@@ -418,13 +427,13 @@ namespace TrainSudoku.Game
                 var centre = offset + a.MapNodes[interchange.nodeA] * scale;
                 painter.fillColor = Palette.Paper;
                 painter.BeginPath();
-                painter.Arc(centre, strokeWidth * 0.95f, 0f, 360f);
+                painter.Arc(centre, strokeWidth * RingRadiusShare, 0f, 360f);
                 painter.Fill();
 
                 painter.strokeColor = Palette.Ink;
                 painter.lineWidth = strokeWidth * 0.4f;
                 painter.BeginPath();
-                painter.Arc(centre, strokeWidth * 0.95f, 0f, 360f);
+                painter.Arc(centre, strokeWidth * RingRadiusShare, 0f, 360f);
                 painter.Stroke();
             }
         }
@@ -538,9 +547,56 @@ namespace TrainSudoku.Game
             painter.Stroke();
         }
 
+        /// <summary>
+        /// The line a tap at <paramref name="point"/> changes onto, or -1 for a tap on no ring. An interchange ring
+        /// is a junction between exactly two lines, so "the other one" is well defined, and it is always
+        /// <c>lineB</c>: the layout hangs each new line off a node of an older one, writing the parent as
+        /// <c>lineA</c> and the new line as <c>lineB</c> with <c>nodeB</c> 0, and every shipped entry holds to it.
+        /// </summary>
+        /// <remarks>
+        /// A ring whose newer line is locked answers -1 rather than swallowing the tap: the caller then falls
+        /// through to the ordinary node test, which hands back the line the ring sits on. That is the behaviour the
+        /// ring had before it was tappable, so no tap on the map is ever dead.
+        ///
+        /// The fit is passed in rather than read, so the rule can be exercised without a laid-out panel.
+        /// </remarks>
+        public int InterchangeAt(Vector2 point, Vector2 offset, float scale)
+        {
+            if (_network == null) return -1;
+
+            var revealed = Revealed();
+            var radius = Mathf.Max(MinHitPixels, StrokeWidth(scale) * RingRadiusShare);
+            foreach (var interchange in _network.Interchanges)
+            {
+                // The same condition the ring is drawn under: a ring that is not on screen cannot be tapped.
+                if (!revealed.Contains(interchange.lineA) || !revealed.Contains(interchange.lineB)) continue;
+
+                var a = _network.Line(interchange.lineA);
+                if (a == null || interchange.nodeA < 0 || interchange.nodeA >= a.MapNodes.Count) continue;
+
+                var target = Mathf.Max(interchange.lineA, interchange.lineB);
+                if (_unlocked != null && !_unlocked(target)) continue;
+
+                if (Vector2.Distance(offset + a.MapNodes[interchange.nodeA] * scale, point) <= radius) return target;
+            }
+
+            return -1;
+        }
+
         private void OnPointerUp(PointerUpEvent evt)
         {
             if (LineClicked == null || !TryGetTransform(out var offset, out var scale)) return;
+
+            // Rings first. Both lines have a node in the same place, so the node test below cannot tell them apart —
+            // it breaks the tie towards the lower index, which is the parent. That is what made tapping a junction
+            // open the line you were already looking at instead of the one it leads to.
+            var change = InterchangeAt(evt.localPosition, offset, scale);
+            if (change >= 0)
+            {
+                evt.StopPropagation();
+                LineClicked(change);
+                return;
+            }
 
             var best = -1;
             var bestDistance = float.MaxValue;

@@ -399,11 +399,15 @@ namespace TrainSudoku.Game
             if (sole >= 0 && Flow.IsLineUnlocked(sole)) Flow.ShowLineMap(sole);
         }
 
-        /// <summary>Straight to the station the player is up to. Both hops are legal from the menu.</summary>
+        /// <summary>
+        /// Straight to the station the player is up to, wherever in the network that is. Both hops are legal from
+        /// the menu. The unlock check is the one the line map makes before the same call: <c>StartLevel</c> throws on
+        /// a locked index, and this target is no longer guaranteed to sit on the line the screen is showing.
+        /// </summary>
         private void BoardNow()
         {
             var index = Game.NextStationIndex();
-            if (index < 0) return;
+            if (index < 0 || !Flow.IsUnlocked(index)) return;
             Flow.ShowLevelSelect();
             Flow.StartLevel(index);
         }

@@ -165,13 +165,11 @@ namespace TrainSudoku.Game
             return -1;
         }
 
-        /// <summary>The same, as a flat index, for the concourse's one button.</summary>
-        public int NextStationIndex()
-        {
-            if (Flow == null) return -1;
-            var station = NextStationOnLine(Flow.SelectedLineIndex);
-            return station < 0 ? -1 : Flow.Layout.FlatIndex(Flow.SelectedLineIndex, station);
-        }
+        /// <summary>
+        /// Where the concourse's one button goes: the station the player is up to <b>anywhere in the network</b>,
+        /// not on the selected line alone. The flow owns the answer because unlocking is its rule.
+        /// </summary>
+        public int NextStationIndex() => Flow != null ? Flow.NextStationIndex : -1;
 
         /// <summary>True when every generated object exists and all seven screens are present.</summary>
         public bool IsGenerated
@@ -314,6 +312,11 @@ namespace TrainSudoku.Game
                 index >= 0 && index < _flatLevels.Count && _flatLevels[index] != null ? _flatLevels[index].StarTimes : null;
             Flow.AwardMissingStars();
 
+            // Then point the menu at the line the player is actually on. It has to follow the migration above,
+            // because stars are what the answer is derived from, and precede the colour publish below, because the
+            // line whose colour that is comes from this.
+            Flow.SelectResumeLine();
+
             foreach (var screen in screens)
             {
                 screen.Bind(this);
@@ -325,6 +328,7 @@ namespace TrainSudoku.Game
             {
                 if (shell != null) shell.SetLineColour(CurrentLine.Color);
                 BoardMaterials.SetLineColour(CurrentLine.Color);
+                TrainMaterials.SetLineColour(CurrentLine.Color);
             }
 
             boardView.Configure(trackAssets);
@@ -426,12 +430,13 @@ namespace TrainSudoku.Game
         private void ApplyState(GameState state)
         {
             // The loop is deliberately unchanged from the uGUI version: show, then refresh what is showing.
-            // The line's colour goes to both halves of the game: the shell tints the screens, the board tints its
-            // fixed pieces and forced markers.
+            // The line's colour goes to every part of the game: the shell tints the screens, the board tints its
+            // fixed pieces and forced markers, and the train wears it on its body panels.
             if (CurrentLine != null)
             {
                 if (shell != null) shell.SetLineColour(CurrentLine.Color);
                 BoardMaterials.SetLineColour(CurrentLine.Color);
+                TrainMaterials.SetLineColour(CurrentLine.Color);
             }
 
             foreach (var screen in screens)

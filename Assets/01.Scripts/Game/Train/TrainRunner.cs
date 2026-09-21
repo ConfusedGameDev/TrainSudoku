@@ -178,6 +178,7 @@ namespace TrainSudoku.Game
                 car.transform.SetParent(cars, false);
                 car.transform.localScale = Vector3.one * (assets != null ? assets.ModelScale : 1f);
                 foreach (var collider in car.GetComponentsInChildren<Collider>()) Destroy(collider);
+                TintBody(car);
                 if (i == 0) FitDestinationPlate(car.transform);
                 _cars.Add(car.transform);
                 _renderers.Add(car.GetComponentsInChildren<Renderer>());
@@ -207,6 +208,36 @@ namespace TrainSudoku.Game
             text.color = Palette.Led;
             go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
             _plate = go.transform;
+        }
+
+        /// <summary>
+        /// Puts the active line's colour on the car's body panels. The body is found by <b>material reference</b>,
+        /// never by slot index: a car is three renderers — the shell and two bogies — and which slot the body sits
+        /// in is whatever the FBX importer wrote, so an index would repaint the black trim after a re-import.
+        /// Everything else the model wears is left exactly as authored, and a train with no
+        /// <see cref="TrainAssets.BodyMaterial"/> is left alone entirely.
+        /// </summary>
+        private void TintBody(GameObject car)
+        {
+            var source = assets != null ? assets.BodyMaterial : null;
+            if (source == null) return;
+            var tinted = TrainMaterials.Body(source);
+            if (tinted == null) return;
+
+            foreach (var renderer in car.GetComponentsInChildren<Renderer>())
+            {
+                // sharedMaterials hands back a copy, so the swap only lands when the array is assigned back.
+                var slots = renderer.sharedMaterials;
+                var changed = false;
+                for (var i = 0; i < slots.Length; i++)
+                {
+                    if (slots[i] != source) continue;
+                    slots[i] = tinted;
+                    changed = true;
+                }
+
+                if (changed) renderer.sharedMaterials = slots;
+            }
         }
 
         /// <summary>Boxy stand-in cars until the kit models are assigned in <see cref="TrainAssets"/>.</summary>

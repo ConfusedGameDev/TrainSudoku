@@ -6553,6 +6553,7 @@ MonoBehaviour:
   levels: {fileID: 11400000, guid: d42e64ff98282048f5e39238411cabde, type: 2}
   inputActions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   audioCues: {fileID: 11400000, guid: dbe504bbcd3a8ba712d0f49adb6895e3, type: 2}
+  music: {fileID: 0}
   trackAssets: {fileID: 11400000, guid: 847a2bad6fef7129273ec8edecc95225, type: 2}
   trainAssets: {fileID: 11400000, guid: dd8f5904bbe9a055f436b2b701c9254a, type: 2}
   unlockAllLevelsInEditor: 0
@@ -6562,6 +6563,7 @@ MonoBehaviour:
   shell: {fileID: 808086891}
   eventSystem: {fileID: 2141526637}
   audioPlayer: {fileID: 1222513257}
+  musicPlayer: {fileID: 0}
   boardCamera: {fileID: 330585548}
   boardView: {fileID: 1976260235}
   trainRunner: {fileID: 1719074692}
@@ -6576,6 +6578,63 @@ MonoBehaviour:
   panelSettings: {fileID: 11400000, guid: 653221ebd0f2845b0bb3bb85a9f979d7, type: 2}
   tokenSheet: {fileID: 7433441132597879392, guid: 29ef5a2e4942345e49338873dc38309e, type: 3}
   componentSheet: {fileID: 7433441132597879392, guid: fc4a2723385f04ec9ba9aa8fafed89aa, type: 3}
+--- !u!1001 &1814925907
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -7.60778
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.45
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -1.33173
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
+      propertyPath: m_Name
+      value: E235_MidCar
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 672e880671bfcf844869b76135a5dd24, type: 3}
 --- !u!1 &1824135370
 GameObject:
   m_ObjectHideFlags: 0
@@ -7637,3 +7696,4 @@ SceneRoots:
   - {fileID: 330585546}
   - {fileID: 410087041}
   - {fileID: 832575519}
+  - {fileID: 1814925907}

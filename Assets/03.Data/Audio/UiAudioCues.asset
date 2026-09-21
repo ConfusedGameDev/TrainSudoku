@@ -54,7 +54,7 @@ MonoBehaviour:
     output: {fileID: -2037384362215535754, guid: 2bf94819be37f4dc69d2a237f2caab5e, type: 2}
     holdThroughTransition: 0
   - cue: 8
-    clip: {fileID: 8300000, guid: 18973115e9feadb40a83dbba1db421b1, type: 3}
+    clip: {fileID: 8300000, guid: 788f438e15cb3cc488d97e79bd45ad33, type: 3}
     volume: 0.6
     output: {fileID: -2037384362215535754, guid: 2bf94819be37f4dc69d2a237f2caab5e, type: 2}
     holdThroughTransition: 0

@@ -153,6 +153,50 @@ namespace TrainSudoku.Core
         /// <summary>True when the level was left unfinished and selecting it will continue that attempt.</summary>
         public bool HasInProgress(int index) => index >= 0 && index < LevelCount && Progress.TryGetInProgress(_levelIds[index], out _);
 
+        /// <summary>
+        /// Where "board now" goes: the first station anywhere in the network the player has not cleared, or the last
+        /// one they can reach once everything is. Never -1 while there are levels, because station 0 is always open —
+        /// which is what keeps the concourse's one button live.
+        /// </summary>
+        /// <remarks>
+        /// The walk runs upwards from 0 rather than down from the furthest line, and the two agree: line <i>n+1</i>
+        /// only opens once every station of line <i>n</i> carries a star, so the first unstarred station is always on
+        /// the furthest line the player has reached. Stations unlock on a best time and lines on stars; the two stay
+        /// in step because <see cref="ProgressTracker.RecordCompletion"/> writes both and <see cref="AwardMissingStars"/>
+        /// repairs a version 1 save that has only the time. The line gate is belt-and-braces for the case where they
+        /// ever part company, and it is what makes the editor's per-line override behave.
+        /// </remarks>
+        public int NextStationIndex
+        {
+            get
+            {
+                var last = -1;
+                for (var i = 0; i < LevelCount; i++)
+                {
+                    if (!IsUnlocked(i) || !IsLineUnlocked(_layout.LineOf(i))) break;
+                    last = i;
+                    if (Progress.GetStars(_levelIds[i]) == 0) return i;
+                }
+
+                return last;
+            }
+        }
+
+        /// <summary>
+        /// Points the menu at the line the player is actually on. Called once, after the save file has been read.
+        /// </summary>
+        /// <remarks>
+        /// Without it <see cref="SelectedLineIndex"/> sits at 0 for the whole session unless a map is opened, because
+        /// nothing else writes it but <see cref="ShowLineMap"/> and <see cref="Begin"/> and it is not persisted. A
+        /// player who has finished the first line would be shown a finished line, a dead board button and the wrong
+        /// colour, with a detour through the map as the only way out of it.
+        /// </remarks>
+        public void SelectResumeLine()
+        {
+            var line = _layout.LineOf(NextStationIndex);
+            if (line >= 0) SelectedLineIndex = line;
+        }
+
         public void Tick(double deltaSeconds)
         {
             Timer.Tick(deltaSeconds);
@@ -172,6 +216,11 @@ namespace TrainSudoku.Core
         public void ShowMainMenu()
         {
             Require(GameState.LevelSelect, GameState.Network);
+            // The concourse is built entirely out of SelectedLineIndex — name, terminus pair, progress strip, star
+            // count, colour — while its one button goes wherever the player is up to, which may be a line they have
+            // never opened a map for. Re-seeding on the way in is what keeps the chrome and the button naming the
+            // same line, including after a terminus has sent the run back to the network.
+            SelectResumeLine();
             Transition(GameState.MainMenu);
         }
 

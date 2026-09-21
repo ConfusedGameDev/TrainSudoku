@@ -211,6 +211,96 @@ namespace TrainSudoku.Tests
             Assert.AreEqual(0, _flow.AwardMissingStars(), "and it is idempotent");
         }
 
+        // ---- where "board now" goes ----
+
+        /// <summary>Clears every station of line 0 without the editor aid, the way the screens do it.</summary>
+        private void ClearFirstLine()
+        {
+            _flow.ShowNetwork();
+            _flow.ShowLineMap(0);
+            _flow.StartLevel(0);
+            _flow.CompleteLevel();
+            _flow.FinishTrainRun();
+            _flow.NextLevel();
+            _flow.CompleteLevel();
+            _flow.FinishTrainRun();
+        }
+
+        [Test]
+        public void BoardNowStartsAtTheFirstStationWhenNothingIsCleared()
+        {
+            Assert.AreEqual(0, _flow.NextStationIndex);
+            _flow.SelectResumeLine();
+            Assert.AreEqual(0, _flow.SelectedLineIndex);
+        }
+
+        /// <summary>
+        /// The regression this was written for: with line 0 finished, the concourse read line 0, found nothing left
+        /// to play on it and greyed its one button out, so the only way to line 1 was through the map.
+        /// </summary>
+        [Test]
+        public void BoardNowCrossesToTheNextLineOnceTheFirstIsCleared()
+        {
+            ClearFirstLine();
+
+            Assert.AreEqual(2, _flow.NextStationIndex, "b1: the first station of the line that just opened");
+            Assert.IsTrue(_flow.IsUnlocked(_flow.NextStationIndex), "and StartLevel will accept it");
+
+            _flow.SelectResumeLine();
+            Assert.AreEqual(1, _flow.SelectedLineIndex, "so the menu names and colours that line too");
+        }
+
+        [Test]
+        public void BoardNowNeverGoesDeadWhenEverythingIsCleared()
+        {
+            ClearFirstLine();
+            _flow.ShowNetwork();
+            _flow.ShowLineMap(1);
+            _flow.StartLevel(2);
+            _flow.CompleteLevel();
+            _flow.FinishTrainRun();
+            _flow.NextLevel();
+            _flow.CompleteLevel();
+            _flow.FinishTrainRun();
+
+            Assert.AreEqual(3, _flow.NextStationIndex, "the last station the player can reach, not -1");
+            Assert.IsTrue(_flow.IsUnlocked(_flow.NextStationIndex));
+        }
+
+        /// <summary>
+        /// The concourse is rebuilt out of the selected line, so arriving there re-seeds it. Without this, a player
+        /// who has just finished line 0 lands on a concourse still naming and colouring the finished line while its
+        /// board button points at line 1 — the chrome and the button disagreeing about where the player is.
+        /// </summary>
+        [Test]
+        public void ComingBackToTheConcourseFollowsTheResumeLine()
+        {
+            ClearFirstLine();
+
+            // a2 is the terminus, so the run goes back to the network; from there, back to the concourse.
+            _flow.NextLevel();
+            Assert.AreEqual(GameState.Network, _flow.State);
+            _flow.ShowMainMenu();
+
+            Assert.AreEqual(1, _flow.SelectedLineIndex, "the line the board button is pointing at");
+        }
+
+        [Test]
+        public void BoardNowStopsAtTheFurthestUnlockedStation()
+        {
+            _flow.ShowNetwork();
+            _flow.ShowLineMap(0);
+            _flow.StartLevel(0);
+            _flow.CompleteLevel();
+            _flow.FinishTrainRun();
+
+            Assert.AreEqual(1, _flow.NextStationIndex, "a2 is next; b1 is still behind a locked line");
+            Assert.IsFalse(_flow.IsLineUnlocked(1));
+
+            _flow.SelectResumeLine();
+            Assert.AreEqual(0, _flow.SelectedLineIndex);
+        }
+
         [Test]
         public void WithNoLayoutEveryLevelIsOneLine()
         {

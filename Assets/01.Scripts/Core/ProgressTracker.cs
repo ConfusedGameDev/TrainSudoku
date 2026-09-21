@@ -39,6 +39,17 @@ namespace TrainSudoku.Core
             _store = store ?? throw new ArgumentNullException(nameof(store));
         }
 
+        /// <summary>
+        /// Whether the player owns every station outright. See <see cref="SaveData.PurchasedFullVersion"/>: nothing in
+        /// v1 reads this, because v1 is paid and it is true for everyone. It is here so the build that needs it does
+        /// not also have to add it.
+        /// </summary>
+        public bool PurchasedFullVersion
+        {
+            get => _store.PurchasedFullVersion;
+            set => _store.PurchasedFullVersion = value;
+        }
+
         public bool TryGetBestTime(string levelId, out double seconds) => _store.TryGetBestTime(levelId, out seconds);
 
         /// <summary>The first level is always unlocked; level N unlocks once level N-1 has a best time.</summary>

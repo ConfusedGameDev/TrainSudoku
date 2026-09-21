@@ -122,7 +122,7 @@ namespace TrainSudoku.Tests
             data.Stars["b"] = 1;
 
             var json = SaveJson.Write(data);
-            StringAssert.Contains("\"version\": 2", json);
+            StringAssert.Contains("\"version\": 3", json);
             Assert.IsTrue(SaveJson.TryRead(json, out var back), json);
             Assert.AreEqual(2, back.Stars.Count);
             Assert.AreEqual(3, back.Stars["a"]);
@@ -131,14 +131,14 @@ namespace TrainSudoku.Tests
         }
 
         [Test]
-        public void ReadingAVersionOneFileAndWritingItBackProducesVersionTwo()
+        public void ReadingAVersionOneFileAndWritingItBackProducesTheCurrentVersion()
         {
             const string v1 = "{\"version\":1,\"bestTimes\":{\"a\":12.5},\"inProgress\":{}}";
             Assert.IsTrue(SaveJson.TryRead(v1, out var data));
             data.Stars["a"] = 3;
 
             var json = SaveJson.Write(data);
-            StringAssert.Contains("\"version\": 2", json);
+            StringAssert.Contains("\"version\": 3", json);
             Assert.IsTrue(SaveJson.TryRead(json, out var back));
             Assert.AreEqual(3, back.Stars["a"]);
             Assert.AreEqual(12.5, back.BestTimes["a"]);

@@ -30,6 +30,10 @@ namespace TrainSudoku.Game
         [Tooltip("Height of the car origin above the track.")]
         [SerializeField] private float heightOffset = 0f;
 
+        [Header("Line colour")]
+        [Tooltip("The body material on the car models - M_TrainColor. It is cloned and tinted with the active line's colour; leave it empty and the cars keep the colour they were authored in.")]
+        [SerializeField] private Material bodyMaterial = null;
+
         [Header("Destination plate (D13)")]
         [Tooltip("Face for the plate on the locomotive. This is environment art, so it carries Japanese in every locale - leave it empty and no plate is fitted.")]
         [SerializeField] private Font signageFont = null;
@@ -45,6 +49,14 @@ namespace TrainSudoku.Game
         public float ModelYawOffset => modelYawOffset;
         public float ModelScale => modelScale <= 0f ? 1f : modelScale;
         public float HeightOffset => heightOffset;
+
+        /// <summary>
+        /// The material the line colour replaces on every car. Matched by <b>reference</b> rather than by slot
+        /// index, so it finds the body panels on the locomotive and on a wagon alike and survives the models being
+        /// re-imported in another order — a car is three renderers and the body is not the only slot on any of them.
+        /// Null means an untinted train, which is a supported state.
+        /// </summary>
+        public Material BodyMaterial => bodyMaterial;
 
         /// <summary>The face for the destination plate, or null for a train without one (D13).</summary>
         public Font SignageFont => signageFont;
