@@ -38,56 +38,50 @@ A sudoku of railway lines
 ### Promotional Text — max 170 characters (editable any time, no review)
 
 ```
-216 stations. 24 lines. Every board has exactly one solution, proven by solver — so there is never a guess, only a deduction you haven't found yet.
+A logic puzzle about laying train track. 216 boards, each with exactly one solution, so you never have to guess. No ads, no in-app purchases, and it works offline.
 ```
 
-*(147 chars. This is the one field you can change without submitting a build — use it for launch
+*(163 chars. This is the one field you can change without submitting a build — use it for launch
 notes, sales, or a new line later.)*
 
 ### Description — max 4000 characters
 
 ```
-Lay the rails. Satisfy every number. Let the train run.
+Tsugi is a logic puzzle where you build a railway.
 
-Tsugi is a railway puzzle in the spirit of sudoku. Every board is a small grid with a number beside each row and column, and that number is exactly how many pieces of track the line must hold. Your job is to lay one continuous route from the entrance tunnel to the exit — and to make every number come out right.
+Each board is a grid with a number beside every row and column. The number tells you how many pieces of track go in that row or column. Lay one unbroken track from the entrance tunnel to the exit tunnel so that every number is right. When you do, a train comes out of the tunnel and drives the route you built.
 
-No timer pushing you. No lives. No hints to buy. Just a clean deduction, and a train that runs the line you built.
-
-
-216 STATIONS ACROSS 24 LINES
-
-Ashenvale, Briarwharf, Calderwyke, Emberfell, Ironmere, Ravenscar, Saltmarch — twenty-four lines to work your way along. Every single board has been verified by solver to have exactly one solution, so you are never guessing and never stuck on a coin flip. If you cannot see the next piece yet, it is there.
-
-Lines open as you go: earn a star at every station on a line and the next one joins the network map.
+If you like sudoku, nonograms or other pencil puzzles, this is that kind of game. Every board has exactly one solution and can be solved by logic alone. You never need to guess.
 
 
-THREE STARS, IF YOU WANT THEM
+HOW IT PLAYS
 
-Finish a station and you are rated against times set by real play, not by a formula. The clock sits quietly in the corner — chase it or ignore it entirely, the puzzle does not change.
+Tap a cell and the game shows which sides the track can connect to. Pick two sides and the piece is laid. If only one piece fits, it goes down in one tap. Hold a piece to lift it again. Numbers turn green when a row or column is complete and red when you have put in too many.
 
-
-BUILT TO BE PUT DOWN
-
-Every board saves itself as you lay it, mid-puzzle and mid-thought. Close it on the platform, open it again at home, and the track is exactly where you left it — clock included.
+The first station is a short tutorial that walks you through all of it.
 
 
-SHARE THE LINE
+WHAT'S IN IT
 
-Every finished station makes a small text card you can paste into a chat. It shows the puzzle, never your solution, so passing it to a friend is an invitation rather than a spoiler.
+• 216 boards, called stations, on 24 lines
+• Boards grow from 6x6 to 8x8, and later lines give you less track to start from
+• Finish the nine stations on a line and the next line opens on the map
+• Up to three stars per station for a fast time. The clock can never fail you, so you can ignore it
+• Progress saves by itself, even in the middle of a board
+• Share a result as a text card that shows the puzzle but not your solution
+• English, Japanese, Spanish and French
 
 
-PLAYS IN FOUR LANGUAGES
+PRICE AND PRIVACY
 
-English, 日本語, Español, Français — the whole game, not just the menus.
+Tsugi is a one-time purchase. There are no ads, no in-app purchases and no accounts. The game collects no data and never connects to the internet, so it works anywhere, including on a plane or underground.
 
-
-NO ADS. NO TRACKING. NO ACCOUNT.
-
-Tsugi collects nothing, sends nothing, and asks for nothing. There is no sign-in, no email box, no analytics and no advertising SDK — the app has no networking code in it at all. It works with aeroplane mode on and always will. Pay once, play all 216 stations.
+"Tsugi" (つぎ) means "next" in Japanese. It is the first word of every station announcement on a Japanese train.
 ```
 
-*(≈1,760 chars of 4,000. Deliberately short — App Store descriptions are read in the first three
-lines or not at all, and the headed blocks below the fold are there for the people who scroll.)*
+*(≈1730 chars of 4,000. Written to be read as a person explaining their game: what it is, how you play,
+what you get, what it costs. Every claim in it is checked against the code — in particular it no
+longer says the star times were "set by real play", which they were not.)*
 
 ### Keywords — max 100 characters, comma separated, no spaces
 
@@ -103,11 +97,9 @@ keywords into phrases.)*
 ### What's New in This Version — max 4000 characters
 
 ```
-The first departure.
+First release. Thanks for playing.
 
-216 stations across 24 lines, four languages, and a train that runs whatever route you build.
-
-Thank you for riding.
+If you find a bug or a board that confuses you, the support link on this page reaches me directly.
 ```
 
 ### Support URL — required
@@ -175,65 +167,56 @@ Tsugi：線路をつなぐパズル
 ### Promotional Text
 
 ```
-216の駅、24の路線。すべての盤面に解は一つだけ——ソルバーで検証済みです。当てずっぽうはありません。まだ見つけていない筋道があるだけです。
+線路を敷いて数字を合わせるロジックパズル。全216問、どれも答えは一つだけなので、勘に頼る場面はありません。広告もアプリ内課金もなく、オフラインで遊べます。
 ```
 
 ### Description
 
 ```
-線路を敷く。数字を合わせる。列車を走らせる。
+Tsugiは、線路を敷いて解くロジックパズルです。
 
-Tsugiは、数独の流儀でつくられた鉄道パズルです。盤面の行と列にはそれぞれ数字が添えてあり、その数字が、その線に置くべき線路の数そのものです。入口のトンネルから出口まで一本の線路をつなぎ、なおかつすべての数字を合わせる——それがあなたの仕事です。
+盤面の行と列には、それぞれ数字が付いています。数字は、その行や列に置く線路の数です。すべての数字に合うように、入口のトンネルから出口のトンネルまで線路を一本につなげてください。つながると、トンネルから列車が出てきて、あなたが敷いた線路を走ります。
 
-急かすタイマーはありません。ライフもありません。買うヒントもありません。あるのは澄んだ推論と、あなたが敷いた線路を走る列車だけです。
-
-
-24路線・216駅
-
-すべての盤面は、解が一つだけであることをソルバーで検証しています。だから運任せの場面は一度もありません。次の一手が見えないときは、まだ見つけていないだけです。
-
-路線は進むほどに開いていきます。一つの路線のすべての駅で星を取れば、次の路線が路線図に加わります。
+数独やお絵かきロジックのようなペンシルパズルが好きな方に向いています。どの盤面も答えは一つだけで、論理だけで解けます。勘で置く必要はありません。
 
 
-星は三つ、望むなら
+遊び方
 
-駅を解き終えると、実際のプレイから決めた基準時間で評価されます。時計は隅で静かに動いているだけ——追いかけても、無視しても、パズルは変わりません。
+マスをタップすると、線路をつなげられる方向が表示されます。方向を二つ選ぶと線路が置かれます。置ける形が一つしかないときは、タップ一回で置かれます。長押しすると線路を外せます。行や列がそろうと数字が緑に、置きすぎると赤になります。
 
-
-いつでも置ける
-
-盤面は敷きながら自動で保存されます。ホームで閉じて、家で開けば、線路も時計もそのままです。
+最初の駅はチュートリアルで、操作をひととおり案内します。
 
 
-路線を共有する
+内容
 
-解き終えた駅は、チャットに貼れる小さなテキストカードになります。写るのは問題だけで、あなたの解答は決して含まれません。
+・24路線、216駅(全216問)
+・盤面は6×6から8×8まで。先の路線ほど、最初から置かれている線路が少なくなります
+・路線の9駅をすべてクリアすると、次の路線が路線図に開きます
+・クリアタイムに応じて星が最大三つ。時間切れはないので、時計は気にしなくてもかまいません
+・進行状況は自動で保存されます。解いている途中の盤面もそのまま残ります
+・結果をテキストのカードで共有できます。カードに載るのは問題だけで、解答は載りません
+・日本語、英語、スペイン語、フランス語に対応
 
 
-4言語対応
+価格とプライバシー
 
-English、日本語、Español、Français——メニューだけでなく、ゲーム全体が対応しています。
+買い切りです。広告、アプリ内課金、アカウント登録はありません。データは一切収集せず、インターネットにも接続しないので、機内や地下でも遊べます。
 
-
-広告なし。追跡なし。アカウントなし。
-
-Tsugiは何も集めず、何も送りません。サインインもメールアドレスも解析も広告も、そもそも通信するコードが一行もありません。機内モードのままで遊べます。一度の購入で、216駅すべてを。
+「つぎ」は、電車の車内放送「つぎは…」の最初の言葉です。
 ```
 
 ### Keywords
 
 ```
-パズル,数独,電車,鉄道,線路,論理,脳トレ,暇つぶし,オフライン,一筆書き,無料,思考,地下鉄,ひとり
+パズル,数独,電車,鉄道,線路,論理,脳トレ,暇つぶし,オフライン,一筆書き,ナンプレ,思考,地下鉄,ひとり
 ```
 
 ### What's New
 
 ```
-はじめての発車です。
+最初のリリースです。遊んでいただきありがとうございます。
 
-24路線216駅、4言語、そしてあなたが敷いた線路をそのまま走る列車。
-
-ご乗車ありがとうございます。
+不具合や分かりにくい点があれば、このページのサポートリンクからご連絡ください。
 ```
 
 ---
@@ -255,49 +238,42 @@ Un sudoku de vías de tren
 ### Promotional Text
 
 ```
-216 estaciones. 24 líneas. Cada tablero tiene una única solución, verificada por solucionador: nunca hay que adivinar, solo deducir lo que aún no has visto.
+Un puzzle de lógica en el que construyes una vía de tren. 216 tableros, cada uno con una sola solución: nunca hay que adivinar. Sin anuncios y funciona sin conexión.
 ```
 
 ### Description
 
 ```
-Tiende las vías. Cuadra los números. Deja pasar el tren.
+Tsugi es un puzzle de lógica en el que construyes una vía de tren.
 
-Tsugi es un puzzle ferroviario con el espíritu del sudoku. Cada tablero es una cuadrícula con un número junto a cada fila y cada columna, y ese número es exactamente cuántas piezas de vía debe contener esa línea. Tu tarea es tender una ruta continua desde el túnel de entrada hasta el de salida, y que todos los números cuadren.
+Cada tablero es una cuadrícula con un número junto a cada fila y cada columna. El número indica cuántas piezas de vía van en esa fila o columna. Tienes que tender una vía continua desde el túnel de entrada hasta el de salida de forma que todos los números se cumplan. Cuando lo consigues, un tren sale del túnel y recorre la ruta que has construido.
 
-Sin cronómetro que te apremie. Sin vidas. Sin pistas de pago. Solo una deducción limpia y un tren que recorre la línea que has construido.
-
-
-216 ESTACIONES EN 24 LÍNEAS
-
-Cada tablero ha sido verificado por solucionador: tiene una solución y solo una. Nunca juegas a la lotería ni te quedas atascado en una moneda al aire. Si todavía no ves la siguiente pieza, está ahí.
-
-Las líneas se abren a medida que avanzas: consigue una estrella en cada estación de una línea y la siguiente aparece en el mapa de la red.
+Si te gustan el sudoku, los nonogramas u otros pasatiempos de lógica, este es ese tipo de juego. Cada tablero tiene una única solución y se resuelve solo con lógica. Nunca hace falta adivinar.
 
 
-TRES ESTRELLAS, SI LAS QUIERES
+CÓMO SE JUEGA
 
-Al terminar una estación recibes una valoración según tiempos fijados jugando de verdad, no con una fórmula. El reloj está en una esquina, discreto: persíguelo o ignóralo, el puzzle no cambia.
+Toca una casilla y el juego te muestra hacia qué lados puede conectarse la vía. Elige dos lados y la pieza queda colocada. Si solo cabe una pieza, se coloca con un toque. Mantén pulsada una pieza para quitarla. Los números se ponen verdes cuando la fila o columna está completa y rojos cuando te has pasado.
 
-
-HECHO PARA DEJARLO A MEDIAS
-
-Cada tablero se guarda solo mientras lo tiendes, a mitad de partida y a mitad de idea. Ciérralo en el andén, ábrelo en casa, y la vía sigue donde la dejaste. El reloj también.
+La primera estación es un tutorial corto que te lo enseña todo.
 
 
-COMPARTE LA LÍNEA
+QUÉ INCLUYE
 
-Cada estación terminada genera una pequeña tarjeta de texto que puedes pegar en un chat. Muestra el puzzle, nunca tu solución: es una invitación, no un spoiler.
+• 216 tableros, llamados estaciones, repartidos en 24 líneas
+• Los tableros crecen de 6x6 a 8x8, y las líneas más avanzadas te dan menos vía colocada de inicio
+• Termina las nueve estaciones de una línea y se abre la siguiente en el mapa
+• Hasta tres estrellas por estación según tu tiempo. El reloj nunca te hace perder, así que puedes ignorarlo
+• El progreso se guarda solo, incluso a mitad de un tablero
+• Comparte tu resultado como una tarjeta de texto que muestra el puzzle pero no tu solución
+• En español, inglés, japonés y francés
 
 
-EN CUATRO IDIOMAS
+PRECIO Y PRIVACIDAD
 
-English, 日本語, Español, Français — el juego entero, no solo los menús.
+Tsugi se paga una sola vez. No tiene anuncios, compras dentro de la app ni cuentas. El juego no recoge ningún dato y nunca se conecta a internet, así que funciona en cualquier sitio, también en un avión o en el metro.
 
-
-SIN ANUNCIOS. SIN RASTREO. SIN CUENTA.
-
-Tsugi no recoge nada ni envía nada. No hay inicio de sesión, ni correo, ni analíticas, ni SDK publicitario: la aplicación no tiene una sola línea de código de red. Funciona en modo avión y siempre lo hará. Paga una vez, juega las 216 estaciones.
+«Tsugi» (つぎ) significa «siguiente» en japonés. Es la primera palabra de cada anuncio de estación en los trenes de Japón.
 ```
 
 ### Keywords
@@ -309,11 +285,9 @@ logica,tren,cerebro,via,metro,ingenio,zen,sinconexion,vias,japon,relax,mente,pas
 ### What's New
 
 ```
-La primera salida.
+Primera versión. Gracias por jugar.
 
-216 estaciones en 24 líneas, cuatro idiomas y un tren que recorre exactamente la ruta que construyas.
-
-Gracias por viajar con nosotros.
+Si encuentras un fallo o algo que no se entiende, el enlace de soporte de esta página me llega directamente.
 ```
 
 ---
@@ -335,49 +309,42 @@ Un sudoku de voies ferrées
 ### Promotional Text
 
 ```
-216 gares. 24 lignes. Chaque grille n'a qu'une seule solution, vérifiée par solveur : on ne devine jamais, on déduit ce qu'on n'a pas encore vu.
+Un jeu de logique où l'on construit une voie ferrée. 216 grilles, une seule solution chacune : jamais besoin de deviner. Sans publicité, jouable hors ligne.
 ```
 
 ### Description
 
 ```
-Posez les rails. Faites tomber les chiffres juste. Laissez passer le train.
+Tsugi est un jeu de logique où l'on construit une voie ferrée.
 
-Tsugi est un puzzle ferroviaire dans l'esprit du sudoku. Chaque grille porte un chiffre en regard de chaque ligne et de chaque colonne, et ce chiffre indique exactement combien de morceaux de voie cette ligne doit contenir. À vous de poser un tracé continu du tunnel d'entrée jusqu'à la sortie, et de faire tomber tous les chiffres juste.
+Chaque grille porte un chiffre à côté de chaque ligne et de chaque colonne. Ce chiffre indique combien de morceaux de voie vont dans cette ligne ou cette colonne. Il faut poser une voie continue du tunnel d'entrée au tunnel de sortie en respectant tous les chiffres. Quand c'est fait, un train sort du tunnel et parcourt le trajet que vous avez construit.
 
-Aucun chronomètre pour vous presser. Aucune vie. Aucun indice à acheter. Seulement une déduction nette, et un train qui parcourt la ligne que vous avez construite.
-
-
-216 GARES SUR 24 LIGNES
-
-Chaque grille a été vérifiée par solveur : elle admet une solution et une seule. Vous ne jouez jamais à pile ou face et vous ne restez jamais bloqué sur un coup de chance. Si vous ne voyez pas encore la pièce suivante, elle est là.
-
-Les lignes s'ouvrent au fil du jeu : décrochez une étoile à chaque gare d'une ligne et la suivante rejoint le plan du réseau.
+Si vous aimez le sudoku, les nonogrammes ou les autres jeux de logique sur grille, c'est ce genre de jeu. Chaque grille a une seule solution et se résout uniquement par la logique. Il n'y a jamais besoin de deviner.
 
 
-TROIS ÉTOILES, SI VOUS Y TENEZ
+COMMENT ON JOUE
 
-À la fin d'une gare, vous êtes noté sur des temps établis en jouant réellement, pas par une formule. L'horloge reste discrète dans un coin : courez après ou ignorez-la, le puzzle ne change pas.
+Touchez une case et le jeu montre de quels côtés la voie peut se raccorder. Choisissez deux côtés et la pièce est posée. Si une seule pièce convient, elle se pose en un seul geste. Maintenez le doigt sur une pièce pour la retirer. Les chiffres passent au vert quand la ligne ou la colonne est complète, et au rouge quand il y a trop de voie.
 
-
-FAIT POUR ÊTRE REPOSÉ
-
-Chaque grille s'enregistre toute seule pendant que vous la posez, en pleine partie et en pleine réflexion. Fermez sur le quai, rouvrez à la maison : la voie est exactement où vous l'aviez laissée, l'horloge aussi.
+La première gare est un court tutoriel qui explique tout cela.
 
 
-PARTAGEZ LA LIGNE
+CONTENU
 
-Chaque gare terminée produit une petite carte en texte à coller dans une conversation. Elle montre le puzzle, jamais votre solution : c'est une invitation, pas un spoiler.
+• 216 grilles, appelées gares, réparties sur 24 lignes
+• Les grilles passent de 6x6 à 8x8, et les lignes avancées donnent moins de voie posée au départ
+• Terminez les neuf gares d'une ligne et la suivante s'ouvre sur le plan
+• Jusqu'à trois étoiles par gare selon votre temps. Le chrono ne fait jamais perdre, vous pouvez donc l'ignorer
+• La progression s'enregistre toute seule, même au milieu d'une grille
+• Partagez un résultat sous forme de carte texte qui montre le puzzle mais pas votre solution
+• En français, anglais, japonais et espagnol
 
 
-EN QUATRE LANGUES
+PRIX ET VIE PRIVÉE
 
-English, 日本語, Español, Français — le jeu entier, pas seulement les menus.
+Tsugi s'achète une seule fois. Pas de publicité, pas d'achats intégrés, pas de compte. Le jeu ne collecte aucune donnée et ne se connecte jamais à Internet : il fonctionne partout, y compris en avion ou dans le métro.
 
-
-AUCUNE PUBLICITÉ. AUCUN PISTAGE. AUCUN COMPTE.
-
-Tsugi ne collecte rien et n'envoie rien. Pas de connexion, pas d'adresse e-mail, pas d'analytique, pas de régie publicitaire : l'application ne contient pas une seule ligne de code réseau. Elle fonctionne en mode avion, et ce sera toujours le cas. Payez une fois, jouez les 216 gares.
+« Tsugi » (つぎ) veut dire « suivant » en japonais. C'est le premier mot de chaque annonce de gare dans les trains japonais.
 ```
 
 ### Keywords
@@ -389,11 +356,9 @@ logique,train,cerveau,voie,metro,rail,zen,horsligne,japon,detente,reflexion,cass
 ### What's New
 
 ```
-Le premier départ.
+Première version. Merci de jouer.
 
-216 gares sur 24 lignes, quatre langues, et un train qui parcourt exactement le tracé que vous posez.
-
-Merci d'avoir voyagé avec nous.
+Si vous trouvez un bug ou quelque chose de confus, le lien d'assistance de cette page m'arrive directement.
 ```
 
 ---
@@ -414,7 +379,7 @@ Tsugi: Railway Puzzle
 
 | Locale | String | Chars |
 |---|---|---|
-| en | `A sudoku of railway lines. 216 stations, one solution each, no ads ever.` | 71 |
+| en | `Lay track to match the numbers. 216 logic puzzles, no guessing, no ads.` | 71 |
 | ja | `数独の流儀でつくられた鉄道パズル。216駅、解は一つだけ、広告なし。` | 33 |
 | es | `Un sudoku de vías de tren. 216 estaciones, una solución cada una, sin anuncios.` | 78 |
 | fr | `Un sudoku de voies ferrées. 216 gares, une seule solution, sans publicité.` | 73 |
@@ -449,6 +414,6 @@ Kept here so the same words appear on the site, in the press kit and in a tweet.
 | Use | Text |
 |---|---|
 | Six words | A sudoku of railway lines. |
-| One line | Lay the rails, satisfy every number, and let the train run the route you built. |
-| Two lines | Tsugi is a railway puzzle in the spirit of sudoku: every row and column tells you how many pieces of track it must hold, and you lay one continuous line from tunnel to tunnel. 216 stations, every one proven to have a single solution. |
+| One line | A logic puzzle where you lay train track to match the numbers on each row and column. |
+| Two lines | Tsugi is a logic puzzle where you build a railway. Each row and column has a number saying how many pieces of track it holds, and you lay one track from tunnel to tunnel. 216 boards, each with exactly one solution. |
 | Tagline under the logo | Next station. |

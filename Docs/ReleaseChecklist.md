@@ -36,6 +36,12 @@ Because the Xcode export is Universal (`targetDevice: 2`), the iPad set is not o
 | Google Play feature graphic | **1024 × 500**, no alpha | Yes, Play won't publish without it | Composed from the logo + a board render |
 | App icon | 1024 × 1024 (Apple), 512 × 512 (Play) | Yes | Already in `Assets/02.Graphics/Ui/Icon/` |
 
+> **This time "wrong dimensions" meant exactly that.** If App Store Connect lists the accepted sizes
+> as *1242 × 2688 or 1284 × 2778*, the files were dropped on the **6.5" slot**, not the 6.9" one —
+> the 1320 × 2868 set belongs under *iPhone 6.9" Display*. `Screenshots/store-iphone-6.5/` holds the
+> same five frames at **1284 × 2778** for that slot: converted from the HEIC originals, scaled to
+> 1284 wide and centre-cropped by 6 px top and bottom, since the two aspects differ by 0.4 %.
+
 Constraints that reject an upload: **no alpha channel**, PNG or JPEG, 1–10 per size on Apple, max 8
 per device type on Play.
 
