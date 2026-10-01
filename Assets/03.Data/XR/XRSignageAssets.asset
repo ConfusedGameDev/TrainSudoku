@@ -16,3 +16,4 @@ MonoBehaviour:
   headingFont: {fileID: 11400000, guid: b7691d766afdc44cbb0c62ae386d4913, type: 2}
   bodyFont: {fileID: 11400000, guid: 0b36389b3c14846cabfe243055bb5aa2, type: 2}
   mark: {fileID: 2800000, guid: 690f4da59a87a44efb81d35ecfd19599, type: 3}
+  japaneseFont: {fileID: 11400000, guid: 9f1fe7bc72b6d86429496d42ec66c78b, type: 2}

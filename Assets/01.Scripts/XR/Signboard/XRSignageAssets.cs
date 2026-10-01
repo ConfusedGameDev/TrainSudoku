@@ -24,9 +24,26 @@ namespace TrainSudoku.XR
         [Tooltip("The app roundel with its corners cut to a circle: the masthead's mark.")]
         [SerializeField] private Texture2D mark;
 
+        [Tooltip("XR's own Japanese face (X24): Noto Sans JP Medium baked from the XR String Table's ja rows plus the station " +
+                 "and line names. Window > TrainSudoku > XR > Rebuild XR ja Font Atlas writes and assigns it.")]
+        [SerializeField] private FontAsset japaneseFont;
+
         public PanelSettings PanelSettings => panelSettings;
-        public FontAsset HeadingFont => headingFont;
-        public FontAsset BodyFont => bodyFont;
         public Texture2D Mark => mark;
+
+        /// <summary>Headings in the selected language: Barlow Condensed, or XR's Noto face in Japanese.</summary>
+        public FontAsset HeadingFont => XRText.IsJapanese && japaneseFont != null ? japaneseFont : headingFont;
+
+        /// <summary>Body copy in the selected language: Barlow, or XR's Noto face in Japanese.</summary>
+        public FontAsset BodyFont => XRText.IsJapanese && japaneseFont != null ? japaneseFont : bodyFont;
+
+        /// <summary>
+        /// XR's Noto face whatever the language, for the language button: it names each language in its own script,
+        /// and the bake carries those names. Barlow when the face has not been baked yet.
+        /// </summary>
+        public FontAsset JapaneseFont => japaneseFont != null ? japaneseFont : headingFont;
+
+        /// <summary>The Editor's setup writes the baked face here.</summary>
+        public void SetJapaneseFont(FontAsset font) => japaneseFont = font;
     }
 }

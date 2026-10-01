@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using TrainSudoku.Core;
+using TrainSudoku.XR.Rules;
 using UnityEngine;
 
 namespace TrainSudoku.XR
@@ -9,7 +10,7 @@ namespace TrainSudoku.XR
     /// Runs the train along the solved board's <see cref="TrackPath"/> (XR-PRD 8): locomotive plus wagons, each a set
     /// distance behind the one ahead, hidden while inside a tunnel. Raises <see cref="Finished"/> when the last car has
     /// left through the exit, or after a short wait when the board has no route. Forked from the phone's
-    /// <c>TrainRunner</c> without its audio, which XR10 brings back spatialised. A hand on a car shakes the train and
+    /// <c>TrainRunner</c>; its sound is XR's own, placed on the locomotive (<see cref="XRCuePlayer"/>). A hand on a car shakes the train and
     /// hurries it on, cartoon fashion (<see cref="Push"/>).
     /// </summary>
     /// <remarks>
@@ -151,10 +152,17 @@ namespace TrainSudoku.XR
             BuildCars();
             _distance = RevealDistance - 0.05;
             PlaceCars();
+            // The whistle as it leaves, then the run, heard from the locomotive wherever it goes (XR-PRD 9).
+            if (_cars.Count > 0)
+            {
+                XRCuePlayer.Play(XRCue.TrainStart, _cars[0].position);
+                XRCuePlayer.StartLoop(XRCue.TrainLoop, _cars[0]);
+            }
         }
 
         public void Stop()
         {
+            if (_running) XRCuePlayer.StopLoop();
             _running = false;
             _path = null;
             if (cars != null)
@@ -328,6 +336,7 @@ namespace TrainSudoku.XR
                 {
                     _stretchSpeed[touched] += PokeSquash;
                     if (_steam != null) _steam.Puff(at);
+                    XRCuePlayer.Play(XRCue.TrainHurry, at);
                 }
 
                 _boost = Mathf.Min(MaxBoost, _boost + (_touching ? BoostPerSecond * deltaTime : KickBoost));

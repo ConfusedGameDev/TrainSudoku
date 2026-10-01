@@ -1,0 +1,189 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 52420aff50665e040b8d9b8ff2a65af1, type: 3}
+  m_Name: XRCues
+  m_EditorClassIdentifier: TrainSudoku.XR::TrainSudoku.XR.XRCueLibrary
+  entries:
+  - cue: 1
+    clip: {fileID: 8300000, guid: e99198aa14d381c49b5a965cb8481b00, type: 3}
+    volume: 0.6
+    spatial: 1
+    hapticAmplitude: 0.15
+    hapticSeconds: 0.03
+  - cue: 2
+    clip: {fileID: 8300000, guid: 50e3da448704f3149af9e858035e88c4, type: 3}
+    volume: 1
+    spatial: 1
+    hapticAmplitude: 0.35
+    hapticSeconds: 0.05
+  - cue: 3
+    clip: {fileID: 8300000, guid: 50e3da448704f3149af9e858035e88c4, type: 3}
+    volume: 1
+    spatial: 1
+    hapticAmplitude: 0.35
+    hapticSeconds: 0.05
+  - cue: 4
+    clip: {fileID: 8300000, guid: 50e3da448704f3149af9e858035e88c4, type: 3}
+    volume: 1
+    spatial: 1
+    hapticAmplitude: 0.35
+    hapticSeconds: 0.05
+  - cue: 5
+    clip: {fileID: 8300000, guid: b8069a131803617439690b4c37879470, type: 3}
+    volume: 0.8
+    spatial: 1
+    hapticAmplitude: 0.25
+    hapticSeconds: 0.04
+  - cue: 6
+    clip: {fileID: 8300000, guid: ee7460474246904468c9b7ae3d5c51ea, type: 3}
+    volume: 0.8
+    spatial: 1
+    hapticAmplitude: 0.6
+    hapticSeconds: 0.12
+  - cue: 7
+    clip: {fileID: 8300000, guid: 0b589e5a35e9b3a4384ea6d0163a2e4a, type: 3}
+    volume: 0.7
+    spatial: 1
+    hapticAmplitude: 0.2
+    hapticSeconds: 0.05
+  - cue: 8
+    clip: {fileID: 8300000, guid: de124fcfaec9742478719769e804ca35, type: 3}
+    volume: 0.6
+    spatial: 1
+    hapticAmplitude: 0.5
+    hapticSeconds: 0.1
+  - cue: 9
+    clip: {fileID: 8300000, guid: aeb1132f1027431458b1ba845b68395d, type: 3}
+    volume: 0.5
+    spatial: 1
+    hapticAmplitude: 0
+    hapticSeconds: 0
+  - cue: 10
+    clip: {fileID: 0}
+    volume: 1
+    spatial: 1
+    hapticAmplitude: 0
+    hapticSeconds: 0
+  - cue: 11
+    clip: {fileID: 0}
+    volume: 1
+    spatial: 1
+    hapticAmplitude: 0
+    hapticSeconds: 0
+  - cue: 12
+    clip: {fileID: 0}
+    volume: 1
+    spatial: 1
+    hapticAmplitude: 0
+    hapticSeconds: 0
+  - cue: 13
+    clip: {fileID: 8300000, guid: 07dacfd48e1637b4b93f8cd96a5e547e, type: 3}
+    volume: 0.7
+    spatial: 1
+    hapticAmplitude: 0
+    hapticSeconds: 0
+  - cue: 14
+    clip: {fileID: 8300000, guid: 2efb51b8706abd14089393ab2a169020, type: 3}
+    volume: 1
+    spatial: 1
+    hapticAmplitude: 0
+    hapticSeconds: 0
+  - cue: 15
+    clip: {fileID: 8300000, guid: 44a0ff6f0b2f1ec48b6241e28fc069ab, type: 3}
+    volume: 1
+    spatial: 1
+    hapticAmplitude: 0
+    hapticSeconds: 0
+  - cue: 16
+    clip: {fileID: 0}
+    volume: 0.6
+    spatial: 1
+    hapticAmplitude: 0
+    hapticSeconds: 0
+  - cue: 17
+    clip: {fileID: 0}
+    volume: 1
+    spatial: 1
+    hapticAmplitude: 0
+    hapticSeconds: 0
+  - cue: 18
+    clip: {fileID: 8300000, guid: 31d676f1481b356408a4596ff7c48a50, type: 3}
+    volume: 0.8
+    spatial: 1
+    hapticAmplitude: 0.2
+    hapticSeconds: 0.03
+  - cue: 19
+    clip: {fileID: 8300000, guid: 11bfe1bd8d891c44586c0070a48eed30, type: 3}
+    volume: 0.8
+    spatial: 1
+    hapticAmplitude: 0.2
+    hapticSeconds: 0.03
+  - cue: 20
+    clip: {fileID: 8300000, guid: 18973115e9feadb40a83dbba1db421b1, type: 3}
+    volume: 0.8
+    spatial: 1
+    hapticAmplitude: 0.2
+    hapticSeconds: 0.03
+  - cue: 21
+    clip: {fileID: 8300000, guid: 0d9875dc11eee3945bbd1f3d2947fd71, type: 3}
+    volume: 0.9
+    spatial: 1
+    hapticAmplitude: 0.25
+    hapticSeconds: 0.04
+  - cue: 22
+    clip: {fileID: 8300000, guid: 8c691d2d388ff254abc6ccfcd71fe6f2, type: 3}
+    volume: 0.7
+    spatial: 1
+    hapticAmplitude: 0.4
+    hapticSeconds: 0.08
+  - cue: 23
+    clip: {fileID: 8300000, guid: 4bdb0b687d94c364b9b6ac99b38e962a, type: 3}
+    volume: 0.9
+    spatial: 1
+    hapticAmplitude: 0.3
+    hapticSeconds: 0.06
+  - cue: 24
+    clip: {fileID: 8300000, guid: f66899a74d886eb4bad9b5e1e0fa3a25, type: 3}
+    volume: 0.9
+    spatial: 1
+    hapticAmplitude: 0
+    hapticSeconds: 0
+  - cue: 25
+    clip: {fileID: 8300000, guid: f66899a74d886eb4bad9b5e1e0fa3a25, type: 3}
+    volume: 1
+    spatial: 1
+    hapticAmplitude: 0
+    hapticSeconds: 0
+  - cue: 26
+    clip: {fileID: 8300000, guid: d4d61c24814fe4a6aa84a2688bb75356, type: 3}
+    volume: 1
+    spatial: 1
+    hapticAmplitude: 0
+    hapticSeconds: 0
+  - cue: 27
+    clip: {fileID: 8300000, guid: 0972e2c7e86604c45bfd4544f7a7552e, type: 3}
+    volume: 1
+    spatial: 1
+    hapticAmplitude: 0
+    hapticSeconds: 0
+  - cue: 28
+    clip: {fileID: 8300000, guid: 76f58e240c9e440cbabf5905492aafca, type: 3}
+    volume: 1
+    spatial: 1
+    hapticAmplitude: 0
+    hapticSeconds: 0
+  - cue: 29
+    clip: {fileID: 8300000, guid: dd7b9ffe2fa1aa045872e487736aab22, type: 3}
+    volume: 0.6
+    spatial: 1
+    hapticAmplitude: 0
+    hapticSeconds: 0

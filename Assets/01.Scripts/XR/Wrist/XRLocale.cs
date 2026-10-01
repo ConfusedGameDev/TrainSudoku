@@ -10,14 +10,35 @@ namespace TrainSudoku.XR
     /// </summary>
     /// <remarks>
     /// The shared Localization settings take the system's language at start and remember no choice, and changing them is
-    /// a shared change (X25), so XR keeps its own choice and applies it once the board is placed. Until XR10's XR String
-    /// Table the XR copy stays English whatever is chosen; station and line names are untranslated proper nouns anyway.
+    /// a shared change (X25), so XR keeps its own choice and applies it once the board is placed. XR's copy follows it
+    /// through the `XR` String Table (<see cref="XRText"/>); station and line names are untranslated proper nouns.
     /// </remarks>
     public static class XRLocale
     {
         /// <summary>The selected locale's code, or empty before Localization has chosen one.</summary>
         public static string CurrentCode =>
             LocalizationSettings.SelectedLocale != null ? LocalizationSettings.SelectedLocale.Identifier.Code : "";
+
+        /// <summary>
+        /// A language's name in its own words, for the settings row: the player looking for their language may not read
+        /// the one on show. Not in the String Table, since a name must not change with the language it is listed in.
+        /// The XR ja atlas bakes these, so its face can draw all four.
+        /// </summary>
+        public static string NativeName(string code)
+        {
+            if (string.IsNullOrEmpty(code)) return "—";
+            switch (code.Split('-')[0])
+            {
+                case "en": return "English";
+                case "ja": return "日本語";
+                case "es": return "Español";
+                case "fr": return "Français";
+                default: return code.ToUpperInvariant();
+            }
+        }
+
+        /// <summary>Every name <see cref="NativeName"/> can return, for the atlas bake.</summary>
+        public static readonly string[] NativeNames = { "English", "日本語", "Español", "Français", "—" };
 
         /// <summary>Selects the locale the player chose, if they chose one and it still exists.</summary>
         public static void Apply(XRPreferences preferences)

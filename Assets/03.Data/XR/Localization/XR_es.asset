@@ -1,0 +1,271 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9620f8c34305754d8cc9a7e49e852d9, type: 3}
+  m_Name: XR_es
+  m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Tables.StringTable
+  m_LocaleId:
+    m_Code: es
+  m_SharedData: {fileID: 11400000, guid: 86a4935ea0fa24643b3cb9114c118263, type: 2}
+  m_Metadata:
+    m_Items: []
+  m_TableData:
+  - m_Id: 3436908544
+    m_Localized: RED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3495628800
+    m_Localized: "Elige una l\xEDnea en la plataforma"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017408
+    m_Localized: "MAPA DE L\xCDNEA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017409
+    m_Localized: '{0} / {1} COMPLETADAS'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017410
+    m_Localized: "Elige una estaci\xF3n en la plataforma"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017411
+    m_Localized: CONTINUAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017412
+    m_Localized: EN PAUSA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017413
+    m_Localized: CONTINUAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017414
+    m_Localized: "Reintentar, el mapa y los ajustes est\xE1n en el men\xFA de la mu\xF1eca"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017415
+    m_Localized: LLEGADA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017416
+    m_Localized: ESTA VUELTA  {0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017417
+    m_Localized: MEJOR  {0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017418
+    m_Localized: "NUEVO R\xC9CORD"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017419
+    m_Localized: PUNTUAL
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017420
+    m_Localized: LIGERO RETRASO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017421
+    m_Localized: RETRASADO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017422
+    m_Localized: MAPA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017423
+    m_Localized: OTRA VEZ
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017424
+    m_Localized: SIGUIENTE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017425
+    m_Localized: A LA RED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017426
+    m_Localized: CONTINUAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017427
+    m_Localized: REINTENTAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017428
+    m_Localized: "MAPA DE L\xCDNEA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017429
+    m_Localized: RED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017430
+    m_Localized: AJUSTES
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017431
+    m_Localized: CERRAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017432
+    m_Localized: MANO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017433
+    m_Localized: IZQUIERDA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017434
+    m_Localized: DERECHA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017435
+    m_Localized: TABLERO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017436
+    m_Localized: BAJAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017437
+    m_Localized: SUBIR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017438
+    m_Localized: RECOLOCAR TABLERO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017439
+    m_Localized: IDIOMA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017440
+    m_Localized: "M\xDASICA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017441
+    m_Localized: EFECTOS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017442
+    m_Localized: "ATR\xC1S"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017443
+    m_Localized: "Pellizca para poner el tablero aqu\xED"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017444
+    m_Localized: "No se encontr\xF3 ninguna mesa. Pellizca para poner el tablero aqu\xED,\no ejecuta la configuraci\xF3n del espacio en los ajustes del visor."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017445
+    m_Localized: Mira hacia una mesa
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017446
+    m_Localized: "Pellizca la pieza iluminada de la bandeja y su\xE9ltala sobre el c\xEDrculo. Aqu\xED va la siguiente v\xEDa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017447
+    m_Localized: "Ahora, la pieza iluminada sobre el c\xEDrculo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017448
+    m_Localized: "Ahora prueba aqu\xED la pieza iluminada. No se une a la v\xEDa de al lado. Mira la silueta."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017449
+    m_Localized: "Ha vuelto: una v\xEDa junto a otra debe unirse a ella. Ahora la iluminada."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017450
+    m_Localized: "Cada n\xFAmero cuenta v\xEDas. Esa l\xEDnea ya tiene justo las que pide."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017451
+    m_Localized: "Ahora coloca una mal a prop\xF3sito. Busca la pieza que encaja en esta casilla."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017452
+    m_Localized: "Ese n\xFAmero se ha puesto rojo: sobran v\xEDas en su l\xEDnea. Pellizca la v\xEDa para levantarla."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017453
+    m_Localized: "T\xEDrala, o su\xE9ltala fuera del tablero."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017454
+    m_Localized: "Ya lo tienes. Sigue el c\xEDrculo hasta el final de la l\xEDnea."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017455
+    m_Localized: "La siguiente v\xEDa, aqu\xED."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017456
+    m_Localized: Primero esta.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017457
+    m_Localized: Coge la pieza iluminada.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017458
+    m_Localized: "Esa v\xEDa ya estaba tendida. Levanta una de las tuyas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017459
+    m_Localized: "Esa l\xEDnea tiene m\xE1s v\xEDas de las que marca su n\xFAmero. Levanta una."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017460
+    m_Localized: "LA L\xCDNEA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017461
+    m_Localized: "Ashgate a\xFAn no tiene ferrocarril. Coloca una pieza de v\xEDa por casilla para que la l\xEDnea vaya del t\xFAnel S al t\xFAnel E."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017462
+    m_Localized: "LOS N\xDAMEROS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017463
+    m_Localized: "Cada n\xFAmero dice cu\xE1ntas piezas debe tener su fila o columna. Justo esas: se pone verde cuando acierta y rojo cuando se pasa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017464
+    m_Localized: SALIDA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017465
+    m_Localized: "Cuando la v\xEDa une S con E y todos los n\xFAmeros cuadran, el tren sale. T\xF3mate tu tiempo: el reloj solo decide las estrellas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017466
+    m_Localized: SIGUIENTE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017467
+    m_Localized: EMPEZAR
+    m_Metadata:
+      m_Items: []
+  references:
+    version: 2
+    RefIds: []

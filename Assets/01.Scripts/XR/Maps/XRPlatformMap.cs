@@ -295,7 +295,8 @@ namespace TrainSudoku.XR
 
             // The extras line: three stars when the station has been finished, then a CONTINUE tag when an attempt waits.
             var starsWidth = mark.Stars > 0 ? 3 * StarRadius * 2f + 2 * StarGap : 0f;
-            var tagWidth = mark.InProgress ? ContinueHeight * 0.66f * 8f + ContinueHeight : 0f;
+            var tagText = mark.InProgress ? XRText.Get(XRKeys.MapContinue) : "";
+            var tagWidth = mark.InProgress ? TextWidth(tagText, ContinueHeight) + ContinueHeight : 0f;
             var gap = starsWidth > 0f && tagWidth > 0f ? StarGap * 3f : 0f;
             var width = starsWidth + gap + tagWidth;
             var left = codeAnchor == TextAnchor.MiddleLeft ? x : codeAnchor == TextAnchor.MiddleRight ? x - width : x - width / 2f;
@@ -316,9 +317,20 @@ namespace TrainSudoku.XR
                 var tagCentre = new Vector2(left + starsWidth + gap + tagWidth / 2f, z);
                 Print("Continue Tag", new XRMapMesh(PrintY + LayerStep).Rect(tagCentre, new Vector2(tagWidth, ContinueHeight * 1.7f)),
                     XRBoardMaterials.Solid(XRPalette.Warn));
-                var text = FlatText(_print, "CONTINUE", ContinueHeight, XRPalette.Ink, TextAnchor.MiddleCenter);
+                var text = FlatText(_print, tagText, ContinueHeight, XRPalette.Ink, TextAnchor.MiddleCenter, XRPalette.CopyFont);
                 text.transform.localPosition = new Vector3(tagCentre.x, PrintY + LayerStep * 2, tagCentre.y);
             }
+        }
+
+        /// <summary>
+        /// About how wide a line of capitals prints at <paramref name="height"/>: two thirds of the height a Latin letter,
+        /// a whole height for kana and kanji. Enough to size a tag round it in any of the four languages.
+        /// </summary>
+        private static float TextWidth(string text, float height)
+        {
+            var width = 0f;
+            foreach (var c in text) width += c > 0x2E7F ? height : height * 0.66f;
+            return width;
         }
 
         private static void Put(TextMesh text, float x, float z) => text.transform.localPosition = new Vector3(x, PrintY + LayerStep, z);
@@ -351,13 +363,15 @@ namespace TrainSudoku.XR
         }
 
         /// <summary>Text lying on the card, its top towards the far side so it reads from the near edge.</summary>
-        internal static TextMesh FlatText(Transform parent, string text, float height, Color colour, TextAnchor anchor)
+        /// <param name="font">The legacy face: codes, names and digits stay on <see cref="XRPalette.Font"/>, copy takes <see cref="XRPalette.CopyFont"/>.</param>
+        internal static TextMesh FlatText(Transform parent, string text, float height, Color colour, TextAnchor anchor, Font font = null)
         {
+            font = font != null ? font : XRPalette.Font;
             var go = new GameObject($"Text {text}");
             go.transform.SetParent(parent, false);
             go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
             var mesh = go.AddComponent<TextMesh>();
-            mesh.font = XRPalette.Font;
+            mesh.font = font;
             mesh.text = text;
             mesh.fontSize = 64;
             mesh.characterSize = height / 6.4f;
@@ -365,7 +379,7 @@ namespace TrainSudoku.XR
             mesh.alignment = anchor == TextAnchor.MiddleLeft ? TextAlignment.Left : anchor == TextAnchor.MiddleRight ? TextAlignment.Right : TextAlignment.Center;
             mesh.color = colour;
             var renderer = go.GetComponent<MeshRenderer>();
-            renderer.sharedMaterial = XROcclusionMaterials.Text(XRPalette.Font);
+            renderer.sharedMaterial = XROcclusionMaterials.Text(font);
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             return mesh;
         }

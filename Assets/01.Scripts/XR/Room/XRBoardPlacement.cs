@@ -468,8 +468,8 @@ namespace TrainSudoku.XR
         }
 
         /// <summary>
-        /// The one thing the XR edition ever attaches to the head, and only while placing (XR-PRD 8). The copy is
-        /// English until XR10 gives XR its String Table.
+        /// The one thing the XR edition ever attaches to the head, and only while placing (XR-PRD 8). Its copy is the `XR`
+        /// String Table's, in a face that can draw it (<see cref="XRPalette.CopyFont"/>), set on every show.
         /// </summary>
         private void BuildSign()
         {
@@ -489,11 +489,18 @@ namespace TrainSudoku.XR
             var forward = Flat(head.forward);
             _sign.transform.SetPositionAndRotation(head.position + forward * SignDistance + Vector3.up * SignRaise,
                 Quaternion.LookRotation(forward, Vector3.up));
-            _sign.text = onSurface
-                ? "Pinch to put the board here"
+            var font = XRPalette.CopyFont;
+            if (_sign.font != font)
+            {
+                _sign.font = font;
+                _sign.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+            }
+
+            _sign.text = XRText.Get(onSurface
+                ? XRKeys.PlacementPinch
                 : !_surfacesAllowed || Time.time - _locatingSince > NoSurfaceHintDelay
-                    ? "No table found. Pinch to place the board here,\nor run Space Setup in the headset settings."
-                    : "Look at a table";
+                    ? XRKeys.PlacementNoTable
+                    : XRKeys.PlacementLook);
         }
     }
 }

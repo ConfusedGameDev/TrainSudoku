@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TrainSudoku.XR.Rules;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
@@ -60,6 +61,9 @@ namespace TrainSudoku.XR
         /// <summary>Fingertips of this hand press nothing here: the hand a panel is worn on must not press it by itself.</summary>
         public InteractorHandedness IgnoredHand { get; set; } = InteractorHandedness.None;
 
+        /// <summary>The cue a press plays, from the fingertip that pressed: every panel button in XR is pressed here (XR-PRD 9).</summary>
+        public XRCue Cue { get; set; } = XRCue.UiPress;
+
         /// <summary>Forgets the buttons: the panel is being rebuilt.</summary>
         public void Clear()
         {
@@ -117,6 +121,8 @@ namespace TrainSudoku.XR
 
                         _lastPress = Time.unscaledTime;
                         Debug.Log($"[XR touch] {_name}: {button.text} by the {tip.Handedness} fingertip");
+                        XRCuePlayer.Play(Cue, tip.Position, tip.Handedness == InteractorHandedness.Left ? Hand.Left
+                            : tip.Handedness == InteractorHandedness.Right ? Hand.Right : (Hand?)null);
                         // Pressing may rebuild the panel, and with it the button list: nothing more this frame.
                         Click(button);
                         return true;
