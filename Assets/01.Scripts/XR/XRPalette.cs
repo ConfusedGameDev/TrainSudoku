@@ -38,6 +38,9 @@ namespace TrainSudoku.XR
         /// <summary>Releasing here would send the piece back: <see cref="Stop"/>, translucent.</summary>
         public static readonly Color GhostIllegal = new Color(0.816f, 0.204f, 0.173f, 0.55f);
 
+        /// <summary>The board lesson's ghost hands (7): <see cref="Paper"/>, translucent, so they read as a suggestion and not as someone's hands.</summary>
+        public static readonly Color GhostHand = new Color(0.957f, 0.961f, 0.949f, 0.5f);
+
         /// <summary>Steam (X19): off-white, so a puff reads against a light table as well as a dark one.</summary>
         public static readonly Color Steam = new Color(0.94f, 0.95f, 0.93f, 0.85f);
 

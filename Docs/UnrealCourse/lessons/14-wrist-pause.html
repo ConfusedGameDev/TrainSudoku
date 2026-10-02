@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 14 · Wrist menu and pause</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="14"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 14</p>
+  <h1>Wrist menu and pause</h1>
+  <p class="lede">The player needs a way to pause, go back, and change settings without a ray and without a button floating in their view. The answer is a small roundel worn like a watch. You build it, the panel it opens, and the pause that must also happen when the headset comes off.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd>A wrist roundel that shows on a watch-check, a world-locked menu panel with a settings page, and a pause on every kind of focus loss.</dd>
+    <dt>On the headset</dt><dd>Turn your wrist, press the roundel, and the game pauses with a menu. Take the headset off mid-level; put it back on to a paused board.</dd>
+    <dt>Unity equivalent</dt><dd>Milestone XR8, "Wrist menu and pause".</dd>
+  </dl>
+
+  <h2>The design, and the misfires behind it</h2>
+  <p>Almost every number in this feature exists because something went wrong on a headset check.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Behaviour</th><th>Value</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>The roundel sits on the <em>back</em> of the non-dominant wrist</td><td>3 cm across; 3 cm out of the wrist; 1.5 cm towards the elbow</td><td>The palm is reserved for the system gesture</td></tr>
+        <tr><td>It shows only while the back of the wrist faces the eyes</td><td>Shows inside 45°, hides outside 65°</td><td>A hand working on the board must never show it; the two angles stop flicker</td></tr>
+        <tr><td>It takes no press just after appearing</td><td>0.3 s</td><td>Turning the wrist once pressed it against the other hand</td></tr>
+        <tr><td>The wearing hand's own fingertips press nothing on it</td><td></td><td>It was pressing itself</td></tr>
+        <tr><td>A second press is ignored for a while</td><td>1 s</td><td>Open-then-close on one touch</td></tr>
+        <tr><td>The panel stands where it opened, fixed in the world, facing the eyes</td><td>20 cm wide, opening 6 cm above the roundel</td><td>A panel riding one hand moves under the other hand's finger</td></tr>
+        <tr><td>The panel ignores the hand it opened over, for as long as it is open</td><td></td><td>Even if the settings then swap the dominant hand</td></tr>
+        <tr><td>It closes if the player walks away</td><td>1.2 m</td><td>A menu left hanging in the room</td></tr>
+        <tr><td>Closing the menu never resumes the game</td><td></td><td>The game once resumed by itself from a stray touch. Only RESUME resumes.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The left controller's menu button opens the same panel. With neither a wrist nor a controller under it, the panel opens 45 cm ahead of the head and 20 cm below the eyes.</p>
+
+  <h3>What the menu offers</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>State</th><th>Entries</th><th>Pressing the roundel</th></tr></thead>
+      <tbody>
+        <tr><td>Network</td><td>Settings, Close</td><td>Opens</td></tr>
+        <tr><td>LevelSelect (a line's map)</td><td>Back to network, Settings, Close</td><td>Opens</td></tr>
+        <tr><td>Play</td><td rowspan="2">Resume, Retry, Back to line map, Settings</td><td>Pauses, then opens</td></tr>
+        <tr><td>Pause</td><td>Opens</td></tr>
+        <tr><td>TrainRun, Win</td><td>None</td><td>The roundel is hidden</td></tr>
+        <tr><td>Any, with the menu open</td><td></td><td>Closes</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Settings is the menu's own second page: dominant hand, board height (lower or raise by 1 cm), re-place board, language, music volume and effects volume (0 to 10), and back.</p>
+
+  <h2>Unreal concepts</h2>
+
+  <h3>Application lifecycle</h3>
+  <p>Unity calls <code>OnApplicationPause</code> and <code>OnApplicationFocus</code> on your script. Unreal raises global delegates on <code>FCoreDelegates</code> that anything can bind to:</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Delegate</th><th>When</th><th>Unity equivalent</th></tr></thead>
+      <tbody>
+        <tr><td><code>ApplicationWillDeactivateDelegate</code></td><td>Focus is lost: the system menu opens, the headset comes off</td><td><code>OnApplicationFocus(false)</code></td></tr>
+        <tr><td><code>ApplicationHasReactivatedDelegate</code></td><td>Focus returns</td><td><code>OnApplicationFocus(true)</code></td></tr>
+        <tr><td><code>ApplicationWillEnterBackgroundDelegate</code></td><td>The app is about to be suspended</td><td><code>OnApplicationPause(true)</code></td></tr>
+        <tr><td><code>ApplicationHasEnteredForegroundDelegate</code></td><td>The app is back</td><td><code>OnApplicationPause(false)</code></td></tr>
+        <tr><td><code>ApplicationWillTerminateDelegate</code></td><td>The app is closing</td><td><code>OnApplicationQuit</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="trap">
+    <p><span class="tag">Trap</span>On mobile platforms these can be raised on a thread that is not the game thread. Game objects, the flow and delegates that update UI must only be touched on the game thread. Hop across with <code>AsyncTask(ENamedThreads::GameThread, …)</code> and capture a weak pointer, never <code>this</code>.</p>
+  </div>
+
+  <h3>Hand joints as transforms</h3>
+  <p>The wrist joint from lesson 9 is a full transform, with an orientation. Which of its axes points out of the back of the hand depends on how the runtime and the engine define the joint, and the Unity project itself records its own assumption about this as not yet verified. You will measure it.</p>
+
+  <h3>Showing and hiding world widgets</h3>
+  <p>The Unity code learned that switching a UI document off discards what was built into it, and hides panels by visibility instead. An Unreal widget component keeps its widget when hidden, so <code>SetVisibility(false)</code> is safe. The matching trap is ordering: set a panel's transform <em>before</em> making it visible, or it draws for one frame wherever it last was.</p>
+
+  <h2>Read first</h2>
+  <ul class="files">
+    <li><code>Assets/01.Scripts/XR/Rules/WristMenuPlan.cs</code><span>75 lines. The two tables above, as code.</span></li>
+    <li><code>Assets/01.Scripts/XR/Rules/WatchCheck.cs</code><span>35 lines. The angle test with hysteresis.</span></li>
+    <li><code>Assets/01.Scripts/XR/Wrist/XRWristMenu.cs</code><span>584 lines. The constants at the top, <code>UpdateRoundel</code>, <code>Open</code>, <code>ShowSettings</code>.</span></li>
+    <li><code>Assets/01.Scripts/XR/XRGame.cs</code><span><code>OnWristToggled</code>, <code>OnWristChosen</code>, <code>OnReplaceBoard</code>, <code>LoseFocus</code>, <code>PauseForFocusLoss</code>.</span></li>
+    <li><code>Assets/99.Test/XR/EditMode/WristMenuPlanTests.cs</code>, <code>WatchCheckTests.cs</code></li>
+  </ul>
+
+  <h2>Steps</h2>
+  <ol class="steps">
+    <li>
+      <p><strong>Port the two rule files and their tests.</strong> <code>WatchCheck</code> is small enough to show whole.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="csharp" data-title="Unity: WatchCheck.cs">
+public const double ShowDegrees = 45;
+public const double HideDegrees = 65;
+
+public bool Showing { get; private set; }
+
+public bool Update(bool tracked, (double X, double Y, double Z) back, (double X, double Y, double Z) toEyes)
+{
+    if (!tracked) return Showing = false;
+    var lengths = Length(back) * Length(toEyes);
+    if (lengths < 1e-12) return Showing = false;
+    var cosine = (back.X * toEyes.X + back.Y * toEyes.Y + back.Z * toEyes.Z) / lengths;
+    var limit = Math.Cos((Showing ? HideDegrees : ShowDegrees) * Math.PI / 180);
+    return Showing = cosine >= limit;
+}
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="Unreal: FTsugiWatchCheck">
+class TSUGICORE_API FTsugiWatchCheck
+{
+public:
+    static constexpr double ShowDegrees = 45.0;
+    static constexpr double HideDegrees = 65.0;
+
+    bool IsShowing() const { return bShowing; }
+    void Reset() { bShowing = false; }
+
+    /**
+     * Back: the direction out of the back of the wrist. ToEyes: from the button to the eyes.
+     * Shows inside ShowDegrees and hides only outside HideDegrees, so a wrist held near the limit does not flicker.
+     */
+    bool Update(bool bTracked, const FVector& Back, const FVector& ToEyes)
+    {
+        if (!bTracked) return bShowing = false;
+
+        const double Lengths = Back.Size() * ToEyes.Size();
+        if (Lengths < 1e-12) return bShowing = false;
+
+        const double Cosine = FVector::DotProduct(Back, ToEyes) / Lengths;
+        const double Limit = FMath::Cos(FMath::DegreesToRadians(bShowing ? HideDegrees : ShowDegrees));
+        return bShowing = Cosine >= Limit;
+    }
+
+private:
+    bool bShowing = false;
+};
+        </script>
+      </div>
+      <p>It takes directions, not transforms, so it is indifferent to axis conventions and its tests port unchanged.</p>
+    </li>
+    <li>
+      <p><strong>Find the wrist's axes.</strong> Add a debug draw of the wrist joint's coordinate frame with <code>DrawDebugCoordinateSystem</code>, put the headset on, and look at your wrist. Write down which axis, and which sign, points out of the back of the hand, and which points towards the fingers. Put the answer in one function, <code>BackOfWrist(const FTransform&amp;)</code>, with a comment saying you measured it. Check both hands: a mirrored hand may flip a sign.</p>
+    </li>
+    <li>
+      <p><strong>Build the roundel.</strong> A <code>UWidgetComponent</code> with a 160-pixel round widget, scaled to 3 cm, on an actor that follows the wearing hand's wrist each frame. Run the watch check with the direction from step 2 and the direction from the roundel to the camera. Give it a press component from lesson 12, with:</p>
+      <ul>
+        <li><code>IgnoredHand</code> set to the wearing hand;</li>
+        <li><code>bCanPress</code> false for the first 0.3 seconds after it appears;</li>
+        <li>slop of 8 mm and an arm margin of 1.5 cm, because it rides a moving wrist;</li>
+        <li><code>Disarm()</code> whenever it appears.</li>
+      </ul>
+      <p>The wearing hand is the non-dominant one: <code>Preferences.GetWristHand()</code>. With controllers and no tracked wrist, there is no roundel; the menu button is the way in.</p>
+    </li>
+    <li>
+      <p><strong>Build the panel.</strong> A second widget component: 640 pixels wide, 20 cm in the room, with a header and a column of large buttons. It has two pages, main and settings. On open, place it 6 cm above the roundel, turn it to face the eyes, and leave it there. Record which hand it opened over and set that as its press component's ignored hand until it closes.</p>
+      <p>The panel raises events and decides nothing: <code>OnToggled</code> from the roundel or menu button, <code>OnChosen(Item)</code> for an entry, <code>OnReplaceBoard</code>, <code>OnNudgeBoard(Centimetres)</code>. Hand, volumes and language are written straight to the preferences.</p>
+    </li>
+    <li>
+      <p><strong>Let the shell decide.</strong></p>
+      <script type="text/plain" data-lang="cpp" data-title="Unreal: the shell's wrist handlers">
+void ATsugiShell::HandleWristToggled()
+{
+    FTsugiGameFlow& Flow = Game->GetFlow();
+
+    switch (FTsugiWristMenuPlan::Toggle(Flow.GetState(), Menu->IsOpen()))
+    {
+        case ETsugiWristToggle::OpenAndPause:
+            // The pause closes the menu on its way in (HandleStateChanged), so it opens after.
+            Flow.PauseGame();
+            OpenMenu();
+            break;
+        case ETsugiWristToggle::Open:
+            OpenMenu();
+            break;
+        case ETsugiWristToggle::Close:
+            Menu->Close();          // a pause stays a pause: only RESUME restarts the clock
+            break;
+        default:
+            break;
+    }
+}
+
+void ATsugiShell::HandleWristChosen(ETsugiWristItem Item)
+{
+    FTsugiGameFlow& Flow = Game->GetFlow();
+    const ETsugiGameState State = Flow.GetState();
+
+    // An entry acts only in the state that offers it. The state change it makes closes the menu.
+    switch (Item)
+    {
+        case ETsugiWristItem::Resume:        if (State == ETsugiGameState::Pause) Flow.ResumeGame(); break;
+        case ETsugiWristItem::Retry:         if (State == ETsugiGameState::Pause) Flow.Retry(); break;
+        case ETsugiWristItem::BackToMap:     if (State == ETsugiGameState::Pause) Flow.ShowLevelSelect(); break;
+        case ETsugiWristItem::BackToNetwork: if (State == ETsugiGameState::LevelSelect) Flow.ShowNetwork(); break;
+        case ETsugiWristItem::Close:         Menu->Close(); break;
+        default: break;
+    }
+}
+
+void ATsugiShell::HandleReplaceBoard()
+{
+    Menu->Close();
+    if (Game->GetFlow().GetState() == ETsugiGameState::Play) Game->GetFlow().PauseGame();
+    Placement->Replace();           // first placement runs again; the flow stays where it is
+}
+      </script>
+      <p>Add one line to <code>HandleStateChanged</code> from lesson 13: every change of state closes the menu. And in the shell's <code>Tick</code>: the roundel is offered only when <code>FTsugiWristMenuPlan::Offered(State)</code>.</p>
+    </li>
+    <li>
+      <p><strong>Pause on focus loss.</strong> Bind in the subsystem, since it outlives levels.</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiGameSubsystem.cpp">
+#include "Misc/CoreDelegates.h"
+#include "Async/Async.h"
+
+void UTsugiGameSubsystem::BindLifecycle()
+{
+    // These may arrive on a thread that is not the game thread. Hop across, and hold only a weak pointer.
+    const auto OnGameThread = [Weak = TWeakObjectPtr<UTsugiGameSubsystem>(this)](void (UTsugiGameSubsystem::*Function)())
+    {
+        AsyncTask(ENamedThreads::GameThread, [Weak, Function]()
+        {
+            if (UTsugiGameSubsystem* Self = Weak.Get()) (Self->*Function)();
+        });
+    };
+
+    DeactivateHandle = FCoreDelegates::ApplicationWillDeactivateDelegate.AddLambda([OnGameThread]() { OnGameThread(&UTsugiGameSubsystem::LoseFocus); });
+    BackgroundHandle = FCoreDelegates::ApplicationWillEnterBackgroundDelegate.AddLambda([OnGameThread]() { OnGameThread(&UTsugiGameSubsystem::LoseFocus); });
+    TerminateHandle  = FCoreDelegates::ApplicationWillTerminateDelegate.AddLambda([OnGameThread]() { OnGameThread(&UTsugiGameSubsystem::SaveNow); });
+}
+
+/** Play pauses, and the pause saves the attempt. Coming back finds it paused, never playing. */
+void UTsugiGameSubsystem::LoseFocus()
+{
+    if (!Flow) return;
+    if (FTsugiWristMenuPlan::PausesOnFocusLoss(Flow->GetState())) Flow->PauseGame();
+    else SaveNow();
+}
+      </script>
+      <p><code>SaveNow</code> needs the board, which the shell owns. Give the subsystem a <code>TFunction&lt;const FTsugiBoard*()&gt;</code> the shell sets, the same kind of seam as the star times. Remove the three handles in <code>Deinitialize</code>.</p>
+      <p>There is deliberately no handler for regaining focus. The game stays paused until the player presses RESUME, on the wrist menu or on the sign.</p>
+      <div class="unverified">
+        <p><span class="tag">Verify on the device</span>Which of these delegates fires for each event on Quest (headset removed, system menu opened, app switched away) was not confirmed for 5.8 with the Meta plugin. Log each one and try all three events. If taking the headset off raises none of them, look at <code>FCoreDelegates::VRHeadsetRemovedFromHead</code> and Meta's function library for input focus.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>Lock the board while paused.</strong> In Pause: the board is dimmed (lesson 7), <code>bAcceptsGrabs</code> is false (lesson 13), and the handle is unavailable. A paused board cannot be changed or moved.</p>
+    </li>
+  </ol>
+
+  <h2>Your port</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Unity file</th><th>Unreal</th><th>Module</th><th>Tests</th></tr></thead>
+      <tbody>
+        <tr><td><code>WristMenuPlan.cs</code></td><td><code>FTsugiWristMenuPlan</code>, <code>ETsugiWristItem</code>, <code>ETsugiWristToggle</code></td><td><code>TsugiCore</code></td><td><code>WristMenuPlanTests</code></td></tr>
+        <tr><td><code>WatchCheck.cs</code></td><td><code>FTsugiWatchCheck</code></td><td><code>TsugiCore</code></td><td><code>WatchCheckTests</code></td></tr>
+        <tr><td><code>XRWristMenu.cs</code></td><td><code>ATsugiWristMenu</code>, <code>WBP_WristRoundel</code>, <code>WBP_WristPanel</code></td><td><code>TsugiXR</code></td><td>on the headset</td></tr>
+        <tr><td>Lifecycle in <code>XRGame.cs</code></td><td>The subsystem's lifecycle binding</td><td><code>TsugiXR</code></td><td>on the headset</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The settings page's language row cycles through the four locales with <code>FTsugiPreferences::NextLocale</code>. Store the choice now; lesson 16 makes it change the text. The music volume is stored and drives nothing, as in Unity.</p>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li><code>Tsugi.Core.WristMenuPlan</code> and <code>WatchCheck</code> tests pass.</li>
+    <li>The roundel appears when I look at the back of my wrist and is absent while I lay track.</li>
+    <li>Rolling my wrist slowly through the limit does not make the roundel flicker.</li>
+    <li>Turning my wrist into view while my other hand is near does not open the menu.</li>
+    <li>In play, pressing the roundel pauses the game and opens the menu; the clock stops and the board dims.</li>
+    <li>Pressing the roundel again closes the menu and the game stays paused.</li>
+    <li>RESUME, RETRY and BACK TO LINE MAP each do what they say, once.</li>
+    <li>The panel stays put when I move my wrist away, and closes when I walk a little over a metre from it.</li>
+    <li>Swapping the dominant hand in settings moves the tray and the roundel to the other side.</li>
+    <li>Raise and lower move the board by a centimetre a press, and never push it below the table.</li>
+    <li>Re-place board runs first placement again and returns to the same paused level.</li>
+    <li>Taking the headset off during play, waiting, and putting it back on shows a paused board with my pieces intact.</li>
+    <li>The left controller's menu button opens and closes the same menu.</li>
+  </ul>
+
+  <h2>Pitfalls</h2>
+  <ul>
+    <li><strong>The store requires this.</strong> VRC.Quest.Functional.2: a single-player app must pause when the system asks. VRC.Quest.Input.4: an app must be focus-aware, hiding hands and controllers and ignoring input while unfocused. Lesson 18 checks both.</li>
+    <li><strong>Saving on the way out.</strong> The board is already saved after every change. The only thing a hard kill can lose is a few seconds on the clock. Do not add blocking work to the background handler to chase that.</li>
+    <li><strong>A press that opens and closes.</strong> The roundel's one-second cooldown is longer than the sign's 0.35 seconds on purpose: it rides a moving wrist and the finger lingers.</li>
+    <li><strong>Menu state after a level change.</strong> Because every state change closes the menu, "open as the pause" must open it <em>after</em> calling <code>PauseGame</code>, not before.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q">The menu is open over a paused game. The player presses the roundel. What state is the flow in afterwards?</p>
+    <ul>
+      <li>Play</li>
+      <li data-correct>Pause</li>
+      <li>LevelSelect</li>
+    </ul>
+    <p class="why"><code>Toggle</code> with the menu open returns <code>Close</code>, and closing never resumes. A stray touch must not restart the clock.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">Why does the lifecycle handler capture a <code>TWeakObjectPtr</code> and post to the game thread?</p>
+    <ul>
+      <li data-correct>The callback may run on another thread, and by the time the posted task runs the subsystem may be gone.</li>
+      <li>Lambdas cannot capture <code>this</code> in Unreal.</li>
+      <li>It makes the pause happen sooner.</li>
+    </ul>
+    <p class="why">Touching game objects off the game thread is a data race. A raw <code>this</code> in a queued task is a use-after-free waiting for an app shutdown.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">The watch check shows at 45° and hides at 65°. The wrist is held steady at 55°. Is the roundel visible?</p>
+    <ul>
+      <li>Yes.</li>
+      <li>No.</li>
+      <li data-correct>It depends on whether it was already showing.</li>
+    </ul>
+    <p class="why">Between the two limits the check keeps its previous answer. That gap is what prevents flicker.</p>
+  </div>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+</body>
+</html>

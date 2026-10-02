@@ -30,6 +30,9 @@ namespace TrainSudoku.XR
         private XRBoardDisplay _display;
         private UIDocument _document;
         private (int X, int Y)? _cell;
+
+        /// <summary>A point in the board root's space to stand over instead of a cell: the board lesson's line, over the near edge.</summary>
+        private Vector3? _point;
         private string _text;
         private bool? _visible;
 
@@ -52,12 +55,24 @@ namespace TrainSudoku.XR
         /// <summary>Shows <paramref name="text"/> over the cell; a null cell or empty text hides the sign.</summary>
         public void Show((int X, int Y)? cell, string text)
         {
+            _point = null;
             _cell = string.IsNullOrEmpty(text) ? null : cell;
-            if (_cell.HasValue && text != _text)
-            {
-                _text = text;
-                Build(text);
-            }
+            if (_cell.HasValue) Say(text);
+        }
+
+        /// <summary>Shows <paramref name="text"/> over <paramref name="point"/>, in the board root's space: a line about the platform, not a cell.</summary>
+        public void ShowAt(Vector3 point, string text)
+        {
+            _cell = null;
+            _point = string.IsNullOrEmpty(text) ? (Vector3?)null : point;
+            if (_point.HasValue) Say(text);
+        }
+
+        private void Say(string text)
+        {
+            if (text == _text) return;
+            _text = text;
+            Build(text);
         }
 
         public void Hide() => Show(null, null);
@@ -77,7 +92,7 @@ namespace TrainSudoku.XR
 
         private void LateUpdate()
         {
-            var show = _cell.HasValue && _display != null && _display.Level != null;
+            var show = _point.HasValue || (_cell.HasValue && _display != null && _display.Level != null);
             SetVisible(show);
             if (!show) return;
 
@@ -85,8 +100,8 @@ namespace TrainSudoku.XR
             if (_document.rootVisualElement != null && _document.rootVisualElement.childCount == 0 && _text != null) Build(_text);
 
             var root = transform.parent;
-            var (x, y) = _cell.Value;
-            var at = _display.CellWorldPosition(x, y) + root.up * (Lift * root.lossyScale.y);
+            var foot = _point.HasValue ? root.TransformPoint(_point.Value) : _display.CellWorldPosition(_cell.Value.X, _cell.Value.Y);
+            var at = foot + root.up * (Lift * root.lossyScale.y);
             transform.position = at;
 
             var head = Camera.main;

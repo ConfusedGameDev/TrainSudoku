@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 05 · Game framework and flow</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="5"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 05</p>
+  <h1>Game framework and flow</h1>
+  <p class="lede">You port the state machine that runs the whole game, with its clock and its progress rules, and give it a home in Unreal's game framework. The Unity shell owned the flow from a <code>MonoBehaviour</code>; yours lives in a game instance subsystem.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd><code>FTsugiGameFlow</code> and its helpers in <code>TsugiCore</code>, owned by <code>UTsugiGameSubsystem</code>, with about 70 ported tests passing.</dd>
+    <dt>On the headset</dt><dd>A log line for every state change. You drive the flow from console commands until the UI exists.</dd>
+    <dt>Unity equivalent</dt><dd>Milestone M2 for the flow; the shell half of XR7.</dd>
+  </dl>
+
+  <h2>The flow you are porting</h2>
+  <p><code>GameFlow</code> has seven states. Every method checks the state it is called in and refuses anything else, because the UI should only ever offer what is valid.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Method</th><th>From</th><th>To</th><th>Also does</th></tr></thead>
+      <tbody>
+        <tr><td><code>ShowNetwork</code></td><td>MainMenu, LevelSelect, Win</td><td>Network</td><td></td></tr>
+        <tr><td><code>ShowLineMap(line)</code></td><td>Network</td><td>LevelSelect</td><td>Refuses a locked line.</td></tr>
+        <tr><td><code>StartLevel(index)</code></td><td>LevelSelect</td><td>Play</td><td>Refuses a locked level. Resumes a saved attempt, clock included.</td></tr>
+        <tr><td><code>BoardTouched</code></td><td>Play</td><td>Play</td><td>Starts the clock on the first interaction.</td></tr>
+        <tr><td><code>PauseGame</code> / <code>ResumeGame</code></td><td>Play / Pause</td><td>Pause / Play</td><td>Pauses and resumes the clock.</td></tr>
+        <tr><td><code>Retry</code></td><td>Pause, Win</td><td>Play</td><td>Clears the saved attempt.</td></tr>
+        <tr><td><code>CompleteLevel</code></td><td>Play</td><td>TrainRun</td><td>Stops the clock, records time and stars, clears the saved attempt.</td></tr>
+        <tr><td><code>FinishTrainRun</code></td><td>TrainRun</td><td>Win</td><td></td></tr>
+        <tr><td><code>NextLevel</code></td><td>Win</td><td>Play, or Network at a line's last station</td><td></td></tr>
+        <tr><td><code>ShowLevelSelect</code></td><td>MainMenu, Pause, Win</td><td>LevelSelect</td><td>How "back to the line map" works from a pause.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The XR edition never shows the main menu. Once the board is placed in the room, <code>XRGame</code> calls <code>ShowNetwork()</code> straight from the initial <code>MainMenu</code> state. Board placement is a precondition held by the shell, not a flow state.</p>
+
+  <h3>Stars and unlocking</h3>
+  <ul>
+    <li>A level has two thresholds in seconds. At or under the first: three stars. At or under the second: two. Anything else, including a level with no thresholds: one.</li>
+    <li>Best time and best stars are stored separately. A slower run lowers neither.</li>
+    <li>A station is open when the level before it in the flat list has a best time. The first is always open.</li>
+    <li>A line is open when every station on the line before it has at least one star. The first line is always open.</li>
+    <li>Nothing about unlocking is stored. It is worked out from times and stars on every call.</li>
+  </ul>
+
+  <h2>Unreal concepts</h2>
+
+  <h3>The game instance and its subsystems</h3>
+  <p>A <code>UGameInstance</code> is created when the app starts and destroyed when it quits. It survives level loads, which a <code>GameMode</code> does not. A <strong>subsystem</strong> is a <code>UObject</code> the engine creates automatically alongside an owner and destroys with it. Declare a class deriving from <code>UGameInstanceSubsystem</code> and one instance exists for the life of the app, reachable from anywhere:</p>
+  <script type="text/plain" data-lang="cpp" data-title="Getting the subsystem">
+UTsugiGameSubsystem* Game = GetGameInstance()->GetSubsystem<UTsugiGameSubsystem>();
+  </script>
+  <p>That is the Unreal answer to a singleton <code>MonoBehaviour</code> on a "Game" object, with a defined lifetime and no scene object to forget.</p>
+
+  <h3>Delegates</h3>
+  <p>C# events become delegates. There are four kinds, and choosing wrongly is a common first mistake.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Kind</th><th>Listeners</th><th>Blueprint</th><th>Use here</th></tr></thead>
+      <tbody>
+        <tr><td><code>TDelegate&lt;Sig&gt;</code></td><td>One</td><td>No</td><td>A callback handed to one function</td></tr>
+        <tr><td><code>TMulticastDelegate&lt;Sig&gt;</code></td><td>Many</td><td>No</td><td>Every event on the plain C++ flow</td></tr>
+        <tr><td><code>DECLARE_DYNAMIC_MULTICAST_DELEGATE…</code></td><td>Many</td><td>Yes</td><td>What the subsystem re-broadcasts for Blueprint and widgets</td></tr>
+        <tr><td><code>TFunction&lt;Sig&gt;</code></td><td>One</td><td>No</td><td>A seam, such as <code>StarTimesForLevel</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>A listener keeps the <code>FDelegateHandle</code> that <code>AddLambda</code> or <code>AddUObject</code> returns and removes it when it goes away. <code>AddUObject</code> is safer than a lambda capturing <code>this</code>: the delegate skips an object that has been destroyed.</p>
+
+  <h3>Ticking something that is not an actor</h3>
+  <p>The flow's clock needs time every frame. A subsystem does not tick by default. Inheriting from <code>FTickableGameObject</code> as well gives it a <code>Tick</code> without needing an actor in the level.</p>
+
+  <h2>Read first</h2>
+  <ul class="files">
+    <li><code>Assets/01.Scripts/Core/GameFlow.cs</code><span>340 lines. Note <code>Require</code> at the bottom and <code>Begin</code>, which is the one place a level starts.</span></li>
+    <li><code>Assets/01.Scripts/Core/PlayTimer.cs</code><span>Idle, Running, Paused, Stopped. <code>Restore</code> returns to Idle at a saved time, waiting for the first touch.</span></li>
+    <li><code>Assets/01.Scripts/Core/ProgressTracker.cs</code><span><code>StarsFor</code> is the scoring rule. <code>FormatTime</code> floors to whole seconds.</span></li>
+    <li><code>Assets/01.Scripts/Core/StarLadder.cs</code><span>The live star tier during a run. It only ever goes down.</span></li>
+    <li><code>Assets/01.Scripts/Core/LevelProgress.cs</code>, <code>ISaveStore.cs</code><span>A snapshot of a level mid-play, and where progress is kept.</span></li>
+    <li><code>Assets/01.Scripts/XR/XRGame.cs</code><span><code>BuildFlow</code> (line 167 on) shows exactly what the shell gives the flow.</span></li>
+    <li><code>Assets/99.Test/EditMode/GameFlowTests.cs</code>, <code>GameFlowNetworkTests.cs</code>, <code>PlayTimerTests.cs</code>, <code>ProgressTrackerTests.cs</code>, <code>LevelProgressTests.cs</code>, <code>SaveStoreTests.cs</code></li>
+  </ul>
+
+  <h2>Steps</h2>
+  <ol class="steps">
+    <li>
+      <p><strong>Port the save store interface.</strong> A C# interface becomes an abstract class. It is plain C++, so it does not use Unreal's <code>UINTERFACE</code> machinery, which exists for Blueprint.</p>
+      <script type="text/plain" data-lang="cpp" data-title="Unreal: TsugiSaveStore.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "TsugiLevelProgress.h"
+
+/** Persistence seam. Level ids are the keys. */
+class TSUGICORE_API ITsugiSaveStore
+{
+public:
+    virtual ~ITsugiSaveStore() = default;
+
+    virtual bool TryGetBestTime(const FString& LevelId, double& OutSeconds) const = 0;
+    virtual void SetBestTime(const FString& LevelId, double Seconds) = 0;
+
+    virtual bool TryGetStars(const FString& LevelId, int32& OutStars) const = 0;
+    virtual void SetStars(const FString& LevelId, int32 Stars) = 0;
+
+    virtual bool TryGetProgress(const FString& LevelId, FTsugiLevelProgress& OutProgress) const = 0;
+    virtual void SetProgress(const FString& LevelId, const FTsugiLevelProgress& Progress) = 0;
+    virtual void ClearProgress(const FString& LevelId) = 0;
+};
+
+/** For tests, and for this lesson until the file store exists. */
+class TSUGICORE_API FTsugiInMemorySaveStore : public ITsugiSaveStore
+{
+public:
+    // ...the seven overrides...
+
+private:
+    TMap<FString, double> BestTimes;
+    TMap<FString, int32> Stars;
+    TMap<FString, FTsugiLevelProgress> InProgress;
+};
+      </script>
+      <div class="trap">
+        <p><span class="tag">Trap</span><code>TMap&lt;FString, …&gt;</code> compares keys without regard to case by default. Unity's dictionary is case-sensitive. The shipped ids are all lower case, so it does not bite today, but write a test with two ids that differ only by case and decide deliberately what your store does.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>Declare the flow.</strong> Events become multicast delegates, the two seams become <code>TFunction</code>s, and every transition returns <code>bool</code> where the C# returned <code>void</code> and threw.</p>
+      <script type="text/plain" data-lang="cpp" data-title="Unreal: TsugiGameFlow.h (shape)">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "TsugiNetworkLayout.h"
+#include "TsugiPlayTimer.h"
+#include "TsugiProgressTracker.h"
+#include "TsugiStarLadder.h"
+#include "TsugiGameFlow.generated.h"
+
+class FTsugiBoard;
+class ITsugiSaveStore;
+
+/** Keep this order: tests and the wrist-menu plan switch on it. Network was added last. */
+UENUM(BlueprintType)
+enum class ETsugiGameState : uint8
+{
+    MainMenu, LevelSelect, Play, Pause, TrainRun, Win, Network,
+};
+
+using FTsugiStarTimes = TArray<double, TInlineAllocator<2>>;
+
+class TSUGICORE_API FTsugiGameFlow
+{
+public:
+    static constexpr int32 MinStarsToOpenNextLine = 1;
+
+    FTsugiGameFlow(TArray<FString> InLevelIds, TSharedRef<ITsugiSaveStore> InStore, TOptional<FTsugiNetworkLayout> InLayout = {});
+
+    ETsugiGameState GetState() const { return State; }
+    FTsugiPlayTimer Timer;
+    FTsugiProgressTracker Progress;
+
+    int32 GetCurrentLevelIndex() const { return CurrentLevelIndex; }   // -1 before any level has started
+    int32 GetCurrentLineIndex() const;
+    int32 GetCurrentStationIndex() const;
+    int32 GetSelectedLineIndex() const { return SelectedLineIndex; }
+    int32 GetStarTier() const { return Ladder.GetTier(); }
+    bool IsLineComplete() const;
+    TOptional<FTsugiCompletionResult> LastResult;
+
+    /** Seams: TsugiCore cannot see a level asset. An empty result is worth one star. */
+    TFunction<FTsugiStarTimes(int32 FlatIndex)> StarTimesForLevel;
+    TFunction<bool(int32 LineIndex)> LineUnlockOverride;
+    bool bUnlockAll = false;
+
+    /** (Previous, Current), after every state change. */
+    TMulticastDelegate<void(ETsugiGameState, ETsugiGameState)> OnStateChanged;
+
+    /** A level should be loaded onto the board. Progress is the attempt to continue from, if any. */
+    TMulticastDelegate<void(int32 FlatIndex, const TOptional<FTsugiLevelProgress>& Progress)> OnLevelStarted;
+
+    /** The run just dropped out of reach of a star. Never raised upwards. */
+    TMulticastDelegate<void(int32 Tier)> OnStarTierChanged;
+
+    bool IsLineUnlocked(int32 LineIndex) const;
+    bool IsUnlocked(int32 FlatIndex) const;
+
+    void Tick(double DeltaSeconds);
+
+    // Each returns false, and reports through ensure, when called in a state that does not allow it.
+    bool ShowNetwork();
+    bool ShowLineMap(int32 LineIndex);
+    bool ShowLevelSelect();
+    bool StartLevel(int32 FlatIndex);
+    bool BoardTouched();
+    bool PauseGame();
+    bool ResumeGame();
+    bool Retry();
+    bool SaveProgress(const FTsugiBoard& Board);
+    bool CompleteLevel();
+    bool FinishTrainRun();
+    bool NextLevel();
+    int32 AwardMissingStars();
+
+private:
+    bool Require(std::initializer_list<ETsugiGameState> Allowed) const;
+    void Transition(ETsugiGameState Next);
+    void Begin(int32 FlatIndex, bool bResume);
+
+    TArray<FString> LevelIds;
+    FTsugiNetworkLayout Layout;
+    FTsugiStarLadder Ladder;
+    ETsugiGameState State = ETsugiGameState::MainMenu;
+    int32 CurrentLevelIndex = INDEX_NONE;
+    int32 SelectedLineIndex = 0;
+};
+      </script>
+    </li>
+    <li>
+      <p><strong>Translate "throws on an invalid transition".</strong> This is the pattern for the whole file.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="csharp" data-title="Unity: GameFlow.cs">
+public void PauseGame()
+{
+    Require(GameState.Play);
+    Timer.Pause();
+    Transition(GameState.Pause);
+}
+
+private void Require(params GameState[] allowed)
+{
+    if (Array.IndexOf(allowed, State) >= 0) return;
+    throw new InvalidOperationException($"Not allowed in state {State}; expected {string.Join(" or ", allowed)}.");
+}
+
+private void Transition(GameState next)
+{
+    var previous = State;
+    State = next;
+    StateChanged?.Invoke(previous, next);
+}
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="Unreal: TsugiGameFlow.cpp">
+bool FTsugiGameFlow::PauseGame()
+{
+    if (!Require({ ETsugiGameState::Play })) return false;
+    Timer.Pause();
+    Transition(ETsugiGameState::Pause);
+    return true;
+}
+
+bool FTsugiGameFlow::Require(std::initializer_list<ETsugiGameState> Allowed) const
+{
+    for (const ETsugiGameState Candidate : Allowed)
+    {
+        if (Candidate == State) return true;
+    }
+
+    // ensureAlways, not ensure: plain ensure reports only the first time each call site fails,
+    // and the tests expect the report every time.
+    ensureAlwaysMsgf(false, TEXT("Not allowed in state %d."), static_cast<int32>(State));
+    return false;
+}
+
+void FTsugiGameFlow::Transition(ETsugiGameState Next)
+{
+    const ETsugiGameState Previous = State;
+    State = Next;
+    OnStateChanged.Broadcast(Previous, Next);
+}
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="The test for it">
+It("PauseOutsidePlayIsRefused", [this]()
+{
+    FTsugiGameFlow Flow = MakeFlow(3);            // starts in MainMenu
+
+    // An ensure writes an error to the log, which would fail the test. Say it is expected.
+    AddExpectedError(TEXT("Not allowed in state"), EAutomationExpectedErrorFlags::Contains, 1);
+
+    TestFalse(TEXT("refused"), Flow.PauseGame());
+    TestTrue(TEXT("state unchanged"), Flow.GetState() == ETsugiGameState::MainMenu);
+});
+        </script>
+      </div>
+    </li>
+    <li>
+      <p><strong>Create the subsystem.</strong> It does what <code>XRGame.BuildFlow</code> does: loads the network, builds the id list, creates the store and the flow, connects the star-time seam and runs the save migration.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="cpp" data-title="TsugiGameSubsystem.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Subsystems/GameInstanceSubsystem.h"
+#include "Tickable.h"
+#include "TsugiGameFlow.h"
+#include "TsugiGameSubsystem.generated.h"
+
+class UTsugiNetworkDefinition;
+class UTsugiLevelDefinition;
+class UTsugiLineDefinition;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FTsugiStateChangedEvent, ETsugiGameState, Previous, ETsugiGameState, Current);
+
+/** Owns the flow, the save and the level list for the life of the app. What XRGame is in the Unity edition. */
+UCLASS()
+class TSUGIXR_API UTsugiGameSubsystem : public UGameInstanceSubsystem, public FTickableGameObject
+{
+    GENERATED_BODY()
+
+public:
+    virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+    virtual void Deinitialize() override;
+
+    FTsugiGameFlow& GetFlow() { return *Flow; }
+    UTsugiNetworkDefinition* GetNetwork() const { return Network; }
+    UTsugiLevelDefinition* GetLevel(int32 FlatIndex) const;
+    UTsugiLevelDefinition* GetCurrentLevel() const;
+    UTsugiLineDefinition* GetCurrentLine() const;
+
+    /** The flow's StateChanged, for Blueprint and widgets. */
+    UPROPERTY(BlueprintAssignable, Category = "Tsugi")
+    FTsugiStateChangedEvent OnStateChanged;
+
+    UFUNCTION(BlueprintPure, Category = "Tsugi")
+    ETsugiGameState GetState() const { return Flow ? Flow->GetState() : ETsugiGameState::MainMenu; }
+
+    // FTickableGameObject
+    virtual void Tick(float DeltaTime) override;
+    virtual bool IsTickable() const override { return Flow.IsValid(); }
+    virtual TStatId GetStatId() const override { RETURN_QUICK_DECLARE_CYCLE_STAT(UTsugiGameSubsystem, STATGROUP_Tickables); }
+
+private:
+    // UObject pointers must be UPROPERTYs or the garbage collector may free them.
+    UPROPERTY() TObjectPtr<UTsugiNetworkDefinition> Network;
+    UPROPERTY() TArray<TObjectPtr<UTsugiLevelDefinition>> Levels;
+
+    // Plain C++: owned explicitly.
+    TSharedPtr<ITsugiSaveStore> Store;
+    TUniquePtr<FTsugiGameFlow> Flow;
+};
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="TsugiGameSubsystem.cpp">
+#include "TsugiGameSubsystem.h"
+#include "TsugiSettings.h"
+#include "TsugiNetworkDefinition.h"
+#include "TsugiLevelDefinition.h"
+#include "TsugiSaveStore.h"
+
+DEFINE_LOG_CATEGORY_STATIC(LogTsugiFlow, Log, All);
+
+void UTsugiGameSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+    Super::Initialize(Collection);
+
+    const UTsugiSettings* Settings = GetDefault<UTsugiSettings>();
+    Network = Settings->Network.LoadSynchronous();
+    if (!Network)
+    {
+        UE_LOG(LogTsugiFlow, Error, TEXT("No network assigned in Project Settings > Game > Tsugi."));
+        return;
+    }
+
+    TArray<FString> Ids;
+    for (UTsugiLevelDefinition* Level : Network->FlatLevels())
+    {
+        Levels.Add(Level);
+        Ids.Add(Level ? Level->Id : FString());
+    }
+
+    Store = MakeShared<FTsugiInMemorySaveStore>();          // lesson 6 replaces this with the file store
+    Flow = MakeUnique<FTsugiGameFlow>(MoveTemp(Ids), Store.ToSharedRef(), Network->ToLayout());
+    Flow->bUnlockAll = Settings->bUnlockAll;
+
+    // The seam: TsugiCore cannot see a level asset, so the subsystem answers for it.
+    Flow->StarTimesForLevel = [this](int32 FlatIndex) -> FTsugiStarTimes
+    {
+        const UTsugiLevelDefinition* Level = GetLevel(FlatIndex);
+        return Level ? Level->GetStarTimes() : FTsugiStarTimes();
+    };
+    Flow->AwardMissingStars();
+
+    Flow->OnStateChanged.AddWeakLambda(this, [this](ETsugiGameState Previous, ETsugiGameState Current)
+    {
+        UE_LOG(LogTsugiFlow, Log, TEXT("[flow] %s -> %s"), *UEnum::GetValueAsString(Previous), *UEnum::GetValueAsString(Current));
+        OnStateChanged.Broadcast(Previous, Current);
+    });
+}
+
+void UTsugiGameSubsystem::Deinitialize()
+{
+    Flow.Reset();
+    Store.Reset();
+    Super::Deinitialize();
+}
+
+void UTsugiGameSubsystem::Tick(float DeltaTime)
+{
+    Flow->Tick(DeltaTime);
+}
+
+UTsugiLevelDefinition* UTsugiGameSubsystem::GetLevel(int32 FlatIndex) const
+{
+    return Levels.IsValidIndex(FlatIndex) ? Levels[FlatIndex].Get() : nullptr;
+}
+        </script>
+      </div>
+      <p>The lambda that captures <code>this</code> lives on the flow, and the flow is destroyed in <code>Deinitialize</code> before the subsystem goes, so it cannot outlive what it captured. State that reasoning in a comment whenever you capture <code>this</code>.</p>
+    </li>
+    <li>
+      <p><strong>Drive it without a UI.</strong> Console commands let you walk the flow from the editor's console now, and from the headset later.</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiConsole.cpp">
+#include "HAL/IConsoleManager.h"
+#include "Engine/World.h"
+#include "Engine/GameInstance.h"
+#include "TsugiGameSubsystem.h"
+
+static UTsugiGameSubsystem* Game(UWorld* World)
+{
+    return World && World->GetGameInstance() ? World->GetGameInstance()->GetSubsystem<UTsugiGameSubsystem>() : nullptr;
+}
+
+static FAutoConsoleCommandWithWorld TsugiNetwork(TEXT("Tsugi.Network"), TEXT("MainMenu, LevelSelect or Win -> Network"),
+    FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World) { if (auto* G = Game(World)) G->GetFlow().ShowNetwork(); }));
+
+static FAutoConsoleCommandWithWorldAndArgs TsugiLine(TEXT("Tsugi.Line"), TEXT("Tsugi.Line <index>: Network -> LevelSelect"),
+    FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+    {
+        if (auto* G = Game(World); G && Args.Num() == 1) G->GetFlow().ShowLineMap(FCString::Atoi(*Args[0]));
+    }));
+
+// Tsugi.Start <flat index>, Tsugi.Pause, Tsugi.Resume, Tsugi.Complete, Tsugi.FinishTrain, Tsugi.Next: yours.
+      </script>
+      <p>Press Play in the editor, open the console with the backtick key, and type <code>Tsugi.Network</code>, <code>Tsugi.Line 0</code>, <code>Tsugi.Start 0</code>. Watch the Output Log.</p>
+    </li>
+  </ol>
+
+  <h2>Your port</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Unity file</th><th>Unreal class</th><th>Tests to port</th><th>Cases</th></tr></thead>
+      <tbody>
+        <tr><td><code>PlayTimer.cs</code></td><td><code>FTsugiPlayTimer</code></td><td><code>PlayTimerTests</code></td><td>8</td></tr>
+        <tr><td><code>ProgressTracker.cs</code></td><td><code>FTsugiProgressTracker</code>, <code>FTsugiCompletionResult</code></td><td><code>ProgressTrackerTests</code></td><td>14</td></tr>
+        <tr><td><code>StarLadder.cs</code></td><td><code>FTsugiStarLadder</code></td><td>the ladder cases in <code>AudioLayerTests</code></td><td>about 10</td></tr>
+        <tr><td><code>LevelProgress.cs</code></td><td><code>FTsugiLevelProgress</code>, <code>FTsugiPlacedPiece</code></td><td><code>LevelProgressTests</code></td><td>5</td></tr>
+        <tr><td><code>ISaveStore.cs</code></td><td><code>ITsugiSaveStore</code>, <code>FTsugiInMemorySaveStore</code></td><td><code>SaveStoreTests</code></td><td>2</td></tr>
+        <tr><td><code>GameFlow.cs</code></td><td><code>FTsugiGameFlow</code></td><td><code>GameFlowTests</code>, <code>GameFlowNetworkTests</code></td><td>33</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><code>MusicPlan.cs</code> is the phone's. The XR edition plays no music, so leave it until someone decides it should.</p>
+  <p><code>ProgressTracker.FormatTime</code> returns a string for the clock on the signboard. Keep it in <code>TsugiCore</code> returning <code>FString</code>; digits are not translated.</p>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li>All tests under <code>Tsugi.Core.GameFlow</code>, <code>PlayTimer</code>, <code>ProgressTracker</code>, <code>StarLadder</code> and <code>LevelProgress</code> pass.</li>
+    <li>In Play In Editor, <code>Tsugi.Network</code>, <code>Tsugi.Line 0</code>, <code>Tsugi.Start 0</code> logs MainMenu → Network → LevelSelect → Play.</li>
+    <li><code>Tsugi.Line 1</code> on a fresh save is refused, because line 1 is locked.</li>
+    <li><code>Tsugi.Start 1</code> on a fresh save is refused; after <code>Tsugi.Start 0</code>, <code>Tsugi.Complete</code>, <code>Tsugi.FinishTrain</code>, <code>Tsugi.Next</code> the flow is in Play on level 1.</li>
+    <li>Completing the ninth station of a line and calling <code>Tsugi.Next</code> lands in Network, not Play.</li>
+    <li>The same log lines appear on the headset in a packaged build.</li>
+  </ul>
+
+  <h2>Pitfalls</h2>
+  <ul>
+    <li><strong>The class default object ticks too.</strong> Unreal creates one default instance of every <code>UCLASS</code>. It is also an <code>FTickableGameObject</code>. <code>IsTickable()</code> returning false while <code>Flow</code> is unset is what keeps it quiet.</li>
+    <li><strong>Pausing must not resume by itself.</strong> In the Unity headset checks, the game once resumed on its own after a focus loss. The rule since then: only an explicit RESUME calls <code>ResumeGame</code>. Do not add a convenience that resumes on regaining focus.</li>
+    <li><strong>Star times are read once per level start.</strong> <code>Begin</code> is the only caller of the seam, on purpose. Do not call it from <code>Tick</code>.</li>
+    <li><strong><code>ensure</code> breaks into the debugger.</strong> With a debugger attached, each expected failure in a test stops execution. Run the suite without the debugger, or continue past them.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q">Why does the flow live in a game instance subsystem and not in the game mode?</p>
+    <ul>
+      <li>Game modes cannot hold plain C++ objects.</li>
+      <li data-correct>The game mode is destroyed and recreated with each level load; the game instance lasts for the whole run of the app.</li>
+      <li>Subsystems tick faster.</li>
+    </ul>
+    <p class="why">Tsugi uses one level, so either would work today. The subsystem is the choice that stays right if that ever changes, and it needs no actor in the level.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">A level has thresholds of 96 and 192 seconds. The player finishes in exactly 96.0 seconds. How many stars?</p>
+    <ul>
+      <li data-correct>Three</li>
+      <li>Two</li>
+    </ul>
+    <p class="why"><code>StarsFor</code> uses <code>seconds &lt;= three</code>. The boundary belongs to the higher rating.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">The subsystem holds <code>Network</code> in a <code>UPROPERTY()</code> with no specifiers. What is that for?</p>
+    <ul>
+      <li>To show it in the editor.</li>
+      <li data-correct>To tell the garbage collector the subsystem references it, so it is not freed.</li>
+      <li>To save it in the save file.</li>
+    </ul>
+    <p class="why">An empty <code>UPROPERTY()</code> is purely a reference the collector can see.</p>
+  </div>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+</body>
+</html>

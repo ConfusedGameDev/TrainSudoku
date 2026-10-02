@@ -39,7 +39,7 @@ Settled by interview on 11 Sep 2026. Closed. Do not re-open one without asking f
 | # | Decision | Consequence |
 |---|---|---|
 | X5 | **Hands first; controllers also supported** | Everything is designed around a pinch-grab. Controller grip maps to grab. *Revised 2026-09-15:* there are no rays, so menus are pressed with the controller's tip as with a fingertip, and the trigger is unused |
-| X6 | **Cell size about 6 cm, scalable with both hands from 4 to 9 cm** | A 6×6 board with its tunnel ring is ~48 cm across at 6 cm; an 8×8 one ~60 cm. *Revised 2026-09-14 after the XR7 headset check:* two-hand scaling moved into v1 on the two-hand handle (5.3), and the size is saved with the board's anchor. Below 4 cm a piece is too small to pinch reliably |
+| X6 | **Cell size about 6 cm, scalable with both hands from 5 to 9 cm** | A 6×6 board with its tunnel ring is ~48 cm across at 6 cm; an 8×8 one ~60 cm. *Revised 2026-09-14 after the XR7 headset check:* two-hand scaling moved into v1 on the two-hand handle (5.3), and the size is saved with the board's anchor. *Revised 2026-10-02:* the floor rose from 4 to 5 cm, because at 4 cm pieces were hard to pick off the board accurately |
 | X7 | The board **snaps to detected horizontal surfaces**; if none are found it **floats** at waist height | Moved at any time, mid-level included, by a handle. Its position **persists across sessions** through a saved anchor |
 | X8 | The tray holds **six slots, one per key, orientation locked, unlimited supply** | A held piece stays aligned to the board's grid whatever the wrist does. Keys map 1:1 onto `Legality` |
 | X9 | Drop rules: see section 4 | Ghost preview. An illegal release returns the piece to where it came from. Dropping on a player piece replaces it if legal. Clues update on release, not while hovering |
@@ -163,7 +163,7 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 - The XR edition builds its own board.
   - **Positions** come from the shared `Core`, at **1 unit per cell**: cell, tunnel and clue positions from `BoardLayout`, per-piece centre lines from `TrackCurve`, and the S-to-E route from `TrackPath`.
   - **Art** is the phone's train kit, used in place (X24).
-- The whole board sits under one root scaled to the cell size: **0.06**, so one cell is 6 cm, unless the player has scaled it (4 to 9 cm, 5.3). No board code learns about metres, and `Core`'s layout maths is used unchanged.
+- The whole board sits under one root scaled to the cell size: **0.06**, so one cell is 6 cm, unless the player has scaled it (5 to 9 cm, 5.3). No board code learns about metres, and `Core`'s layout maths is used unchanged.
 - Tunnels, clue signs, the train and every other board mesh inherit the scale.
 
 ### 5.2 First placement
@@ -185,7 +185,7 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
   - Grab and drag to move the board in any direction, height included.
   - Let go within 5 cm of a detected surface and the board settles onto it, shadows included. Anywhere else it floats where it was left.
   - To turn it about the vertical, steer with the two hands: the line between them turns the board.
-  - **Spread or close the hands to scale the board**, about the point between them, from 4 to 9 cm a cell. Everything on the platform scales with it, the signboard included, and the size is saved with the anchor. Added 2026-09-14 after the XR7 headset check.
+  - **Spread or close the hands to scale the board**, about the point between them, from 5 to 9 cm a cell (4 to 9 until 2026-10-02). Everything on the platform scales with it, the signboard included, and the size is saved with the anchor. Added 2026-09-14 after the XR7 headset check.
   - Revised 2026-09-13 after the XR5 headset check, which asked for height and a reliable turn.
 - The handle is **hidden while any piece is held**, so it can't be caught by accident mid-drop.
 - Moving is allowed at any time, mid-level included. The anchor is re-saved on release.
@@ -245,7 +245,7 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 - **Selecting on the platform.** Roundels are chosen by **a fingertip** coming down onto a roundel's face, and by nothing else: the ray and look-and-pinch went on 2026-09-15 (X16). It is read from the hand's poke pose rather than through XRI's poke, which did not press on the headset (revised 2026-09-14 after the XR7 headset check).
 - **Signboard buttons** are pressed with a fingertip, read from the hand as on the roundels (rays removed on 2026-09-15). The card leans back about its bottom edge to face the player's eyes, up to 50 degrees, as well as turning to them. Seen from above across the platform, an upright card took rays at a glancing angle (revised 2026-09-14 after the XR7 headset check).
 - **The ways back are on the wrist menu (XR8).** The XR7 interim put a LINE MAP button on the signboard in Play and a NETWORK button on the line map. XR8 moved both to the wrist menu: Back to map in the pause, Back to network on the line map.
-- **Tutorial briefing.** The three-card rules briefing shows on the signboard, once per session, on the tutorial station with no rails laid (section 7).
+- **Tutorial briefing.** The three-card rules briefing shows on the signboard, once per session, on the tutorial station with no rails laid (section 7). The first time on a headset, the two cards of the board lesson come before it.
 
 ### 6.3 Pause
 
@@ -282,6 +282,13 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
   1. **The adjacency rule.** The coach asks for a piece that is illegal at the target. The ghost goes red, and on release the piece flies back to the tray.
   2. **Erasing.** The coach points at an overfill cell derived from the board, as on the phone. The player lays the piece, watches the clue sign turn red, and is then shown how to lift the piece and throw or release it.
 - **Callout.** The tutorial callout is a world-space sign beside the target.
+- **The board lesson** (added 2026-10-02). Nothing on the platform says its rail carries and resizes it, so the tutorial station opens with a lesson in that, ahead of the rules briefing, **once per headset**.
+  1. The rail stays opened out, and a pair of translucent **ghost hands** waits over its two sides. A callout over the near edge says the board can be moved.
+  2. Once one of the player's hands comes within about 25 cm, the ghost hands come down and **pinch the rail, over and over**, and the callout asks for a pinch with both hands.
+  3. With both hands on the rail the ghost hands go, and the callout says to move the hands to carry the board and to spread or close them to resize it.
+  4. Letting go after the board has moved or changed size shows the **closing card** on the signboard: the board can be placed afresh at any time from the wrist menu, Settings, Re-place board. Its GOT IT button ends the lesson.
+  - The pieces are locked while it runs. The signboard carries **SKIP**, which goes to the closing card rather than out, so a player who cannot manage the two-hand pinch still learns about Re-place.
+  - Leaving the station before GOT IT leaves the lesson owed.
 - **Level constraints.** The phone's `LevelCollectionTests` keep holding the tutorial level to constraints that also suit XR: solvable by propagation alone, both rail kinds on the guided path, and exactly one tutorial station.
 
 ---

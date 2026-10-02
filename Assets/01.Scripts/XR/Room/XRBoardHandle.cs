@@ -14,7 +14,7 @@ namespace TrainSudoku.XR
     /// alone for <see cref="StayOpenSeconds"/>, it folds back to its corner. It takes both hands to move the board; a
     /// single pinch, the false positive the corner knob kept giving, only lights and opens it. Held in both hands, their
     /// midpoint carries the board, height included, the line between them steers it, and spreading or closing them
-    /// scales it, from 4 to 9 cm a cell; the board only follows once the hands have carried it 3 cm, turned it 12
+    /// scales it, from 5 to 9 cm a cell; the board only follows once the hands have carried it 3 cm, turned it 12
     /// degrees or changed their span by 8%. Let go with either hand and <see cref="XRBoardPlacement"/> settles the board
     /// onto a surface it is close to and re-anchors it. A fingertip or pinch point within 2 cm of the rail counts as a
     /// touch, so the player sees where to take hold.
@@ -112,6 +112,22 @@ namespace TrainSudoku.XR
         private float _side = -1f;
 
         public bool IsHeld => _holders.Count > 0;
+
+        /// <summary>How many hands hold the rail: it takes two to move the board.</summary>
+        public int HeldCount => _holders.Count;
+
+        /// <summary>Keeps the rail opened out, touched or not: the board lesson shows both its ends (XR-PRD 7).</summary>
+        public bool HoldOpen { get; set; }
+
+        /// <summary>
+        /// Where each hand takes the opened rail, in the room: halfway up the leg on either side of the platform.
+        /// </summary>
+        public void GripPoints(out Vector3 left, out Vector3 right)
+        {
+            var x = _halfWidth + GapCells;
+            left = transform.TransformPoint(new Vector3(-x, 0f, LegCells / 2f));
+            right = transform.TransformPoint(new Vector3(x, 0f, LegCells / 2f));
+        }
 
         /// <summary>The player's dominant hand: the rail wraps the near corner on the other side, away from the tray.</summary>
         public Hand DominantHand
@@ -258,7 +274,7 @@ namespace TrainSudoku.XR
         private void Unfold(bool lit)
         {
             _idle = lit ? 0f : _idle + Time.deltaTime;
-            var target = _available && _idle < StayOpenSeconds ? 1f : 0f;
+            var target = _available && (HoldOpen || _idle < StayOpenSeconds) ? 1f : 0f;
             if (Mathf.Approximately(_open, target)) return;
             _open = Mathf.MoveTowards(_open, target, Time.deltaTime / (target > _open ? OpenSeconds : FoldSeconds));
             Rebuild();

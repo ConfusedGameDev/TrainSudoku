@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 15 · Tutorial</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="15"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 15</p>
+  <h1>Tutorial</h1>
+  <p class="lede">The first station teaches the game by walking the player along its own solution, staging two mistakes on purpose. The script is not written against that level: it is read off the board. This lesson has almost no new Unreal in it. It uses everything you have built.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd><code>FTsugiTutorialCoach</code> in <code>TsugiCore</code> with its tests, rings on the cell and tray slot, a callout card over the board, and a three-card briefing on the sign.</dd>
+    <dt>On the headset</dt><dd>A new player, given no instructions, finishes Ashgate.</dd>
+    <dt>Unity equivalent</dt><dd>Milestone XR9. Committed, but not yet verified on a headset in the Unity project.</dd>
+  </dl>
+
+  <div class="unverified">
+    <p><span class="tag">Unverified upstream</span>The Unity XR tutorial's box in <code>Docs/XR-PRD.md</code> is unticked: it has not had its headset check. Its rules are covered by tests, so port those faithfully. Treat how it <em>feels</em> as yours to judge on the device, and report what you find to whoever owns the Unity edition.</p>
+  </div>
+
+  <h2>The script</h2>
+  <p>The coach solves the level once, walks the solution from S to E, and keeps the cells the player must fill, in order, with the key each needs. Its target is always the first of those still empty.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Stage</th><th>Guide kind</th><th>What is lit</th><th>What it teaches</th></tr></thead>
+      <tbody>
+        <tr><td>Rail 1</td><td><code>Lay</code></td><td>The tray slot and the cell</td><td>Take this piece, put it here.</td></tr>
+        <tr><td>Rail 2, first</td><td><code>Adjacency</code></td><td>A tray slot whose key is <em>illegal</em> on that cell, and the cell</td><td>The ghost goes red and the piece flies back: a piece beside track must join it.</td></tr>
+        <tr><td>Rail 2, then rail 3</td><td><code>Lay</code></td><td>The right slot and the cell</td><td>Laying becomes routine.</td></tr>
+        <tr><td>After three rails</td><td><code>Mistake</code></td><td>A cell <em>off</em> the route, alone</td><td>Only one piece fits there, and laying it pushes a line past its number. The number turns red.</td></tr>
+        <tr><td>Then</td><td><code>Erase</code></td><td>That same cell</td><td>Lift the rail you just laid.</td></tr>
+        <tr><td>Then</td><td><code>Discard</code></td><td>Nothing locked</td><td>Throw it away, or let it go off the board.</td></tr>
+        <tr><td>From then on</td><td><code>Lay</code>, unlocked</td><td>The next cell only</td><td>The board is the player's. The ring still points along the route, but nothing is refused.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Until the erase lesson is done the coach is <strong>locked</strong>. Its <code>Admits</code> function is the <code>Gate</code> on <code>FTsugiPieceDrop</code> from lesson 11: a legal drop anywhere else comes back <code>Steered</code>, with a soft note and not the error sound.</p>
+
+  <h3>How the script reads itself off the board</h3>
+  <ul>
+    <li><strong>The adjacency mistake:</strong> the first key, in enum order, that is illegal on the second rail's cell. If every key fits there, the lesson is skipped.</li>
+    <li><strong>The overfill mistake:</strong> an empty cell off the route where exactly one key is legal, and where the row or column is already at its clue, so one more rail overfills it. The nearest such cell to the last rail laid wins. If the board has none, the coach unlocks instead of stalling.</li>
+    <li><strong>A resumed board:</strong> if the board already holds player pieces when the level loads, the coach starts unlocked. Re-locking would punish coming back.</li>
+    <li><strong>Finding erase alone:</strong> if the player lifts any rail before being asked, the detour has nothing left to teach, and the coach unlocks.</li>
+  </ul>
+  <p>Nothing here mentions a coordinate. Replace Ashgate with another board and the tutorial rewrites itself.</p>
+
+  <h2>Unreal concepts</h2>
+  <p>Two small ones, both about putting pieces together.</p>
+  <h3>Composition over inheritance</h3>
+  <p>The tutorial adds no new actor type that knows about the game. It adds a plain rules object, two small display actors, and three or four lines in the shell that pass facts between them. That is the same shape as every feature so far, and it is why each one could be tested on its own.</p>
+  <h3>Function objects as seams</h3>
+  <p><code>FTsugiPieceDrop::Gate</code> is a <code>TFunction</code>. The shell assigns a lambda that asks the coach. Neither the drop rules nor the coach knows the other exists. You have now used this pattern five times: star times, line unlock override, the handle's claim on a pinch, the board for saving, and this gate.</p>
+
+  <h2>Read first</h2>
+  <ul class="files">
+    <li><code>Assets/01.Scripts/XR/Rules/XRTutorialCoach.cs</code><span>429 lines. <code>Begin</code>, <code>Admits</code>, <code>Observe</code>, <code>ResolveGuide</code>, <code>ResolveKey</code>, <code>TryFindMistake</code>.</span></li>
+    <li><code>Assets/01.Scripts/XR/Tutorial/XRTutorialMarks.cs</code><span>The pulsing rings on the cell and on the tray slot.</span></li>
+    <li><code>Assets/01.Scripts/XR/Tutorial/XRTutorialCallout.cs</code><span>The card standing over the target cell.</span></li>
+    <li><code>Assets/01.Scripts/XR/XRGame.cs</code><span><code>OnActed</code>, <code>RefreshTutorial</code>, <code>ShowStationSign</code>, <code>NextBriefingCard</code>, and <code>OnLevelStarted</code>'s briefing condition.</span></li>
+    <li><code>Assets/99.Test/XR/EditMode/XRTutorialCoachTests.cs</code>, <code>XRTestBoards.cs</code></li>
+    <li><code>Assets/99.Test/EditMode/LevelCollectionTests.cs</code><span>The checks that hold the tutorial flag to exactly one station and require that board to offer both lessons.</span></li>
+  </ul>
+
+  <h2>Steps</h2>
+  <ol class="steps">
+    <li>
+      <p><strong>Port the coach and its tests.</strong> It is the largest single rules file, 429 lines, and it is all plain logic over <code>FTsugiSolver</code>, <code>FTsugiPathFinder</code> and <code>FTsugiLegality</code>. The gate is the part to read closely.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="csharp" data-title="Unity: XRTutorialCoach.Admits">
+public bool Admits(int x, int y, PieceKey key)
+{
+    if (!_active || _won || _unlocked) return true;
+    var guide = Guide;
+    if (!guide.Active || x != guide.X || y != guide.Y) return false;
+    switch (guide.Kind)
+    {
+        case XRGuideKind.Lay:
+            return key == SolvedKey(x, y);
+        case XRGuideKind.Adjacency:
+            // The wrong key is wanted: the rules, not the gate, send it back. The right one is fine too.
+            return key == _adjacencyKey || key == SolvedKey(x, y);
+        case XRGuideKind.Mistake:
+            // Only one key fits there; any other is refused by the rules with a red ghost, which is a lesson too.
+            return true;
+        default:
+            // Erase: the rail on the cell is to be lifted, not covered.
+            return false;
+    }
+}
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="Unreal: FTsugiTutorialCoach::Admits">
+bool FTsugiTutorialCoach::Admits(int32 X, int32 Y, ETsugiPieceKey Key) const
+{
+    if (!bActive || bWon || bUnlocked) return true;
+    if (!Guide.IsActive() || X != Guide.X || Y != Guide.Y) return false;
+
+    switch (Guide.Kind)
+    {
+        case ETsugiGuideKind::Lay:
+            return Key == SolvedKey(X, Y);
+
+        case ETsugiGuideKind::Adjacency:
+            // The wrong key is wanted: the rules, not the gate, send it back. The right one is fine too.
+            return Key == AdjacencyKey || Key == SolvedKey(X, Y);
+
+        case ETsugiGuideKind::Mistake:
+            // Only one key fits there; any other is refused by the rules with a red ghost, which is a lesson too.
+            return true;
+
+        default:
+            // Erase: the rail on the cell is to be lifted, not covered.
+            return false;
+    }
+}
+        </script>
+      </div>
+      <p>The coach keeps a pointer to the board it was given in <code>Begin</code>. Like the drop rules, it must be told again on every level start and must not be used after the board is cleared.</p>
+      <p><code>Key</code>, the line to print, is a string such as <code>xr.tutorial.lay_first</code>. Keep those 22 key names exactly. Lesson 16 looks them up in the string table.</p>
+    </li>
+    <li>
+      <p><strong>Solve on the headset, once.</strong> <code>Begin</code> runs the solver when the tutorial level loads. Ashgate is small and it finishes at once. Still, measure it on the device: log the node count and the time. This is the only place the solver runs in a shipped build.</p>
+    </li>
+    <li>
+      <p><strong>Feed the coach.</strong> In the shell's <code>HandleActed</code>, after the board display has been synced, pass each result to the coach with two facts from the board, then refresh what is shown.</p>
+      <script type="text/plain" data-lang="cpp" data-title="Unreal: in ATsugiShell">
+void ATsugiShell::HandleActed(const FTsugiDropResult& Result)
+{
+    // ...start the clock on the first interaction, as in lesson 13...
+
+    if (bTeaching)
+    {
+        // The board as it now is: the display has already synced and validated.
+        Coach.Observe(Result, Board->HasOverfullLine(), Result.bBoardChanged && Board->DidLineJustSatisfy());
+        RefreshTutorial();
+    }
+}
+
+void ATsugiShell::RefreshTutorial()
+{
+    const ETsugiGameState State = Game->GetFlow().GetState();
+    const FTsugiTutorialGuide& Guide = Coach.GetGuide();
+
+    if (!bTeaching || State != ETsugiGameState::Play || !Board->GetBoard() || !Guide.IsActive())
+    {
+        Marks->Show(FTsugiTutorialGuide());
+        Callout->Hide();
+        return;
+    }
+
+    Marks->Show(Guide);
+    Callout->Show(FIntPoint(Guide.X, Guide.Y), TextFor(Coach.GetKey()));
+
+    // A soft chime when the tutorial has something new to say, once per new line.
+    if (Coach.GetKey() != SpokenKey)
+    {
+        SpokenKey = Coach.GetKey();
+        // Cue: TutorialNote, from the cell it is about. Lesson 16.
+    }
+}
+      </script>
+      <p>Then three more connections, all one line each:</p>
+      <ul>
+        <li>On level start: <code>bTeaching = Level-&gt;bIsTutorial</code>, then <code>Coach.Begin(Data, Board, bTeaching)</code>.</li>
+        <li>The gate: <code>PieceHands-&gt;Gate = [this](int32 X, int32 Y, ETsugiPieceKey Key) { return !bTeaching || Coach.Admits(X, Y, Key); }</code>.</li>
+        <li>On entering <code>TrainRun</code>: <code>Coach.Complete()</code>. On entering Network or LevelSelect: <code>bTeaching = false</code>.</li>
+      </ul>
+    </li>
+    <li>
+      <p><strong>Draw the rings.</strong> One ring on the target cell and, when the guide names a slot, one on that tray slot. A flat ring mesh, slowly pulsing in scale, in the line colour. The Unity project keeps the phone's ring in its own group on the board, because the board's routine redraw wiped anything stored with the selection markers. Your equivalent: the rings belong to their own small actor and nothing else clears them.</p>
+    </li>
+    <li>
+      <p><strong>Stand the callout up.</strong> A small widget component, 900 × 420 pixels, 18 cm wide at the standard cell and sized in cells so it scales with the board. Its bottom edge stands 2.2 cells above the target cell, clear of a hand coming down. It turns to face the head like the clue signs.</p>
+      <p>It has no buttons and must never be in a hand's way: no collision, and no press component. Attach it under the board root, not under the board, so the pause's dimming does not touch it; it hides in pause anyway.</p>
+    </li>
+    <li>
+      <p><strong>The briefing.</strong> Three cards of rules on the signboard, shown once per session, the first time the tutorial station loads with no player rails on it. Each has a title, a body and a button: NEXT, NEXT, START. While a card is up the board is live underneath; the cards are on the sign, not over the board. Keep the "once per session" flag on the subsystem so it outlives level changes.</p>
+    </li>
+    <li>
+      <p><strong>Hold the tutorial to one station.</strong> Extend the level test from lesson 4 with the two checks from <code>LevelCollectionTests</code>: exactly one level has the flag, and that level's guided path offers both a one-key cell and a choice. Add one more of your own: <code>Coach.Begin</code> on the shipped tutorial level yields an adjacency lesson and an overfill cell, so the script you ship has every stage.</p>
+    </li>
+  </ol>
+
+  <h2>Your port</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Unity file</th><th>Unreal</th><th>Module</th><th>Tests</th></tr></thead>
+      <tbody>
+        <tr><td><code>XRTutorialCoach.cs</code></td><td><code>FTsugiTutorialCoach</code>, <code>FTsugiTutorialGuide</code>, <code>ETsugiGuideKind</code>, the key names</td><td><code>TsugiCore</code></td><td><code>XRTutorialCoachTests</code></td></tr>
+        <tr><td><code>XRTutorialMarks.cs</code></td><td><code>ATsugiTutorialMarks</code></td><td><code>TsugiXR</code></td><td>on the headset</td></tr>
+        <tr><td><code>XRTutorialCallout.cs</code></td><td><code>ATsugiTutorialCallout</code>, <code>WBP_TutorialCallout</code></td><td><code>TsugiXR</code></td><td>on the headset</td></tr>
+        <tr><td>The briefing in <code>XRGame.cs</code> and <code>XRSignboard.ShowBriefing</code></td><td>Shell logic and the sign's briefing view</td><td><code>TsugiXR</code></td><td>on the headset</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Do not port <code>Assets/01.Scripts/Core/TutorialCoach.cs</code>. That is the phone's coach, built on taps and long-press. The XR one replaced it.</p>
+  <p><code>ATsugiBoard</code> needs one more fact for <code>Observe</code>: whether a line turned from unmet to met with the last change. Record it in <code>Validate</code> by comparing with the previous result.</p>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li><code>Tsugi.Core.TutorialCoach</code> tests pass.</li>
+    <li>On a fresh save, Ashgate opens with the three briefing cards; they do not show again that session.</li>
+    <li>Rail 1: a slot and a cell are ringed. A legal drop on any other cell flies back with the soft note and no error sound.</li>
+    <li>Rail 2: the ringed slot's piece shows a red ghost on the ringed cell and flies back; the callout then explains, and the right slot lights.</li>
+    <li>After three rails, a cell off the route is ringed. The one piece that fits turns a clue red.</li>
+    <li>The callout asks me to lift it; lifting it changes the callout to "throw it away".</li>
+    <li>From then on any legal drop anywhere is accepted, and the ring keeps pointing at the next cell of the route.</li>
+    <li>Leaving mid-tutorial and returning restores my rails with the coach unlocked.</li>
+    <li>A person who has never seen the game finished Ashgate without my help. I watched and wrote down where they hesitated.</li>
+    <li>No other station shows rings, a callout or a briefing.</li>
+  </ul>
+
+  <h2>Pitfalls</h2>
+  <ul>
+    <li><strong>Order of the two facts.</strong> <code>Observe</code> must see the board as it is <em>after</em> the action: overfull, and just-satisfied. Call it after <code>Sync</code>, never before. The phone version of this bug wiped a "clue satisfied" note with the very placement that earned it.</li>
+    <li><strong>The callout in a hand's way.</strong> It stands 2.2 cells up for a reason. If it has any collision, or sits lower, hands knock into it or the grab component hesitates.</li>
+    <li><strong>The quick-test aid.</strong> <code>Tsugi.QuickRails</code> must never apply to the tutorial level. A pre-laid board leaves the walkthrough nothing to walk.</li>
+    <li><strong>Hover and release must agree.</strong> A drop the gate refuses must show the red ghost while hovering. That is why the gate lives inside the drop rules and both <code>Hover</code> and <code>Release</code> consult it.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q">During the first rail the player drops the correct piece on a <em>different</em> cell where it is perfectly legal. What happens?</p>
+    <ul>
+      <li>It is placed; legal is legal.</li>
+      <li data-correct>It flies back, marked <code>Steered</code>, with a soft note and no error cue.</li>
+      <li>It flies back with the error cue.</li>
+    </ul>
+    <p class="why">While locked, the gate admits only the drop being asked for. A steered return is not a mistake, so it does not sound like one.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">Why does the coach find its "mistake" cell by searching the board at runtime?</p>
+    <ul>
+      <li>To save memory.</li>
+      <li data-correct>So the script is not tied to one level's coordinates: any board marked as the tutorial writes its own walkthrough, and tests can run it on small made-up boards.</li>
+      <li>Because level assets cannot store coordinates.</li>
+    </ul>
+    <p class="why">The Unity tests use tiny boards from <code>XRTestBoards.cs</code>. A script written against Ashgate could only be tested on Ashgate.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">A player in the middle of the locked stage lifts one of the rails they already laid, unprompted. What does the coach do?</p>
+    <ul>
+      <li>Refuses the lift.</li>
+      <li>Puts the rail back.</li>
+      <li data-correct>Unlocks: the player has found erasing alone, so the detour has nothing left to teach.</li>
+    </ul>
+    <p class="why">Lifts are never gated. The tutorial exists because lifting to erase is the one thing the board does not show you how to do; someone who does it already knows.</p>
+  </div>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+</body>
+</html>

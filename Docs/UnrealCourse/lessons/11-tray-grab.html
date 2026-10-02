@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 11 · Tray and grab</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="11"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 11</p>
+  <h1>Tray and grab</h1>
+  <p class="lede">The game becomes playable. You port the rules of picking up and putting down, implement the grab interface on your hand tracker, and build the tray, the held piece, the ghost, and everything that happens to a piece once it leaves the hand.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd><code>FTsugiPieceDrop</code> and its helpers in <code>TsugiCore</code> with about 60 tests; a grab component, a tray, and a piece-hands component in <code>TsugiXR</code>.</dd>
+    <dt>On the headset</dt><dd>Pinch a piece from the tray, see a green or red ghost over the board, let go. Solve Ashgate by hand.</dd>
+    <dt>Unity equivalent</dt><dd>Milestones XR3 and XR6.</dd>
+  </dl>
+
+  <h2>The interaction, exactly</h2>
+  <p>A hand holds at most one piece. Both hands may hold at once. The tray has six slots, one per key, and never runs out.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>You do</th><th>Outcome</th><th>What you see and hear</th></tr></thead>
+      <tbody>
+        <tr><td>Pinch a tray slot</td><td><code>Taken</code></td><td>The piece is in your hand. Grab cue.</td></tr>
+        <tr><td>Pinch a piece you laid</td><td><code>Lifted</code></td><td>The cell empties at once and the clues update. Lifting <em>is</em> erasing.</td></tr>
+        <tr><td>Pinch a fixed piece</td><td><code>Refused</code> (FixedPiece)</td><td>It wobbles. "That's fixed" note.</td></tr>
+        <tr><td>Hold a piece within 10 cm above a cell</td><td>(hover)</td><td>A ghost on that cell: green if the drop would land, red if not. The board does not change.</td></tr>
+        <tr><td>Let go over a cell where the key is legal</td><td><code>Placed</code>, or <code>Moved</code> if it came from another cell</td><td>The piece scales in on the cell.</td></tr>
+        <tr><td>Let go over one of your own pieces, where your key would be legal without it</td><td><code>Replaced</code></td><td>The old piece puffs.</td></tr>
+        <tr><td>Let go where the key is illegal</td><td><code>Returned</code></td><td>The piece flies back in a quick arc to the tray, or to the cell it was lifted from. Error cue.</td></tr>
+        <tr><td>Let go off the platform, or above the hover band</td><td><code>Puffed</code></td><td>The piece falls into the room as a real body, bounces off your table, and puffs after 3 seconds.</td></tr>
+        <tr><td>Throw it (hand faster than 1.2 m/s)</td><td><code>Thrown</code></td><td>The same, ending in a bigger burst of steam.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>An illegal drop never costs the player anything. And the ghost is the whole contract of a release: a piece lands on the cell its ghost is over, and with no ghost showing, letting go is letting go off the platform.</p>
+
+  <h2>Unreal concepts</h2>
+
+  <h3>Collision as a query tool</h3>
+  <p>Every primitive component has collision settings: whether it takes part in queries, in physics, or both, and how it responds to each <em>channel</em>. A grab volume is a box set to <em>Query Only</em> that blocks nothing. You never trace against it; you ask how far a point is from it.</p>
+
+  <h3>Chaos physics</h3>
+  <p>A primitive component becomes a rigid body with <code>SetSimulatePhysics(true)</code>. It needs a collision shape of its own; the baked track meshes have none, so a falling piece is a small actor whose root is a box. Bounciness comes from a <strong>physical material</strong> asset. Fast, thin objects need continuous collision detection, or they pass through a table between two steps.</p>
+
+  <h3>Niagara</h3>
+  <p>Niagara is Unreal's particle system. A <strong>system asset</strong> is authored in the editor; code spawns it at a place with <code>UNiagaraFunctionLibrary::SpawnSystemAtLocation</code> and can set user parameters on it. The Unity steam is one particle system emitting either a puff or a burst. Yours can be one Niagara system with a user parameter for the amount.</p>
+
+  <h3>Timers</h3>
+  <p>Where Unity starts a coroutine to wait three seconds, Unreal sets a timer: <code>GetWorldTimerManager().SetTimer(Handle, this, &amp;AThing::Function, 3.f)</code>. For "destroy this actor after a while" there is <code>SetLifeSpan</code>.</p>
+
+  <h2>Read first</h2>
+  <ul class="files">
+    <li><code>Assets/01.Scripts/XR/Rules/PieceDrop.cs</code><span>126 lines. The whole rule. <code>Release</code> and <code>SendBack</code> are the core.</span></li>
+    <li><code>Assets/01.Scripts/XR/Rules/DropResult.cs</code><span>The outcome enum, the refuse reasons, the ghost tint, and the result struct the display and tutorial read.</span></li>
+    <li><code>Assets/01.Scripts/XR/Rules/BoardPick.cs</code><span>35 lines. Which cell a point is over: the inverse of <code>CellCenter</code>.</span></li>
+    <li><code>Assets/01.Scripts/XR/Rules/TrayDock.cs</code><span>Where the six slots sit, and how the tray follows the player round the board after 1.5 seconds.</span></li>
+    <li><code>Assets/01.Scripts/XR/Rules/ThrowGesture.cs</code><span>Hand speed over the last 0.1 seconds, from a ring buffer of samples.</span></li>
+    <li><code>Assets/01.Scripts/XR/Grab/XRPieceHands.cs</code><span>375 lines. <code>OnGrabbed</code>, <code>OnReleased</code>, <code>Play</code>, <code>Follow</code>, <code>ShowGhost</code>.</span></li>
+    <li><code>Assets/01.Scripts/XR/Grab/XRPieceFlight.cs</code>, <code>XRSteam.cs</code>, <code>XRTray.cs</code></li>
+    <li><code>Assets/99.Test/XR/EditMode/PieceDropTests.cs</code><span>451 lines of cases. Port them all.</span></li>
+  </ul>
+
+  <h2>Steps</h2>
+  <ol class="steps">
+    <li>
+      <p><strong>Port the rules and their tests first.</strong> Nothing here touches the engine.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="csharp" data-title="Unity: PieceDrop.Release">
+public DropResult Release(Hand hand, (int X, int Y)? cell, bool thrown)
+{
+    if (!(Held(hand) is HeldPiece held)) return Refuse(hand, RefuseReason.NothingHeld, default, cell);
+    _held[(int)hand] = null;
+    var key = held.Key;
+    var origin = held.Origin;
+
+    if (thrown) return new DropResult(DropOutcome.Thrown, hand, key, cell, origin);
+    if (!cell.HasValue || !Board.InBounds(cell.Value.X, cell.Value.Y))
+        return new DropResult(DropOutcome.Puffed, hand, key, null, origin);
+
+    var (x, y) = cell.Value;
+    if (!Admitted(key, x, y)) return SendBack(hand, key, cell, origin, steered: true);
+    if (!(Board[x, y] is Piece existing))
+    {
+        if (!Board.TryPlace(x, y, key)) return SendBack(hand, key, cell, origin);
+        var moved = origin.HasValue && !origin.Value.Equals(cell.Value);
+        return new DropResult(moved ? DropOutcome.Moved : DropOutcome.Placed, hand, key, cell, origin, boardChanged: true);
+    }
+
+    if (!CanLand(key, x, y)) return SendBack(hand, key, cell, origin);
+    Board.TryErase(x, y);
+    if (!Board.TryPlace(x, y, key))
+        throw new InvalidOperationException($"{key} was legal at ({x},{y}) once {existing.Key} was gone, but did not place.");
+    return new DropResult(DropOutcome.Replaced, hand, key, cell, origin, existing.Key, boardChanged: true);
+}
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="Unreal: FTsugiPieceDrop::Release">
+FTsugiDropResult FTsugiPieceDrop::Release(ETsugiHand Hand, TOptional<FIntPoint> Cell, bool bThrown)
+{
+    TOptional<FTsugiHeldPiece>& Slot = Held[static_cast<int32>(Hand)];
+    if (!Slot.IsSet()) return Refuse(Hand, ETsugiRefuseReason::NothingHeld, ETsugiPieceKey::NS, Cell);
+
+    const ETsugiPieceKey Key = Slot->Key;
+    const TOptional<FIntPoint> Origin = Slot->Origin;
+    Slot.Reset();
+
+    if (bThrown) return FTsugiDropResult(ETsugiDropOutcome::Thrown, Hand, Key, Cell, Origin);
+
+    if (!Cell.IsSet() || !Board.InBounds(Cell->X, Cell->Y))
+    {
+        return FTsugiDropResult(ETsugiDropOutcome::Puffed, Hand, Key, {}, Origin);
+    }
+
+    const int32 X = Cell->X, Y = Cell->Y;
+    if (!Admitted(Key, X, Y)) return SendBack(Hand, Key, Cell, Origin, /*bSteered*/ true);
+
+    const TOptional<FTsugiPiece> Existing = Board.Get(X, Y);
+    if (!Existing.IsSet())
+    {
+        if (!Board.TryPlace(X, Y, Key)) return SendBack(Hand, Key, Cell, Origin);
+        const bool bMoved = Origin.IsSet() && Origin.GetValue() != Cell.GetValue();
+        FTsugiDropResult Result(bMoved ? ETsugiDropOutcome::Moved : ETsugiDropOutcome::Placed, Hand, Key, Cell, Origin);
+        Result.bBoardChanged = true;
+        return Result;
+    }
+
+    if (!CanLand(Key, X, Y)) return SendBack(Hand, Key, Cell, Origin);
+
+    Board.TryErase(X, Y);
+    const bool bPlaced = Board.TryPlace(X, Y, Key);
+    checkf(bPlaced, TEXT("A key that CanLand accepted did not place once the old piece was gone."));
+
+    FTsugiDropResult Result(ETsugiDropOutcome::Replaced, Hand, Key, Cell, Origin);
+    Result.ReplacedKey = Existing->Key;
+    Result.bBoardChanged = true;
+    return Result;
+}
+        </script>
+      </div>
+      <p><code>FTsugiPieceDrop</code> holds a <em>reference</em> to the board the display owns: <code>FTsugiBoard&amp; Board</code>. It must not outlive that board, so it is recreated on every level start and reset on teardown. The tutorial's <code>Gate</code> is a <code>TFunction&lt;bool(int32, int32, ETsugiPieceKey)&gt;</code>.</p>
+    </li>
+    <li>
+      <p><strong>Implement the grab interface.</strong> A component on the pawn, beside the hands. It keeps a list of targets and, on the frame a hand's pinch closes, gives that hand the nearest target that has something to give.</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiGrabComponent.cpp (the core)">
+void UTsugiGrabComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+    Targets.RemoveAll([](const FEntry& Entry) { return !Entry.Volume.IsValid(); });   // a target goes when its volume does
+
+    for (const ETsugiHand Hand : { ETsugiHand::Left, ETsugiHand::Right })
+    {
+        const int32 H = static_cast<int32>(Hand);
+        const FTsugiHandState& State = Hands->Get(Hand);
+        const bool bHolding = State.bTracked && State.bHolding;
+
+        if (Holding[H].IsSet())
+        {
+            // A hold already begun carries on, whatever has happened to the target since. It ends when the hand opens
+            // or is lost. Never ask "is it still grabbable" here: lifting a piece empties its cell at once.
+            if (!bHolding)
+            {
+                Holding[H].Reset();
+                OnReleased.Broadcast(Hand);
+            }
+        }
+        else if (bHolding && !bWasHolding[H] && bAcceptsGrabs)
+        {
+            if (const FEntry* Entry = Nearest(State.PinchPoint))
+            {
+                Holding[H] = Entry->Target;
+                OnGrabbed.Broadcast(Hand, Entry->Target);
+            }
+        }
+
+        bWasHolding[H] = bHolding;
+    }
+
+    UpdateHover();
+}
+
+const UTsugiGrabComponent::FEntry* UTsugiGrabComponent::Nearest(const FVector& PinchPoint) const
+{
+    const FEntry* Best = nullptr;
+    float BestDistance = ReachCm;                       // how far outside a volume a pinch still takes it
+
+    for (const FEntry& Entry : Targets)
+    {
+        if (Entry.Grabbable && !Entry.Grabbable()) continue;
+        // The handle's rail wraps the corner cell: a pinch on the rail is the handle's, never that cell's piece.
+        if (!Entry.Target.bIsTray && Reserved && Reserved(PinchPoint)) continue;
+
+        FVector Closest;
+        const float Distance = Entry.Volume->GetClosestPointOnCollision(PinchPoint, Closest);   // 0 when inside
+        if (Distance >= 0.f && Distance <= BestDistance)
+        {
+            BestDistance = Distance;
+            Best = &Entry;
+        }
+    }
+    return Best;
+}
+
+bool UTsugiGrabComponent::TryGetHold(ETsugiHand Hand, FVector& OutPinchPoint) const
+{
+    if (!Holding[static_cast<int32>(Hand)].IsSet()) return false;
+    OutPinchPoint = Hands->Get(Hand).PinchPoint;
+    return true;
+}
+      </script>
+      <div class="note">
+        <p><span class="tag">From the headset checks</span>The comment about a hold carrying on is a ported lesson. In Unity, the toolkit asked "may this still be selected?" on every frame, and a cell that had just been emptied by the lift answered no, ending the grab the instant it began.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>Give the board its grab volumes.</strong> In <code>ATsugiBoard</code>, create one <code>UBoxComponent</code> per cell: the slab's footprint, reaching from the slab top to half a cell above it. Set <em>Query Only</em>, ignore all channels, no overlap events. Expose <code>GetCellVolume(X, Y)</code>.</p>
+    </li>
+    <li>
+      <p><strong>Build the tray.</strong> Six slots in a 2×3 block beside the board, off the dominant-hand side of the edge the player stands at. Each slot shows its piece and has a grab volume registered with <code>FTsugiGrabTarget::Tray(Key)</code>. Positions come from <code>FTsugiTrayDock::SlotCentre</code>, in the board's frame, so <code>Tsugi::ToLocal</code> places them.</p>
+      <p>Every frame, give the dock the head's position in the board's frame. When the player has stood nearer another edge for 1.5 seconds, and no piece is held, the tray moves there. The layout puts each piece where it points when seen from the south edge:</p>
+      <script type="text/plain" data-lang="plaintext" data-title="The tray, as the player sees it">
+far      NW  NE
+         NS  EW
+near     SW  SE
+      </script>
+    </li>
+    <li>
+      <p><strong>Port the piece hands.</strong> This component listens to the grab interface, calls the rules, and shows the result. Start with what happens while a piece is held.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="csharp" data-title="Unity: XRPieceHands.Follow">
+var board = _display.transform;
+var scale = board.lossyScale.y;
+var position = hold.Hand - board.up * HoldDrop;          // 12 mm below the pinch, so the fingers do not hide it
+
+held.Piece.transform.SetPositionAndRotation(position, board.rotation);   // yaw locked to the board's grid
+held.Piece.transform.localScale = board.lossyScale;
+
+var local = board.InverseTransformPoint(position);
+var level = _display.Level;
+held.Cell = BoardPick.HoverCell(local.x, local.y, local.z, level.Width, level.Height, HoverBand / scale);
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="Unreal: UTsugiPieceHands::Follow">
+void UTsugiPieceHands::Follow(FHeld& Held, const FVector& PinchPoint)
+{
+    const FTransform Platform = Board->GetPlatformTransform();          // board space to world; includes the root scale
+    const FVector Position = PinchPoint - Platform.GetUnitAxis(EAxis::Z) * HoldDropCm;      // 1.2 cm
+
+    // Yaw locked to the board's grid; the same size as a piece on the board.
+    Held.Piece->SetWorldTransform(FTransform(Platform.GetRotation(), Position, Platform.GetScale3D()));
+
+    // World to board-local units, then to BoardLayout's frame in cells: east, up, north.
+    const FVector Local = Platform.InverseTransformPosition(Position);
+    const double East = Local.Y / Tsugi::CellUnits;
+    const double Up = Local.Z / Tsugi::CellUnits;
+    const double North = Local.X / Tsugi::CellUnits;
+
+    const FTsugiLevelData& Level = Board->GetBoard()->GetLevel();
+    const double BandCells = HoverBandCm / Placement->GetCellCm();       // 10 cm, in cells
+    Held.Cell = FTsugiBoardPick::HoverCell(East, Up, North, Level.GetWidth(), Level.GetHeight(), BandCells);
+}
+        </script>
+      </div>
+      <p>This is the inverse of <code>Tsugi::ToLocal</code>, and the only other place the axis swap appears. Put it in <code>TsugiUnits.h</code> as <code>Tsugi::FromLocal</code> and call that.</p>
+    </li>
+    <li>
+      <p><strong>Show the ghost.</strong> While a piece is held, ask <code>PieceDrop.Hover(Hand, Cell)</code> each frame. <code>None</code> hides the ghost. <code>Legal</code> and <code>Illegal</code> show it on the cell: the piece's mesh plus a thin slab, both in a translucent unlit material tinted green or red. Make one dynamic material instance per tint at start and swap them; do not create materials every frame.</p>
+    </li>
+    <li>
+      <p><strong>Play each outcome.</strong> The board has already changed by the time this runs. This is only the show.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Outcome</th><th>The held piece</th></tr></thead>
+          <tbody>
+            <tr><td><code>Placed</code>, <code>Moved</code></td><td>Destroyed. <code>Sync(true)</code> scales the landed piece in.</td></tr>
+            <tr><td><code>Replaced</code></td><td>Destroyed. Puff at the cell.</td></tr>
+            <tr><td><code>Returned</code> to a cell</td><td>Hide the piece the display already shows there, fly the held one back in an arc (0.25 s, rising 5 cm), then show it.</td></tr>
+            <tr><td><code>Returned</code> to the tray</td><td>Arc back to its slot.</td></tr>
+            <tr><td><code>Thrown</code></td><td>Falls with the hand's velocity. Ends in a burst.</td></tr>
+            <tr><td><code>Puffed</code></td><td>Falls. Ends in a puff.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </li>
+    <li>
+      <p><strong>Make pieces fall.</strong></p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiFallingPiece.cpp">
+ATsugiFallingPiece::ATsugiFallingPiece()
+{
+    Body = CreateDefaultSubobject<UBoxComponent>(TEXT("Body"));
+    SetRootComponent(Body);
+    Body->SetCollisionProfileName(TEXT("PhysicsActor"));
+    Body->SetNotifyRigidBodyCollision(true);              // "Simulation Generates Hit Events"
+    Body->BodyInstance.bUseCCD = true;                    // thin and fast: do not tunnel through the table
+
+    Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
+    Mesh->SetupAttachment(Body);
+    Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void ATsugiFallingPiece::Launch(UStaticMesh* PieceMesh, UMaterialInterface* Material, const FVector& VelocityCmPerSecond,
+    AActor* InBoard, float Seconds, TFunction<void(const FVector&)> InEnded)
+{
+    Board = InBoard;
+    Ended = MoveTemp(InEnded);
+
+    Mesh->SetStaticMesh(PieceMesh);
+    Mesh->SetMaterial(0, Material);
+
+    // The track alone is flat enough to slip through a surface between physics steps: at least 0.15 cells thick.
+    FVector Extent = PieceMesh->GetBounds().BoxExtent;
+    Extent.Z = FMath::Max(Extent.Z, 0.075 * Tsugi::CellUnits);
+    Body->SetBoxExtent(Extent);
+    Body->SetPhysMaterialOverride(BounceMaterial);        // restitution 0.45, combine: max
+
+    Body->SetSimulatePhysics(true);
+    Body->SetPhysicsLinearVelocity(VelocityCmPerSecond);
+    Body->SetPhysicsAngularVelocityInRadians(FMath::VRand() * 8.0);
+    Body->OnComponentHit.AddDynamic(this, &ATsugiFallingPiece::HandleHit);
+
+    GetWorldTimerManager().SetTimer(EndTimer, this, &ATsugiFallingPiece::End, Seconds);   // 3 seconds
+}
+
+void ATsugiFallingPiece::HandleHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent,
+    FVector NormalImpulse, const FHitResult& Hit)
+{
+    // The room lets it bounce about; the board ends it at once, because a piece lying on the platform would read as laid.
+    if (OtherActor && OtherActor == Board) End();
+}
+
+void ATsugiFallingPiece::End()
+{
+    if (bOver) return;
+    bOver = true;
+    if (Ended) Ended(GetActorLocation());
+    Destroy();
+}
+      </script>
+      <p><code>ThrowGesture</code> works in metres per second, with a threshold of 1.2. Feed it positions in metres (centimetres divided by 100) so its constants and tests port unchanged, and multiply its velocity by 100 when you hand it to physics.</p>
+      <p>For the board to stop a falling piece it needs something to hit: give the slabs' instanced mesh component collision, or add one box under the platform.</p>
+    </li>
+    <li>
+      <p><strong>Add steam.</strong> Add <code>"Niagara"</code> to the module's dependencies. Author <code>NS_Steam</code> with a user float parameter for the particle count, off-white, short-lived, rising. A puff spawns it with a small count, a burst with a large one.</p>
+      <script type="text/plain" data-lang="cpp" data-title="Spawning steam">
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
+
+void UTsugiSteam::Emit(const FVector& At, float Amount)
+{
+    if (UNiagaraComponent* Steam = UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), System, At))
+    {
+        Steam->SetVariableFloat(TEXT("Amount"), Amount);
+    }
+}
+      </script>
+    </li>
+    <li>
+      <p><strong>Tell the flow.</strong> Bind to the piece hands' two events. On <code>OnActed</code>, the first grab of a level calls <code>Flow.BoardTouched()</code> to start the clock. On <code>OnBoardChanged</code>, call <code>Flow.SaveProgress(Board)</code>, and if the board's last win result says <code>IsWin</code>, call <code>Flow.CompleteLevel()</code>. Set <code>bAcceptsGrabs</code> each frame: true only in <code>Play</code>, with a board loaded, while the handle is not carrying the board.</p>
+    </li>
+  </ol>
+
+  <h2>Your port</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Unity file</th><th>Unreal</th><th>Module</th><th>Tests</th></tr></thead>
+      <tbody>
+        <tr><td><code>PieceDrop.cs</code>, <code>DropResult.cs</code></td><td><code>FTsugiPieceDrop</code>, <code>FTsugiDropResult</code>, three enums</td><td><code>TsugiCore</code></td><td><code>PieceDropTests</code></td></tr>
+        <tr><td><code>BoardPick.cs</code></td><td><code>FTsugiBoardPick</code></td><td><code>TsugiCore</code></td><td><code>BoardPickTests</code></td></tr>
+        <tr><td><code>TrayDock.cs</code></td><td><code>FTsugiTrayDock</code></td><td><code>TsugiCore</code></td><td><code>TrayDockTests</code></td></tr>
+        <tr><td><code>ThrowGesture.cs</code></td><td><code>FTsugiThrowGesture</code></td><td><code>TsugiCore</code></td><td><code>ThrowGestureTests</code></td></tr>
+        <tr><td><code>XRIGrabInput.cs</code> and its two interactables</td><td><code>UTsugiGrabComponent</code></td><td><code>TsugiXR</code></td><td>on the headset</td></tr>
+        <tr><td><code>XRTray.cs</code></td><td><code>ATsugiTray</code> or a component of the board</td><td><code>TsugiXR</code></td><td>on the headset</td></tr>
+        <tr><td><code>XRPieceHands.cs</code></td><td><code>UTsugiPieceHands</code></td><td><code>TsugiXR</code></td><td>on the headset</td></tr>
+        <tr><td><code>XRPieceFlight.cs</code></td><td><code>ATsugiFallingPiece</code>, and an arc helper</td><td><code>TsugiXR</code></td><td></td></tr>
+        <tr><td><code>XRSteam.cs</code></td><td><code>UTsugiSteam</code> with <code>NS_Steam</code></td><td><code>TsugiXR</code></td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Leave <code>XRDirectReach.cs</code> out. It exists to stop rays reaching pinch-only targets, and you have no rays.</p>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li>All tests under <code>Tsugi.Core.PieceDrop</code>, <code>BoardPick</code>, <code>TrayDock</code> and <code>ThrowGesture</code> pass.</li>
+    <li>I can pinch each of the six tray pieces, with either hand, and with a controller's grip.</li>
+    <li>The ghost is green exactly where a release lands the piece, and red exactly where it comes back.</li>
+    <li>Raising the piece more than 10 cm above the board hides the ghost; letting go there drops it into the room.</li>
+    <li>Lifting a piece I laid empties the cell at once and the clues update.</li>
+    <li>A fixed piece wobbles and stays.</li>
+    <li>A dropped piece bounces on my real table and puffs after about three seconds; a thrown one bursts.</li>
+    <li>A piece that falls onto the board puffs at once and does not lie there.</li>
+    <li>Both hands can hold a piece at the same time.</li>
+    <li>A pinch on the handle's rail at the corner does not lift the corner cell's piece.</li>
+    <li>Walking round the table moves the tray to my side after about a second and a half, and never while I hold a piece.</li>
+    <li>I solved Ashgate by hand and the log shows Play → TrainRun.</li>
+  </ul>
+
+  <h2>Pitfalls</h2>
+  <ul>
+    <li><strong>Six centimetres is small.</strong> The Unity project found hand precision at this size to be its main risk. If pinches miss, raise <code>ReachCm</code> a little before touching anything else, and check the tray's 1.3-cell pitch survived your port.</li>
+    <li><strong>Hover changes the board.</strong> It must not. Clues update on release, never while a piece hovers.</li>
+    <li><strong>A dangling board reference.</strong> <code>FTsugiPieceDrop</code> refers to the display's board. Reset it in <code>End()</code>, before the board is cleared.</li>
+    <li><strong>A stale callback.</strong> A piece flying back to its cell takes a quarter of a second. If the level changes meanwhile, the landing callback must not touch the new board. Unity checks that the board is still the same object; capture a generation counter and compare it.</li>
+    <li><strong>Physics scale.</strong> The held piece carries the board's 0.06 scale. A body that small and light behaves oddly with default settings. If it jitters, give the body a fixed mass override.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q">You lift a piece from cell (2,3), carry it over cell (4,1) where its key is illegal, and let go. Meanwhile nothing else changed. What happens?</p>
+    <ul>
+      <li>It puffs and is gone.</li>
+      <li data-correct>It flies back to (2,3) and is placed there again; the outcome is <code>Returned</code> with <code>BoardChanged</code> true.</li>
+      <li>It stays in the hand.</li>
+    </ul>
+    <p class="why"><code>SendBack</code> re-seats a lifted piece in its cell of origin when that is still legal. Only if the board changed around it, so it no longer fits, does it puff.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">Why does the falling piece have a box as its root and the mesh as a child?</p>
+    <ul>
+      <li data-correct>The baked track mesh has no collision shape, and a rigid body needs one; the box is also made thicker than the mesh so it cannot slip through a surface.</li>
+      <li>Static meshes cannot simulate physics.</li>
+      <li>So the mesh can be hidden.</li>
+    </ul>
+    <p class="why">A static mesh component can simulate physics if its mesh has simple collision. These do not, and the Unity code adds a box with a minimum thickness for the same reason.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">The held piece is shown 1.2 cm below the pinch point. Which point decides the cell it hovers over?</p>
+    <ul>
+      <li>The pinch point.</li>
+      <li data-correct>The piece's own centre, 1.2 cm below the pinch.</li>
+      <li>The fingertip.</li>
+    </ul>
+    <p class="why"><code>Follow</code> computes the piece's position first and picks the cell from that, so the ghost sits under what the player sees, not under their knuckles.</p>
+  </div>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+</body>
+</html>

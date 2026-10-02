@@ -28,10 +28,10 @@ namespace TrainSudoku.XR
         private const string CellKey = "tsugi.xr.boardCell";
 
         /// <summary>
-        /// The range the two-hand handle may scale a cell to, in metres (X6, revised 2026-09-14): below 4 cm a piece is
-        /// too small to pinch reliably with hand tracking.
+        /// The range the two-hand handle may scale a cell to, in metres (X6, revised 2026-10-02): below 5 cm a piece is
+        /// too small to pinch accurately off the board with hand tracking. The first floor, 4 cm, was too low on the headset.
         /// </summary>
-        public const float MinCellSize = 0.04f;
+        public const float MinCellSize = 0.05f;
         public const float MaxCellSize = 0.09f;
 
         /// <summary>How close to a detected surface a board let go of by the handle must be to settle onto it, in metres.</summary>

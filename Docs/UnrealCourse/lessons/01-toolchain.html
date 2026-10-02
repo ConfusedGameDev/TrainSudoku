@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 01 · Toolchain and first build</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="1"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 01</p>
+  <h1>Toolchain and first build on the headset</h1>
+  <p class="lede">You install the engine, the Android toolchain and the Meta XR plugin, create the project with its three modules, and put an empty app on the Quest. Device deployment should be routine long before the last lesson.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd>A C++ project named Tsugi with modules <code>TsugiCore</code>, <code>TsugiXR</code> and <code>TsugiEditor</code>, in source control.</dd>
+    <dt>On the headset</dt><dd>A cube floating half a metre in front of you, in VR.</dd>
+    <dt>Unity equivalent</dt><dd>Milestone XR2, "XR foundation".</dd>
+  </dl>
+
+  <h2>Unreal concepts</h2>
+  <h3>The project file and its modules</h3>
+  <p>A <code>.uproject</code> is a small JSON file. It lists the project's modules and the plugins it switches on. C++ lives under <code>Source/</code>, one folder per module. Two more files, <code>Tsugi.Target.cs</code> and <code>TsugiEditor.Target.cs</code>, say which modules go into the game and which into the editor.</p>
+  <p>Unreal Build Tool reads those files and drives the compiler. You never edit a Visual Studio project by hand: the <code>.sln</code> is generated, like Unity's <code>.csproj</code> files, and stays out of source control.</p>
+
+  <h3>Plugins</h3>
+  <p>A plugin is a bundle of modules and content. Engine plugins live under the engine's <code>Plugins/</code> folder and must be prebuilt for exactly your engine version. Project plugins live under your project's <code>Plugins/</code> folder and are compiled with your project. That difference matters in step 4.</p>
+
+  <h3>Cooking and packaging</h3>
+  <p>Unity builds a player. Unreal <strong>cooks</strong> assets into the target platform's formats, then <strong>packages</strong> them with the compiled code into an APK. Cooking only includes assets that something references, starting from the maps you list. An asset nothing points at is silently left out. You will meet this again in lesson 4.</p>
+
+  <h2>Versions</h2>
+  <p>These come from Epic's Android requirements page for 5.8 and Meta's download page. Check both before you install: toolchains move.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Component</th><th>Version</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td>Unreal Engine</td><td>5.8, from the Epic Games Launcher</td><td>Epic</td></tr>
+        <tr><td>Meta XR plugin</td><td>207.0 (23 September 2026), built for UE 5.8.0</td><td>Meta</td></tr>
+        <tr><td>Android Studio</td><td>Koala 2024.1.2 Patch 1</td><td>Epic</td></tr>
+        <tr><td>Android SDK</td><td>Recommended target 35; minimum for compilation 34</td><td>Epic</td></tr>
+        <tr><td>NDK</td><td>r27c</td><td>Epic</td></tr>
+        <tr><td>Build-tools</td><td>35.0.1</td><td>Epic</td></tr>
+        <tr><td>JDK</td><td>OpenJDK 21.0.3</td><td>Epic</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="unverified">
+    <p><span class="tag">Not confirmed</span>The exact Visual Studio 2022 version and MSVC toolset that 5.8 wants were not checked for this course. Follow Epic's "Setting Up Visual Studio" page for 5.8 and install the workloads it names. Rider works as well and needs the same compiler underneath.</p>
+  </div>
+
+  <h2>Steps</h2>
+  <ol class="steps">
+    <li>
+      <p><strong>Install the engine.</strong> In the Epic Games Launcher, install Unreal Engine 5.8. Open <em>Options</em> on the install and tick <strong>Android</strong> under target platforms. Without it you cannot package for Quest.</p>
+    </li>
+    <li>
+      <p><strong>Install the Android toolchain.</strong> Unreal ships a tool called Turnkey that installs the right SDK, NDK and JDK for your engine. Open any project, then <em>Platforms &gt; SDK Management &gt; Android &gt; Install SDK</em>. Accept the licences when asked. Restart the editor afterwards.</p>
+      <p>If you prefer to do it by hand, install Android Studio at the version above and follow Epic's manual setup page. Then set the paths in <em>Project Settings &gt; Platforms &gt; Android SDK</em>.</p>
+    </li>
+    <li>
+      <p><strong>Prepare the headset.</strong> Create a Meta developer account, enable developer mode for the headset in the Meta Horizon phone app, connect by USB and accept the debugging prompt inside the headset. Install Meta Quest Developer Hub. Confirm the PC sees the device:</p>
+      <script type="text/plain" data-lang="bash" data-title="Terminal">
+adb devices
+# one line ending in "device", not "unauthorized"
+      </script>
+    </li>
+    <li>
+      <p><strong>Install the Meta XR plugin, and check it loads.</strong> Download version 207.0 or later from Meta's "Unreal Engine 5 Integration" page. Meta's instruction is to unzip it into the engine: <code>C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Marketplace\</code>, creating <code>Marketplace</code> if it is not there.</p>
+      <div class="trap">
+        <p><span class="tag">Known problem</span>Meta's own tracker has an open report, "Meta XR plugins version mismatch with Unreal Engine 5.8". Some downloads that claim 5.8 were built for 5.7.0. The symptom is a version warning on start, then modules such as <code>MetaXRHaptics</code> and <code>OculusInteraction</code> failing to load with <em>"Engine modules cannot be compiled at runtime"</em>. At the time of writing its status was "Investigating", with no fix version.</p>
+      </div>
+      <p>If you hit it, work down this list:</p>
+      <ul>
+        <li>Confirm the download really is 207.0 or later. Earlier ones targeted 5.7.</li>
+        <li><strong>Move the plugin into the project.</strong> Copy the plugin folder to <code>Tsugi/Plugins/MetaXR/</code> and delete it from the engine. A project plugin is compiled from source with your project, so a binary built for the wrong engine no longer matters. This only works for a C++ project, which yours is.</li>
+        <li>If source in the package does not compile against 5.8 either, stop and tell your lead. The fallbacks are UE 5.7.x with its matching plugin, or building Meta's fork of the engine from GitHub. Both change the course's engine version and are a team decision, not yours alone.</li>
+      </ul>
+      <div class="unverified">
+        <p><span class="tag">Not confirmed</span>Moving the plugin into the project is the standard cure for this class of error, but it was not tried against the 207.0 package for this course.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>Create the project.</strong> In the Unreal Project Browser choose <em>Games &gt; Blank</em>, <strong>C++</strong>, target platform <em>Mobile</em>, quality preset <em>Scalable</em>, starter content off. Name it <code>Tsugi</code>. Put it next to the Unity repository, not inside it.</p>
+      <div class="note">
+        <p><span class="tag">Why not the VR template</span>The VR template comes with teleport rays, grab components and a menu laser. The Unity edition spent a milestone removing exactly those from XRI's sample rig, because a ray reaching for one thing kept catching another. Start blank and add only what the game uses.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>Rename the game module and add two more.</strong> The wizard made one module called <code>Tsugi</code>. Close the editor and Visual Studio, then make <code>Source/</code> look like this:</p>
+      <script type="text/plain" data-lang="plaintext" data-title="Source/">
+Source/
+  Tsugi.Target.cs
+  TsugiEditor.Target.cs
+  TsugiCore/
+    TsugiCore.Build.cs
+    Public/                 headers other modules may include
+    Private/
+      TsugiCore.cpp
+      Tests/                automation tests, lesson 3
+  TsugiXR/                  was Source/Tsugi
+    TsugiXR.Build.cs
+    Public/
+    Private/
+      TsugiXR.cpp
+  TsugiEditor/
+    TsugiEditor.Build.cs
+    Private/
+      TsugiEditor.cpp
+      </script>
+      <div class="tabs">
+        <script type="text/plain" data-lang="csharp" data-title="TsugiCore.Build.cs">
+using UnrealBuildTool;
+
+public class TsugiCore : ModuleRules
+{
+    public TsugiCore(ReadOnlyTargetRules Target) : base(Target)
+    {
+        PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+
+        // Deliberately nothing but these two. This is Unity's "noEngineReferences: true":
+        // add "Engine" here and the rules can no longer be tested without a world.
+        PublicDependencyModuleNames.AddRange(new[] { "Core", "CoreUObject" });
+    }
+}
+        </script>
+        <script type="text/plain" data-lang="csharp" data-title="TsugiXR.Build.cs">
+using UnrealBuildTool;
+
+public class TsugiXR : ModuleRules
+{
+    public TsugiXR(ReadOnlyTargetRules Target) : base(Target)
+    {
+        PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+
+        PublicDependencyModuleNames.AddRange(new[]
+        {
+            "Core", "CoreUObject", "Engine", "TsugiCore",
+        });
+
+        // Later lessons add to this list: "Json" (6), "ProceduralMeshComponent" (12),
+        // "HeadMountedDisplay", "EnhancedInput" (9), "UMG", "Slate", "SlateCore" (12),
+        // and the Meta XR modules (9, 10).
+        PrivateDependencyModuleNames.AddRange(new string[] { });
+    }
+}
+        </script>
+        <script type="text/plain" data-lang="csharp" data-title="TsugiEditor.Build.cs">
+using UnrealBuildTool;
+
+public class TsugiEditor : ModuleRules
+{
+    public TsugiEditor(ReadOnlyTargetRules Target) : base(Target)
+    {
+        PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+        PrivateDependencyModuleNames.AddRange(new[]
+        {
+            "Core", "CoreUObject", "Engine", "UnrealEd", "TsugiCore", "TsugiXR",
+        });
+    }
+}
+        </script>
+      </div>
+      <p>Each module needs one <code>.cpp</code> that registers it. Exactly one module in a project is the primary game module.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="cpp" data-title="TsugiXR.cpp">
+#include "Modules/ModuleManager.h"
+
+// The third argument is the project name, not the module name.
+IMPLEMENT_PRIMARY_GAME_MODULE(FDefaultGameModuleImpl, TsugiXR, "Tsugi");
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="TsugiCore.cpp">
+#include "Modules/ModuleManager.h"
+
+IMPLEMENT_MODULE(FDefaultModuleImpl, TsugiCore);
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="TsugiEditor.cpp">
+#include "Modules/ModuleManager.h"
+
+IMPLEMENT_MODULE(FDefaultModuleImpl, TsugiEditor);
+        </script>
+      </div>
+      <p>Now tell the project and the two targets about them.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="json" data-title="Tsugi.uproject (Modules)">
+"Modules": [
+  { "Name": "TsugiXR",     "Type": "Runtime", "LoadingPhase": "Default" },
+  { "Name": "TsugiCore",   "Type": "Runtime", "LoadingPhase": "Default" },
+  { "Name": "TsugiEditor", "Type": "Editor",  "LoadingPhase": "Default" }
+]
+        </script>
+        <script type="text/plain" data-lang="csharp" data-title="Tsugi.Target.cs">
+using UnrealBuildTool;
+
+public class TsugiTarget : TargetRules
+{
+    public TsugiTarget(TargetInfo Target) : base(Target)
+    {
+        Type = TargetType.Game;
+        DefaultBuildSettings = BuildSettingsVersion.Latest;
+        IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
+        ExtraModuleNames.AddRange(new[] { "TsugiXR", "TsugiCore" });
+    }
+}
+        </script>
+        <script type="text/plain" data-lang="csharp" data-title="TsugiEditor.Target.cs">
+using UnrealBuildTool;
+
+public class TsugiEditorTarget : TargetRules
+{
+    public TsugiEditorTarget(TargetInfo Target) : base(Target)
+    {
+        Type = TargetType.Editor;
+        DefaultBuildSettings = BuildSettingsVersion.Latest;
+        IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
+        ExtraModuleNames.AddRange(new[] { "TsugiXR", "TsugiCore", "TsugiEditor" });
+    }
+}
+        </script>
+      </div>
+      <p>Delete <code>Binaries/</code>, <code>Intermediate/</code> and the old <code>.sln</code>. Right-click <code>Tsugi.uproject</code> and choose <em>Generate Visual Studio project files</em>. Build the <code>Development Editor</code> configuration. Open the project.</p>
+    </li>
+    <li>
+      <p><strong>Switch on the plugins.</strong> <em>Edit &gt; Plugins</em>: enable <strong>Meta XR</strong>, <strong>OpenXR</strong> and <strong>OpenXR Hand Tracking</strong>. Restart when asked. Then <em>Edit &gt; Project Settings &gt; Plugins &gt; Meta XR</em>:</p>
+      <ul>
+        <li><em>General &gt; XR API</em>: <strong>Epic Native OpenXR (Recommended)</strong>.</li>
+        <li><em>Mobile &gt; Supported Meta Quest Devices</em>: add Quest 3 and Quest 3S. The Unity build targets only those two.</li>
+        <li>Click <strong>Launch Meta XR Project Setup Tool</strong> and apply what it recommends. It sets the renderer, MSAA, multiview and Vulkan for you. Lesson 17 goes back over what each one does.</li>
+      </ul>
+    </li>
+    <li>
+      <p><strong>Set the Android basics.</strong> In <em>Project Settings &gt; Platforms &gt; Android</em>, press <em>Configure Now</em> if the banner asks, then:</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Android Package Name</td><td><code>com.GorillaGonzalez.Tsugi.XR.UE</code></td><td>The Unity build is <code>com.GorillaGonzalez.Tsugi.XR</code>. A different id lets both sit on one headset while you compare them.</td></tr>
+            <tr><td>Minimum SDK Version</td><td>32</td><td>What the Unity build uses.</td></tr>
+            <tr><td>Target SDK Version</td><td>34</td><td>What the Unity build uses. Check the store's current requirement in lesson 18.</td></tr>
+            <tr><td>Support arm64</td><td>On, and nothing else</td><td>The store accepts 64-bit only.</td></tr>
+            <tr><td>Support Vulkan</td><td>On; OpenGL ES off</td><td>Vulkan is the supported graphics API for Quest.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>In <em>Project Settings &gt; Project &gt; Description</em>, tick <strong>Start in VR</strong>.</p>
+    </li>
+    <li>
+      <p><strong>Make the level.</strong> <em>File &gt; New Level &gt; Empty Level</em>. Save it as <code>Content/Maps/L_Tsugi</code>. Add a directional light and a cube scaled to 0.1, placed at <code>(50, 0, 120)</code>: half a metre ahead and 1.2 m up. Set it as both <em>Editor Startup Map</em> and <em>Game Default Map</em> in <em>Project Settings &gt; Maps &amp; Modes</em>, and add it to <em>Packaging &gt; List of maps to include in a packaged build</em>.</p>
+    </li>
+    <li>
+      <p><strong>Launch on the device.</strong> With the headset connected, use <em>Platforms &gt; (your Quest under Android) &gt; Launch</em>, choosing ASTC textures. The first run compiles shaders and takes a long time. Later runs are much faster.</p>
+      <p>Watch the log while it runs. Stream it live rather than dumping it afterwards: on the Unity side the headset's own services filled the log buffer within seconds, and a dump taken later had already lost the app's lines.</p>
+      <script type="text/plain" data-lang="bash" data-title="Terminal">
+adb logcat -s UE
+# if that shows nothing, drop the filter and search for your package name
+      </script>
+    </li>
+    <li>
+      <p><strong>Put it in source control.</strong> Commit <code>Tsugi.uproject</code>, <code>Config/</code>, <code>Content/</code>, <code>Source/</code> and, if you moved it there, <code>Plugins/</code>. Ignore <code>Binaries/</code>, <code>Intermediate/</code>, <code>Saved/</code>, <code>DerivedDataCache/</code>, <code>.vs/</code> and <code>*.sln</code>. Use Git LFS for <code>*.uasset</code> and <code>*.umap</code>: they are binary.</p>
+    </li>
+  </ol>
+
+  <h2>Your port</h2>
+  <p>There is no Unity code to port here. The exercise is to make the build repeatable: write a one-page <code>BUILDING.md</code> in the new repository that takes a teammate from a clean machine to the cube on the headset. Have a teammate follow it without your help.</p>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li>The editor opens the project with no plugin or module load errors in the Output Log.</li>
+    <li>All three modules appear in <em>Tools &gt; Debug &gt; Modules</em>.</li>
+    <li><code>TsugiCore.Build.cs</code> lists only <code>Core</code> and <code>CoreUObject</code>.</li>
+    <li>The app installs on a Quest 3 or 3S and shows the cube, tracked, in stereo.</li>
+    <li>I can see the app's log lines live with <code>adb logcat</code>.</li>
+    <li>A teammate reproduced the build from <code>BUILDING.md</code> alone.</li>
+  </ul>
+
+  <h2>Pitfalls</h2>
+  <ul>
+    <li><strong>Editing the wrong settings.</strong> On the Unity side, the Player settings edit whatever build profile is active, so XR settings were once written into the phone's profile. Unreal has one set of project settings with per-platform overrides in <code>Config/Android/</code>. Know which file a change lands in: look at the diff before you commit.</li>
+    <li><strong>The first launch looks hung.</strong> It is compiling shaders. Give it time before you kill it.</li>
+    <li><strong>Hot reload versus Live Coding.</strong> Use Live Coding (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F11</kbd>) for changes inside function bodies. After changing a header, a <code>UPROPERTY</code> or a class layout, close the editor and build from the IDE. Skipping this corrupts Blueprints that derive from the class.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q">Why does moving a plugin from the engine folder into the project folder fix a "built for a different engine version" error?</p>
+    <ul>
+      <li>The project folder is searched first, so the engine never sees the bad one.</li>
+      <li data-correct>Project plugins are compiled from source with the project, so the prebuilt binary is no longer used.</li>
+      <li>It does not. The plugin must always live in the engine.</li>
+    </ul>
+    <p class="why">An installed engine cannot compile engine plugins, which is what "Engine modules cannot be compiled at runtime" means. A C++ project can compile its own.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">You add a texture to <code>Content/</code> and nothing references it. Is it in the APK?</p>
+    <ul>
+      <li>Yes, everything under <code>Content/</code> is packaged.</li>
+      <li data-correct>No. The cooker only includes what is reachable from the maps and assets it was told to start from.</li>
+    </ul>
+    <p class="why">This is the opposite of Unity's <code>Resources</code> folder. Lesson 4 depends on it: 216 level assets must be reachable or they will not ship.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">What stops someone adding an engine dependency to the rules code by accident?</p>
+    <ul>
+      <li>A code review.</li>
+      <li data-correct><code>TsugiCore.Build.cs</code> does not list <code>Engine</code>, so including an engine header fails to compile or link.</li>
+      <li>Nothing; it is a convention.</li>
+    </ul>
+    <p class="why">Same guarantee as <code>noEngineReferences</code> on the Unity assembly, enforced by the build.</p>
+  </div>
+
+  <h2>Sources</h2>
+  <ul class="sources">
+    <li><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/android-development-requirements-for-unreal-engine">Android development requirements for Unreal Engine</a> (Epic)</li>
+    <li><a href="https://dev.epicgames.com/documentation/unreal-engine/automated-android-sdk-ndk-and-jdk-setup-in-unreal-engine">Automated Android SDK, NDK and JDK setup</a> (Epic)</li>
+    <li><a href="https://developers.meta.com/horizon/downloads/package/unreal-engine-5-integration/">Unreal Engine 5 Integration, release notes</a> (Meta)</li>
+    <li><a href="https://developers.meta.com/horizon/documentation/unreal/unreal-quick-start-install-metaxr-plugin/">Installing the Meta XR plugin</a> (Meta)</li>
+    <li><a href="https://developers.meta.com/horizon/feedback/vr/investigations/1053459897316880/">Meta XR plugins version mismatch with Unreal Engine 5.8</a> (Meta issue tracker)</li>
+    <li><code>Docs/XR-Agent.md</code>, sections on the build and on logcat</li>
+  </ul>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+</body>
+</html>

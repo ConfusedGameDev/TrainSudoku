@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 04 · Data assets and the level pipeline</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="4"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 04</p>
+  <h1>Data assets and the level pipeline</h1>
+  <p class="lede">The game ships 24 lines of 9 stations: 216 levels, stored in Unity as ScriptableObjects. You define the matching Unreal asset classes, export the data from Unity as JSON, import it with an editor script, and prove every board still has exactly one solution.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd>216 level assets, 24 line assets and one network asset under <code>Content/Data/Levels</code>, in the same order as Unity, verified by a test.</dd>
+    <dt>On the headset</dt><dd>Nothing new, but the levels are now in the build.</dd>
+    <dt>Unity equivalent</dt><dd>Milestones M1 and M10, plus the network work of M11 onwards.</dd>
+  </dl>
+
+  <h2>The rule you must not break</h2>
+  <div class="trap">
+    <p><span class="tag">Save identity</span>A level is identified in the save file by its <code>id</code> string. A level's position in the game is its index in <strong>one flat list</strong>: every line's stations concatenated in line order. Lines and stations are only a view over that list.</p>
+    <p>So the import must keep each <code>id</code> exactly, keep the lines in the same order, and keep the stations in the same order within each line. Inserting or reordering a line renumbers every level after it.</p>
+  </div>
+
+  <h2>Unreal concepts</h2>
+
+  <h3>Data assets</h3>
+  <p>A <code>UDataAsset</code> subclass is the direct equivalent of a <code>ScriptableObject</code>: a class with <code>UPROPERTY</code> fields, saved as a <code>.uasset</code>, edited in the Details panel. <code>UPrimaryDataAsset</code> adds an identity the Asset Manager understands, which you need for the next point.</p>
+
+  <h3>Hard and soft references</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Type</th><th>Loads the target</th><th>Use for</th></tr></thead>
+      <tbody>
+        <tr><td><code>TObjectPtr&lt;T&gt;</code> in a <code>UPROPERTY</code></td><td>With the owner, always</td><td>A line's nine levels. They are tiny and always needed.</td></tr>
+        <tr><td><code>TSoftObjectPtr&lt;T&gt;</code></td><td>Only when you ask</td><td>The pointer from project settings to the network. Large content you load on demand.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Use <code>TObjectPtr&lt;T&gt;</code> where you would have written <code>T*</code> in a reflected field. It behaves like a raw pointer in a shipped build and adds checks in the editor.</p>
+
+  <h3>The Asset Manager and cooking</h3>
+  <p>The cooker starts from your maps and follows hard references. The network asset is referenced by no map, so on its own it would not be packaged, and neither would anything it points to. You fix that by registering it with the Asset Manager as a primary asset type that is always cooked. Everything it references by hard pointer then comes along.</p>
+
+  <h3>Editor scripting in Python</h3>
+  <p>The Unreal editor embeds Python with an <code>unreal</code> module that mirrors the reflected C++ API. Reflected names are converted: a C++ property <code>ColumnClues</code> is <code>column_clues</code> in Python, and <code>bIsTutorial</code> is <code>is_tutorial</code>. It is the quickest way to create a few hundred assets from a file.</p>
+
+  <h2>Read first</h2>
+  <ul class="files">
+    <li><code>Assets/01.Scripts/Game/LevelDefinition.cs</code><span>Fields, and <code>ToLevelData()</code>, which tolerates a half-edited asset by clamping sizes and padding short arrays.</span></li>
+    <li><code>Assets/01.Scripts/Game/LineDefinition.cs</code><span>Code, name, colour, the levels, the unlock rule, and the map polyline with which nodes are stations.</span></li>
+    <li><code>Assets/01.Scripts/Game/NetworkDefinition.cs</code><span><code>FlatLevels()</code> and <code>ToLayout()</code>. These two define the flat order.</span></li>
+    <li><code>Assets/01.Scripts/Core/NetworkLayout.cs</code><span>Cuts the flat list into lines. Port it now; it is 97 lines with 7 tests.</span></li>
+    <li><code>Assets/99.Test/EditMode/LevelCollectionTests.cs</code><span>What "every shipped level is sound" means.</span></li>
+    <li><code>Assets/03.Data/Levels/</code><span>Open one <code>.asset</code> in a text editor to see the raw data. <code>simple.asset</code> is Ashgate, the tutorial.</span></li>
+  </ul>
+
+  <h2>Steps</h2>
+  <ol class="steps">
+    <li>
+      <p><strong>Declare the three asset classes</strong> in <code>TsugiXR</code>. They hold engine types, so they cannot live in <code>TsugiCore</code>. Unity's <code>LevelCollection</code> was only a list wrapper; a line holds its levels directly.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="cpp" data-title="TsugiLevelDefinition.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Engine/DataAsset.h"
+#include "TsugiFixedPiece.h"
+#include "TsugiTunnel.h"
+#include "TsugiLevelDefinition.generated.h"
+
+class FTsugiLevelData;
+
+/** A level as stored on disk. Gameplay code converts it with ToLevelData(). */
+UCLASS(BlueprintType)
+class TSUGIXR_API UTsugiLevelDefinition : public UPrimaryDataAsset
+{
+    GENERATED_BODY()
+
+public:
+    /** Stable identity used by the save file. Renaming the asset must not change it. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level")
+    FString Id;
+
+    /** The station's name. An invented proper noun, never translated. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level")
+    FString DisplayName;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level", meta = (ClampMin = 1))
+    int32 Width = 6;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level", meta = (ClampMin = 1))
+    int32 Height = 6;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level")
+    TArray<int32> ColumnClues;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level")
+    TArray<int32> RowClues;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level")
+    TArray<FTsugiFixedPiece> FixedPieces;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level")
+    FTsugiTunnel Entrance;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level")
+    FTsugiTunnel Exit;
+
+    /** Seconds: [0] earns three stars, [1] earns two. Anything slower earns one. Zero means unauthored. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level")
+    TArray<float> StarTimes;
+
+    /** Runs the tutorial coach on this level. Exactly one station carries it. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level")
+    bool bIsTutorial = false;
+
+    /** Builds the TsugiCore representation. Tolerates a half-edited asset, as the Unity version does. */
+    TSharedRef<const FTsugiLevelData> ToLevelData() const;
+
+    /** Always two entries, so a half-authored asset still answers. */
+    TArray<double, TInlineAllocator<2>> GetStarTimes() const;
+
+    virtual FPrimaryAssetId GetPrimaryAssetId() const override
+    {
+        return FPrimaryAssetId(TEXT("TsugiLevel"), GetFName());
+    }
+};
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="TsugiLineDefinition.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Engine/DataAsset.h"
+#include "TsugiLineDefinition.generated.h"
+
+class UTsugiLevelDefinition;
+
+UENUM(BlueprintType)
+enum class ETsugiMapShape : uint8 { Route, Loop, Stadium };
+
+UCLASS(BlueprintType)
+class TSUGIXR_API UTsugiLineDefinition : public UPrimaryDataAsset
+{
+    GENERATED_BODY()
+
+public:
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Line") FString Id;
+
+    /** The roundel's two letters, e.g. TS. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Line") FString Code;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Line") FString DisplayName;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Line") FColor Color = FColor(0x9A, 0xCD, 0x32);
+
+    /** The stations, in order. This order is part of the save-file identity. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Line")
+    TArray<TObjectPtr<UTsugiLevelDefinition>> Levels;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Line", meta = (ClampMin = 0, ClampMax = 3))
+    int32 MinStarsPerStation = 1;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map") ETsugiMapShape MapShape = ETsugiMapShape::Route;
+
+    /** The polyline the map is stroked along, in map space, on a 45-degree grid. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map") TArray<FVector2D> MapNodes;
+
+    /** Which nodes carry a station, in the same order as Levels. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Map") TArray<int32> StationNodeIndices;
+
+    virtual FPrimaryAssetId GetPrimaryAssetId() const override
+    {
+        return FPrimaryAssetId(TEXT("TsugiLine"), GetFName());
+    }
+};
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="TsugiNetworkDefinition.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Engine/DataAsset.h"
+#include "TsugiNetworkLayout.h"
+#include "TsugiNetworkDefinition.generated.h"
+
+class UTsugiLineDefinition;
+class UTsugiLevelDefinition;
+
+USTRUCT(BlueprintType)
+struct FTsugiInterchange
+{
+    GENERATED_BODY()
+    UPROPERTY(EditAnywhere) int32 LineA = 0;
+    UPROPERTY(EditAnywhere) int32 NodeA = 0;
+    UPROPERTY(EditAnywhere) int32 LineB = 0;
+    UPROPERTY(EditAnywhere) int32 NodeB = 0;
+};
+
+UCLASS(BlueprintType)
+class TSUGIXR_API UTsugiNetworkDefinition : public UPrimaryDataAsset
+{
+    GENERATED_BODY()
+
+public:
+    /** Lines may only ever be appended. The flat level order is the save-file identity. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Network")
+    TArray<TObjectPtr<UTsugiLineDefinition>> Lines;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Network")
+    TArray<FTsugiInterchange> Interchanges;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Network")
+    FBox2D MapBounds = FBox2D(FVector2D(0, 0), FVector2D(1000, 1000));
+
+    /** Every line's stations concatenated in line order. */
+    TArray<UTsugiLevelDefinition*> FlatLevels() const;
+
+    FTsugiNetworkLayout ToLayout() const;
+
+    virtual FPrimaryAssetId GetPrimaryAssetId() const override
+    {
+        return FPrimaryAssetId(TEXT("TsugiNetwork"), GetFName());
+    }
+};
+        </script>
+      </div>
+      <p>Build, then confirm in the Content Browser that <em>Add &gt; Miscellaneous &gt; Data Asset</em> offers all three classes.</p>
+    </li>
+    <li>
+      <p><strong>Export from Unity.</strong> Drop this file into the Unity project's <code>Assets/01.Scripts/XR/Editor/</code> folder, run <em>Window &gt; TrainSudoku &gt; XR &gt; Export Network JSON</em>, and remove it again unless your team wants to keep it. It walks <code>Network.asset</code>, so levels no line references, such as <code>Hard.asset</code>, are correctly left out.</p>
+      <script type="text/plain" data-lang="csharp" data-title="Unity: NetworkJsonExport.cs">
+using System;
+using System.Collections.Generic;
+using System.IO;
+using TrainSudoku.Game;
+using UnityEditor;
+using UnityEngine;
+
+public static class NetworkJsonExport
+{
+    [Serializable] private class PieceDto { public int x, y; public string key; }
+    [Serializable] private class TunnelDto { public string side; public int index; }
+    [Serializable] private class NodeDto { public float x, y; }
+
+    [Serializable]
+    private class LevelDto
+    {
+        public string id, name;
+        public int width, height;
+        public int[] columnClues, rowClues;
+        public List<PieceDto> fixedPieces = new List<PieceDto>();
+        public TunnelDto entrance, exit;
+        public float[] starTimes;
+        public bool isTutorial;
+    }
+
+    [Serializable]
+    private class LineDto
+    {
+        public string id, code, name, color, mapShape;
+        public int minStarsPerStation;
+        public List<NodeDto> mapNodes = new List<NodeDto>();
+        public int[] stationNodeIndices;
+        public List<LevelDto> levels = new List<LevelDto>();
+    }
+
+    [Serializable]
+    private class NetworkDto
+    {
+        public List<LineDto> lines = new List<LineDto>();
+        public Interchange[] interchanges;
+        public float[] mapBounds;   // xMin, yMin, xMax, yMax
+    }
+
+    [MenuItem("Window/TrainSudoku/XR/Export Network JSON")]
+    private static void Export()
+    {
+        var guids = AssetDatabase.FindAssets("t:NetworkDefinition");
+        if (guids.Length != 1) { Debug.LogError($"Expected one NetworkDefinition, found {guids.Length}."); return; }
+        var network = AssetDatabase.LoadAssetAtPath<NetworkDefinition>(AssetDatabase.GUIDToAssetPath(guids[0]));
+
+        var dto = new NetworkDto
+        {
+            interchanges = new List<Interchange>(network.Interchanges).ToArray(),
+            mapBounds = new[] { network.MapBounds.xMin, network.MapBounds.yMin, network.MapBounds.xMax, network.MapBounds.yMax },
+        };
+
+        foreach (var line in network.Lines)
+        {
+            var lineDto = new LineDto
+            {
+                id = line.Id, code = line.Code, name = line.DisplayName,
+                color = "#" + ColorUtility.ToHtmlStringRGB(line.Color),
+                mapShape = line.MapShape.ToString(),
+                minStarsPerStation = line.UnlockRule.minStarsPerStation,
+                stationNodeIndices = new List<int>(line.StationNodeIndices).ToArray(),
+            };
+            foreach (var node in line.MapNodes) lineDto.mapNodes.Add(new NodeDto { x = node.x, y = node.y });
+
+            for (var i = 0; i < line.StationCount; i++)
+            {
+                var level = line.Station(i);
+                var data = level.ToLevelData();
+                var levelDto = new LevelDto
+                {
+                    id = level.Id, name = level.DisplayName, width = data.Width, height = data.Height,
+                    columnClues = data.ColumnClues, rowClues = data.RowClues,
+                    entrance = new TunnelDto { side = data.Entrance.Side.ToString(), index = data.Entrance.Index },
+                    exit = new TunnelDto { side = data.Exit.Side.ToString(), index = data.Exit.Index },
+                    starTimes = new[] { (float)level.StarTimes[0], (float)level.StarTimes[1] },
+                    isTutorial = level.IsTutorial,
+                };
+                foreach (var piece in data.FixedPieces)
+                    levelDto.fixedPieces.Add(new PieceDto { x = piece.X, y = piece.Y, key = piece.Key.ToString() });
+                lineDto.levels.Add(levelDto);
+            }
+
+            dto.lines.Add(lineDto);
+        }
+
+        var path = Path.Combine(Application.dataPath, "../network.json");
+        File.WriteAllText(path, JsonUtility.ToJson(dto, true));
+        Debug.Log($"Wrote {dto.lines.Count} lines to {Path.GetFullPath(path)}");
+    }
+}
+      </script>
+      <p>Enum values are written as names, not numbers. A file that says <code>"key": "NE"</code> can be checked by eye; one that says <code>3</code> cannot.</p>
+    </li>
+    <li>
+      <p><strong>Import into Unreal.</strong> Enable the <em>Python Editor Script Plugin</em>, then run this from <em>Tools &gt; Execute Python Script</em>. It creates missing assets and overwrites the fields of existing ones, so it is safe to run twice.</p>
+      <script type="text/plain" data-lang="python" data-title="Unreal: Tools/import_network.py">
+import json
+import re
+import unreal
+
+SOURCE = r"C:/path/to/TrainSudoku/network.json"
+ROOT = "/Game/Data/Levels"
+
+tools = unreal.AssetToolsHelpers.get_asset_tools()
+library = unreal.EditorAssetLibrary
+
+DIRECTION = {
+    "North": unreal.TsugiDirection.NORTH, "East": unreal.TsugiDirection.EAST,
+    "South": unreal.TsugiDirection.SOUTH, "West": unreal.TsugiDirection.WEST,
+}
+KEY = {name: getattr(unreal.TsugiPieceKey, name) for name in ("NS", "EW", "NW", "NE", "SW", "SE")}
+SHAPE = {
+    "Route": unreal.TsugiMapShape.ROUTE, "Loop": unreal.TsugiMapShape.LOOP, "Stadium": unreal.TsugiMapShape.STADIUM,
+}
+
+
+def safe(text):
+    return re.sub(r"[^A-Za-z0-9_]", "_", text)
+
+
+def asset(name, folder, cls):
+    path = f"{folder}/{name}"
+    if library.does_asset_exist(path):
+        return library.load_asset(path)
+    factory = unreal.DataAssetFactory()
+    factory.set_editor_property("data_asset_class", cls)
+    return tools.create_asset(name, folder, cls, factory)
+
+
+def tunnel(dto):
+    result = unreal.TsugiTunnel()
+    result.set_editor_property("side", DIRECTION[dto["side"]])
+    result.set_editor_property("index", dto["index"])
+    return result
+
+
+def fixed_piece(dto):
+    result = unreal.TsugiFixedPiece()
+    result.set_editor_property("x", dto["x"])
+    result.set_editor_property("y", dto["y"])
+    result.set_editor_property("key", KEY[dto["key"]])
+    return result
+
+
+with open(SOURCE, encoding="utf-8") as handle:
+    data = json.load(handle)
+
+flat = 0
+lines = []
+for line_index, line_dto in enumerate(data["lines"]):
+    folder = f"{ROOT}/Line_{line_index:02d}_{safe(line_dto['code'])}"
+    levels = []
+    for level_dto in line_dto["levels"]:
+        level = asset(f"Level_{flat:03d}_{safe(level_dto['id'])}", folder, unreal.TsugiLevelDefinition)
+        level.set_editor_property("id", level_dto["id"])                 # exactly as Unity has it
+        level.set_editor_property("display_name", level_dto["name"])
+        level.set_editor_property("width", level_dto["width"])
+        level.set_editor_property("height", level_dto["height"])
+        level.set_editor_property("column_clues", level_dto["columnClues"])
+        level.set_editor_property("row_clues", level_dto["rowClues"])
+        level.set_editor_property("fixed_pieces", [fixed_piece(p) for p in level_dto["fixedPieces"]])
+        level.set_editor_property("entrance", tunnel(level_dto["entrance"]))
+        level.set_editor_property("exit", tunnel(level_dto["exit"]))
+        level.set_editor_property("star_times", level_dto["starTimes"])
+        level.set_editor_property("is_tutorial", level_dto["isTutorial"])
+        library.save_loaded_asset(level)
+        levels.append(level)
+        flat += 1
+
+    line = asset(f"Line_{line_index:02d}_{safe(line_dto['code'])}", folder, unreal.TsugiLineDefinition)
+    line.set_editor_property("id", line_dto["id"])
+    line.set_editor_property("code", line_dto["code"])
+    line.set_editor_property("display_name", line_dto["name"])
+    rgb = line_dto["color"].lstrip("#")
+    line.set_editor_property("color", unreal.Color(r=int(rgb[0:2], 16), g=int(rgb[2:4], 16), b=int(rgb[4:6], 16), a=255))
+    line.set_editor_property("levels", levels)
+    line.set_editor_property("min_stars_per_station", line_dto["minStarsPerStation"])
+    line.set_editor_property("map_shape", SHAPE[line_dto["mapShape"]])
+    line.set_editor_property("map_nodes", [unreal.Vector2D(n["x"], n["y"]) for n in line_dto["mapNodes"]])
+    line.set_editor_property("station_node_indices", line_dto["stationNodeIndices"])
+    library.save_loaded_asset(line)
+    lines.append(line)
+
+network = asset("Network", ROOT, unreal.TsugiNetworkDefinition)
+network.set_editor_property("lines", lines)
+# Interchanges and map bounds: yours. Same pattern as the fixed pieces.
+library.save_loaded_asset(network)
+
+unreal.log(f"Imported {flat} levels on {len(lines)} lines.")
+      </script>
+      <div class="unverified">
+        <p><span class="tag">Not run</span>This script was written from the Python API's naming rules and was not executed. The likeliest things to need a fix are the enum member spellings and the factory property name. <code>help(unreal.TsugiDirection)</code> in the Python console prints the real names.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>Tell the game where the network is.</strong> A <code>UDeveloperSettings</code> subclass adds a page to Project Settings and reads from <code>DefaultGame.ini</code>. Add <code>"DeveloperSettings"</code> to <code>TsugiXR.Build.cs</code>.</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiSettings.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Engine/DeveloperSettings.h"
+#include "TsugiSettings.generated.h"
+
+class UTsugiNetworkDefinition;
+
+/** Project Settings > Game > Tsugi. */
+UCLASS(Config = Game, DefaultConfig, meta = (DisplayName = "Tsugi"))
+class TSUGIXR_API UTsugiSettings : public UDeveloperSettings
+{
+    GENERATED_BODY()
+
+public:
+    /** What the game loads: 24 lines of 9 stations. */
+    UPROPERTY(Config, EditAnywhere, Category = "Levels")
+    TSoftObjectPtr<UTsugiNetworkDefinition> Network;
+
+    /** Testing aid: every line and station counts as open. Never on in a shipping build. */
+    UPROPERTY(Config, EditAnywhere, Category = "Testing")
+    bool bUnlockAll = false;
+};
+      </script>
+      <p>Set <em>Network</em> to the imported asset in Project Settings. At runtime, <code>GetDefault&lt;UTsugiSettings&gt;()-&gt;Network.LoadSynchronous()</code> returns it.</p>
+    </li>
+    <li>
+      <p><strong>Make sure it is cooked.</strong> In <em>Project Settings &gt; Game &gt; Asset Manager &gt; Primary Asset Types to Scan</em>, add an entry: type <code>TsugiNetwork</code>, base class <code>TsugiNetworkDefinition</code>, directory <code>/Game/Data/Levels</code>, and under <em>Rules</em> set <em>Cook Rule</em> to <strong>Always Cook</strong>. The lines and levels follow through their hard references.</p>
+    </li>
+    <li>
+      <p><strong>Verify every level.</strong> Port <code>LevelCollectionTests</code> as an automation test in <code>TsugiXR/Private/Tests/</code>. This one loads assets, so it needs the editor and cannot run with <code>-NullRHI</code> alone, but it still needs no world.</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiShippedLevelsTest.cpp">
+#include "Misc/AutomationTest.h"
+#include "TsugiSettings.h"
+#include "TsugiNetworkDefinition.h"
+#include "TsugiLevelDefinition.h"
+#include "TsugiLevelData.h"
+#include "TsugiSolver.h"
+
+#if WITH_DEV_AUTOMATION_TESTS
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTsugiShippedLevelsTest, "Tsugi.Levels.EveryShippedLevelIsSound",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FTsugiShippedLevelsTest::RunTest(const FString& Parameters)
+{
+    const UTsugiNetworkDefinition* Network = GetDefault<UTsugiSettings>()->Network.LoadSynchronous();
+    if (!TestNotNull(TEXT("Network asset"), Network)) return false;
+
+    const TArray<UTsugiLevelDefinition*> Levels = Network->FlatLevels();
+    TestEqual(TEXT("level count"), Levels.Num(), 216);
+
+    // The same budget LevelCollectionTests allows. The worst shipped board needs about 1.5 million nodes.
+    constexpr int64 NodeBudget = 5'000'000;
+
+    TSet<FString> Ids;
+    int32 Tutorials = 0;
+    for (const UTsugiLevelDefinition* Level : Levels)
+    {
+        const TSharedRef<const FTsugiLevelData> Data = Level->ToLevelData();
+        const FString Where = FString::Printf(TEXT("%s (%s)"), *Level->Id, *Level->DisplayName);
+
+        TestEqual(*(Where + TEXT(": no static problems")), Data->Validate().Num(), 0);
+
+        bool bAlreadySeen = false;
+        Ids.Add(Level->Id, &bAlreadySeen);
+        TestFalse(*(Where + TEXT(": id is unique")), bAlreadySeen);
+
+        const FTsugiSolveResult Result = FTsugiSolver::Solve(Data, /*Limit*/ 2, NodeBudget);
+        TestFalse(*(Where + TEXT(": search finished inside the budget")), Result.bExhausted);
+        TestEqual(*(Where + TEXT(": exactly one solution")), Result.Count, 1);
+
+        if (Level->bIsTutorial) ++Tutorials;
+    }
+
+    TestEqual(TEXT("exactly one tutorial station"), Tutorials, 1);
+    return true;
+}
+
+#endif
+      </script>
+      <p>Add the checks from the Unity fixture that this sketch leaves out: both tunnel cells carry a fixed piece, and every level has two usable star thresholds or none.</p>
+    </li>
+    <li>
+      <p><strong>Pin the order.</strong> Add a second test that reads <code>network.json</code> from a known path and asserts the flat list of ids matches it, entry for entry. That test is what stops a later re-import from renumbering the game.</p>
+    </li>
+  </ol>
+
+  <h2>Your port</h2>
+  <ul>
+    <li><code>FTsugiNetworkLayout</code> in <code>TsugiCore</code>, with <code>NetworkLayoutTests</code> (7 cases).</li>
+    <li><code>UTsugiLevelDefinition::ToLevelData</code> and <code>GetStarTimes</code>, <code>UTsugiNetworkDefinition::FlatLevels</code> and <code>ToLayout</code>.</li>
+    <li>The interchanges and map bounds in the import script.</li>
+    <li>The rest of <code>LevelCollectionTests</code>, and the order test.</li>
+  </ul>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li><code>network.json</code> has 24 lines, each with 9 levels.</li>
+    <li>The Content Browser shows 216 level assets, 24 line assets and one network asset.</li>
+    <li>Opening the first level of line 0 shows id <code>simple</code>, display name Ashgate, with <em>Is Tutorial</em> ticked.</li>
+    <li><code>Tsugi.Levels.EveryShippedLevelIsSound</code> passes: 216 levels, each with exactly one solution inside 5 million nodes.</li>
+    <li>The order test passes.</li>
+    <li>Running the import script a second time changes nothing in source control.</li>
+    <li>A packaged build's log shows the network loading, which proves the cook rule works. Log the level count from the game module's startup to check.</li>
+  </ul>
+
+  <h2>Pitfalls</h2>
+  <ul>
+    <li><strong>Assets that work in the editor and vanish in a build.</strong> The editor loads anything on disk. A packaged game only has what was cooked. Test the cook rule on the device now, not in lesson 18.</li>
+    <li><strong>Renaming an asset is not renaming a level.</strong> The asset name is for the Content Browser. The <code>Id</code> field is the save key. Never derive one from the other at runtime.</li>
+    <li><strong>The solver test is slow.</strong> 216 solves, the worst around 1.5 million nodes. Expect tens of seconds in a development build. If it takes minutes, your solver's pruning differs from the C#.</li>
+    <li><strong>Board sizes vary.</strong> Most boards are 6×6, 7×7 or 8×8, but do not hard-code that anywhere. Width and height come from the level.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q">A designer wants a new line between line 3 and line 4. What happens to existing players' saves?</p>
+    <ul>
+      <li>Nothing. Saves are keyed by level id.</li>
+      <li data-correct>Best times survive, because they are keyed by id, but every level after the insertion changes its flat index, so unlock order and line membership shift.</li>
+      <li>The save file is rejected as corrupt.</li>
+    </ul>
+    <p class="why">Unlocking walks the flat list: a station opens when the level before it in that list has a best time. Insert a line and "the level before" changes for everything after it. Lines are append-only.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">Why is the pointer from <code>UTsugiSettings</code> to the network a <code>TSoftObjectPtr</code>?</p>
+    <ul>
+      <li>Hard pointers are not allowed in config.</li>
+      <li data-correct>A settings object exists from engine start. A hard reference would force the whole network to load with it, before anything needs it; a soft one stores only a path.</li>
+      <li>Soft pointers are cooked automatically and hard ones are not.</li>
+    </ul>
+    <p class="why">It is the other way round for cooking: a soft path alone does not reliably pull an asset into a build, which is why step 5 adds the cook rule.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">The Python script sets <code>is_tutorial</code>. What is the C++ property called?</p>
+    <ul>
+      <li><code>IsTutorial</code></li>
+      <li data-correct><code>bIsTutorial</code></li>
+      <li><code>is_tutorial</code></li>
+    </ul>
+    <p class="why">Python drops the <code>b</code> prefix from booleans and converts the rest to snake case.</p>
+  </div>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+</body>
+</html>

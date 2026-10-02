@@ -268,6 +268,42 @@ MonoBehaviour:
     m_Localized: START
     m_Metadata:
       m_Items: []
+  - m_Id: 318851079933952
+    m_Localized: You can move this board. Bring your hands to the rail.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237120
+    m_Localized: Pinch the rail with both hands.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237121
+    m_Localized: Move your hands to carry it. Spread or close them to resize it.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237122
+    m_Localized: THE BOARD
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237123
+    m_Localized: This board goes wherever you want it. Pinch its rail with both hands, one on each side, then carry it, turn it, or pull your hands apart to make it bigger.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237124
+    m_Localized: SKIP
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237125
+    m_Localized: PLACE IT AGAIN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237126
+    m_Localized: To place the board afresh at any time, press the button on the back of your wrist to pause, then choose SETTINGS and RE-PLACE BOARD.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237127
+    m_Localized: GOT IT
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

@@ -425,5 +425,16 @@ namespace TrainSudoku.XR.Rules
         public const string Brief3Body = "xr.brief.3_body";
         public const string BriefNext = "xr.brief.next";
         public const string BriefStart = "xr.brief.start";
+
+        // The board lesson (XRBoardLesson): the callout's three lines, then the signboard's two cards.
+        public const string MoveApproach = "xr.move.approach";
+        public const string MovePinch = "xr.move.pinch";
+        public const string MoveCarry = "xr.move.carry";
+        public const string MoveTitle = "xr.move.title";
+        public const string MoveBody = "xr.move.body";
+        public const string MoveSkip = "xr.move.skip";
+        public const string MoveClosingTitle = "xr.move.closing_title";
+        public const string MoveClosingBody = "xr.move.closing_body";
+        public const string MoveDone = "xr.move.done";
     }
 }

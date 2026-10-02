@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 07 · The board in the world</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="7"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 07</p>
+  <h1>The board in the world</h1>
+  <p class="lede">The first thing you can see. You build the board actor: slabs, clue signs, tunnel markers and the pre-laid pieces, positioned by the same layout maths as Unity and coloured from the same palette. Track is a placeholder until the next lesson.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd><code>ATsugiBoard</code> shows any level, keeps its pieces in step with the board state, and colours clues as they are met or exceeded.</dd>
+    <dt>On the headset</dt><dd>Ashgate floating in front of you, six centimetres to a cell. Console commands place pieces and the clue numbers change colour.</dd>
+    <dt>Unity equivalent</dt><dd>Milestone XR4, "Board display".</dd>
+  </dl>
+
+  <h2>Units, once and for all</h2>
+  <p><code>BoardLayout</code> works in cells. Unity scales the board's root so one unit is six centimetres. Do the same thing in Unreal with one twist: inside the board, <strong>one cell is 100 local units</strong>. Kit art authored one metre long then fits a cell with no per-mesh scaling, and the board root's scale turns that into centimetres in the room.</p>
+  <div class="demo">
+    <h3>From a cell to centimetres</h3>
+    <div id="demo-units"></div>
+  </div>
+  <script type="text/plain" data-lang="cpp" data-title="TsugiXR/Public/TsugiUnits.h">
+#pragma once
+
+#include "CoreMinimal.h"
+
+namespace Tsugi
+{
+    /** Local units per cell, inside the board's own space. */
+    inline constexpr double CellUnits = 100.0;
+
+    /** The headset default: 6 cm to a cell. The handle scales it between 4 and 9 (lesson 10). */
+    inline constexpr double DefaultCellCm = 6.0;
+
+    /** Board root scale that makes a cell CellCm centimetres in the room. */
+    inline double RootScale(double CellCm) { return CellCm / CellUnits; }
+
+    /**
+     * BoardLayout's frame (X east, Z north, Y up, in cells) to board-local Unreal units.
+     * Unity z -> Unreal X, Unity x -> Unreal Y, Unity y -> Unreal Z. Both frames are left-handed, so nothing mirrors.
+     */
+    inline FVector ToLocal(double East, double North, double Up = 0.0)
+    {
+        return FVector(North * CellUnits, East * CellUnits, Up * CellUnits);
+    }
+
+    /** BoardLayout.Yaw: degrees about the up axis that turn "north" to face a side. The same number in both engines. */
+    inline FRotator YawRotation(double Degrees) { return FRotator(0.0, Degrees, 0.0); }
+}
+  </script>
+  <p>This is the only place the axis swap is written. If you find yourself swapping X and Y anywhere else, something has bypassed <code>ToLocal</code>.</p>
+
+  <h2>Unreal concepts</h2>
+
+  <h3>Building an actor from components at runtime</h3>
+  <p>Components declared in the constructor with <code>CreateDefaultSubobject</code> exist on every instance and show in the editor. Components made later, such as one per track piece, are created with <code>NewObject</code>, attached, and <strong>registered</strong>. An unregistered component does not render or collide.</p>
+  <script type="text/plain" data-lang="cpp" data-title="The runtime component pattern">
+UStaticMeshComponent* Piece = NewObject<UStaticMeshComponent>(this);
+Piece->SetStaticMesh(Mesh);
+Piece->SetMaterial(0, Material);
+Piece->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+Piece->SetMobility(EComponentMobility::Movable);
+Piece->SetupAttachment(PiecesRoot);
+Piece->RegisterComponent();                       // without this it is invisible
+Piece->SetRelativeLocation(Tsugi::ToLocal(East, North));
+
+// ...and when it goes:
+Piece->DestroyComponent();
+  </script>
+
+  <h3>Instanced static meshes</h3>
+  <p>An 8×8 board has 64 identical slabs. One <code>UInstancedStaticMeshComponent</code> draws all of them in a single draw call. Each instance has a transform and can carry a few floats of <strong>per-instance custom data</strong> that the material reads. That is how one component draws slabs in two shades and highlights one of them.</p>
+
+  <h3>Materials</h3>
+  <p>A <strong>material</strong> is a shader graph. A <strong>material instance</strong> is that graph with different parameter values, with no recompile. A <strong>dynamic</strong> material instance is created in code and changed at runtime: the line colour, the ghost's tint. A <strong>material parameter collection</strong> is a set of global parameters every material can read. The paused-board dimming is one scalar in a collection, set once, where Unity walks every renderer.</p>
+
+  <h3>Colour space</h3>
+  <p><code>FColor</code> is 8-bit sRGB, like Unity's <code>Color32</code>. <code>FLinearColor</code> is linear float, which is what materials want. Converting with <code>FLinearColor(FColor)</code> applies the sRGB curve. Constructing an <code>FLinearColor</code> directly from 0-to-1 sRGB numbers does not, and gives washed-out colours.</p>
+
+  <h2>Read first</h2>
+  <ul class="files">
+    <li><code>Assets/01.Scripts/Core/BoardLayout.cs</code><span>70 lines. Every position in the game. Port it to <code>TsugiCore</code> first, with <code>BoardLayoutTests</code> (6 cases).</span></li>
+    <li><code>Assets/01.Scripts/XR/Board/XRBoardDisplay.cs</code><span>678 lines. Read <code>Load</code>, <code>BuildTiles</code>, <code>BuildClues</code>, <code>Sync</code> and <code>Validate</code>. Note that it takes no input: something else changes the board, then calls <code>Sync</code>.</span></li>
+    <li><code>Assets/01.Scripts/XR/XRPalette.cs</code><span>58 lines. Every colour. A fork of the phone's palette; port this one.</span></li>
+    <li><code>Assets/01.Scripts/XR/Board/XRBoardMaterials.cs</code><span>Which token each surface uses. Fixed track is flat ink; the line colour tints satisfied clues.</span></li>
+    <li><code>Assets/01.Scripts/XR/Board/XRBoardAssets.cs</code><span>The art hooks: meshes, materials, the signage font.</span></li>
+  </ul>
+
+  <h2>Steps</h2>
+  <ol class="steps">
+    <li>
+      <p><strong>Port <code>BoardLayout</code>.</strong> Keep it in cells and in its own frame; a small struct replaces the tuple. Do not convert to Unreal axes inside it. <code>TrackCurve</code>, <code>TrackPath</code> and <code>BoardPick</code> all share this frame, and their tests are written in it.</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiCore/Public/TsugiBoardLayout.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "TsugiTunnel.h"
+
+/** A point on the board's ground plane, in cells: X east, Z north. */
+struct FTsugiGroundPoint
+{
+    double X = 0.0;
+    double Z = 0.0;
+};
+
+/** Board layout in cells. The board is centred on the origin; row 0 is the far (north) row. */
+struct TSUGICORE_API FTsugiBoardLayout
+{
+    static constexpr double CellSize = 1.0;
+    static constexpr double TunnelOffset = 1.0;    // perimeter cell centre to tunnel centre
+    static constexpr double ClueOffset = 1.85;     // perimeter cell centre to clue sign
+    static constexpr double Padding = 1.0;         // the tunnel ring
+    static constexpr double Height = 1.5;
+
+    static FTsugiGroundPoint CellCenter(int32 X, int32 Y, int32 Width, int32 Height)
+    {
+        return { X - (Width - 1) / 2.0, (Height - 1) / 2.0 - Y };
+    }
+
+    static FTsugiGroundPoint Step(ETsugiDirection Side);
+    static double Yaw(ETsugiDirection Side) { return 90.0 * static_cast<int32>(Side); }
+    static FTsugiGroundPoint TunnelCenter(const FTsugiTunnel& Tunnel, int32 Width, int32 Height);
+    static FTsugiGroundPoint ColumnClueAnchor(int32 X, int32 Width, int32 Height);   // north of the board
+    static FTsugiGroundPoint RowClueAnchor(int32 Y, int32 Width, int32 Height);      // east of the board
+    static double HalfWidth(int32 Width) { return Width * CellSize / 2.0 + Padding; }
+    static double HalfDepth(int32 Height) { return Height * CellSize / 2.0 + Padding; }
+};
+      </script>
+    </li>
+    <li>
+      <p><strong>Port the palette.</strong> Same names, same hex values.</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiXR/Public/TsugiPalette.h">
+#pragma once
+
+#include "CoreMinimal.h"
+
+/** Every colour the XR edition draws with: its single re-skin point. Values from XRPalette.cs. */
+namespace TsugiPalette
+{
+    // Station signage.
+    inline const FColor Paper     (0xF4, 0xF5, 0xF2);
+    inline const FColor Ink       (0x1F, 0x23, 0x21);
+    inline const FColor InkDim    (0x5A, 0x61, 0x5D);
+    inline const FColor Closed    (0x9A, 0xA3, 0xA0);
+    inline const FColor Led       (0xFF, 0xB0, 0x20);
+    inline const FColor LedGround (0x0D, 0x0F, 0x0E);
+    inline const FColor Warn      (0xF2, 0xC2, 0x30);
+    inline const FColor Stop      (0xD0, 0x34, 0x2C);
+
+    // The platform.
+    inline const FColor Concrete    (0xC4, 0xC8, 0xC0);
+    inline const FColor ConcreteAlt (0xB6, 0xBB, 0xB3);
+    inline const FColor Steel       (0x7C, 0x82, 0x85);
+
+    // Success, GhostLegal, GhostIllegal and Steam are given as floats in the C#. Convert them once and write them here.
+
+    /** For material parameters. Applies the sRGB curve. */
+    inline FLinearColor Linear(const FColor& Colour) { return FLinearColor(Colour); }
+}
+      </script>
+    </li>
+    <li>
+      <p><strong>Make the materials in the editor.</strong> This part is not code.</p>
+      <ul>
+        <li><code>MPC_Tsugi</code>: a Material Parameter Collection with one scalar, <code>Dim</code>, default 1.</li>
+        <li><code>M_TsugiFlat</code>: a default-lit opaque material. Base colour is a vector parameter <code>Colour</code> multiplied by the collection's <code>Dim</code>. Roughness about 0.8.</li>
+        <li><code>M_TsugiTile</code>: the same, but base colour comes from a <em>PerInstanceCustomData</em> node's three floats, so each slab instance carries its own colour.</li>
+        <li><code>M_TsugiText</code>: an unlit material for the clue numerals, with a <code>Colour</code> parameter and no dimming. The numbers must still read on a paused board.</li>
+      </ul>
+      <p>Assign them to the board in a Blueprint subclass, <code>BP_TsugiBoard</code>. C++ declares the slots; the Blueprint fills them. That is the division this course uses everywhere.</p>
+    </li>
+    <li>
+      <p><strong>Declare the actor.</strong></p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiXR/Public/TsugiBoardActor.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+#include "TsugiBoard.h"            // FTsugiBoard, from TsugiCore
+#include "TsugiWinChecker.h"
+#include "TsugiBoardActor.generated.h"
+
+class UInstancedStaticMeshComponent;
+class UStaticMeshComponent;
+class UTextRenderComponent;
+class UMaterialInterface;
+class UMaterialInstanceDynamic;
+class UStaticMesh;
+
+/**
+ * The board on show: slabs, tunnels, clue signs, fixed and player track, and the validator's clue colouring.
+ * It takes no input. Whatever changes the board calls Sync afterwards.
+ */
+UCLASS()
+class TSUGIXR_API ATsugiBoard : public AActor
+{
+    GENERATED_BODY()
+
+public:
+    ATsugiBoard();
+
+    /** Shows a level with only its fixed pieces. */
+    void Load(TSharedRef<const FTsugiLevelData> Level, FColor LineColour);
+    void Clear();
+
+    /** Brings the pieces on show in line with the board and recolours the clues. */
+    void Sync(bool bAnimate);
+
+    FTsugiBoard* GetBoard() { return Board.IsSet() ? &Board.GetValue() : nullptr; }
+    const FTsugiWinResult& GetLastResult() const { return LastResult; }
+    bool HasOverfullLine() const { return bHasOverfullLine; }
+
+    /** Centre of a cell's top face, in world space. */
+    FVector CellWorldPosition(int32 X, int32 Y) const;
+
+    void HighlightCell(int32 X, int32 Y, bool bOn);
+    void SetDimmed(bool bDimmed);
+
+    // ---- art, assigned in BP_TsugiBoard
+    UPROPERTY(EditDefaultsOnly, Category = "Art") TObjectPtr<UStaticMesh> TileMesh;
+    UPROPERTY(EditDefaultsOnly, Category = "Art") TObjectPtr<UMaterialInterface> TileMaterial;
+    UPROPERTY(EditDefaultsOnly, Category = "Art") TObjectPtr<UMaterialInterface> FlatMaterial;
+    UPROPERTY(EditDefaultsOnly, Category = "Art") TObjectPtr<UMaterialInterface> TextMaterial;
+    UPROPERTY(EditDefaultsOnly, Category = "Art") TObjectPtr<UMaterialParameterCollection> Parameters;
+
+protected:
+    virtual void BeginPlay() override;
+    virtual void Tick(float DeltaSeconds) override;      // turns the clue signs to face the head
+
+private:
+    void BuildTiles();
+    void BuildTunnels();
+    void BuildClues();
+    void Validate(bool bAnnounce);
+    void Spawn(int32 X, int32 Y, const FTsugiPiece& Piece, bool bAnimate);
+
+    UPROPERTY(VisibleAnywhere) TObjectPtr<USceneComponent> BoardRoot;      // scaled: 0.06 makes a cell 6 cm
+    UPROPERTY(VisibleAnywhere) TObjectPtr<USceneComponent> Platform;       // near edge on BoardRoot's origin
+    UPROPERTY(VisibleAnywhere) TObjectPtr<UInstancedStaticMeshComponent> Tiles;
+
+    UPROPERTY() TMap<FIntPoint, TObjectPtr<UStaticMeshComponent>> ShownPieces;
+    UPROPERTY() TArray<TObjectPtr<UTextRenderComponent>> ColumnClues;
+    UPROPERTY() TArray<TObjectPtr<UTextRenderComponent>> RowClues;
+    UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> FixedTrackMaterial;
+    UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> PlayerTrackMaterial;
+
+    TMap<FIntPoint, FTsugiPiece> ShownState;          // plain data: what each shown component represents
+    TOptional<FTsugiBoard> Board;
+    FTsugiWinResult LastResult;
+    FColor LineColour = FColor::White;
+    bool bHasOverfullLine = false;
+};
+      </script>
+      <p>Name the file <code>TsugiBoardActor.h</code> so it does not collide with <code>TsugiBoard.h</code> in <code>TsugiCore</code>. Every map and array that holds components is a <code>UPROPERTY</code>; the plain-data map beside it is not.</p>
+    </li>
+    <li>
+      <p><strong>Load a level.</strong> The near edge of the board sits on the root's origin, so a bigger board grows away from the player and the edge they stand at never moves between levels.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="csharp" data-title="Unity: XRBoardDisplay.Load">
+public void Load(LevelData level, Color lineColour)
+{
+    Clear();
+    if (level == null) return;
+
+    Level = level;
+    Board = new Board(level);
+    // The near edge sits on the parent's origin, so a bigger board grows away from the player. Lifted by the
+    // slab height so the slabs rest on the surface the origin is on, rather than sinking into it.
+    transform.localPosition = new Vector3(0f, TileHeight, (float)BoardLayout.HalfDepth(level.Height));
+    _profile = assets != null ? assets.ResolveProfile() : XRBoardAssets.PlaceholderProfile();
+    XRBoardMaterials.SetLineColour(lineColour);
+
+    BuildTiles();
+    BuildTunnels();
+    BuildClues();
+    BuildDecor();
+    BuildShadowCatcher();
+    Sync(false);
+}
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="Unreal: ATsugiBoard::Load">
+void ATsugiBoard::Load(TSharedRef<const FTsugiLevelData> Level, FColor InLineColour)
+{
+    Clear();
+
+    Board.Emplace(Level);
+    LineColour = InLineColour;
+
+    // Unity: localPosition = (0, TileHeight, HalfDepth). The same point through ToLocal(east, north, up).
+    Platform->SetRelativeLocation(Tsugi::ToLocal(0.0, FTsugiBoardLayout::HalfDepth(Level->GetHeight()), TileHeight));
+
+    BuildTiles();
+    BuildTunnels();
+    BuildClues();
+    Sync(false);
+}
+
+void ATsugiBoard::BuildTiles()
+{
+    const FTsugiLevelData& Level = Board->GetLevel();
+    const int32 W = Level.GetWidth(), H = Level.GetHeight();
+
+    Tiles->ClearInstances();
+    Tiles->SetNumCustomDataFloats(3);                 // RGB per slab, read by M_TsugiTile
+
+    // The engine's cube is 100 units, so a scale of 1 is one cell.
+    const FVector Scale(1.0 - 2.0 * TileInset, 1.0 - 2.0 * TileInset, TileHeight);
+
+    for (int32 Y = 0; Y < H; ++Y)
+    for (int32 X = 0; X < W; ++X)
+    {
+        const FTsugiGroundPoint Centre = FTsugiBoardLayout::CellCenter(X, Y, W, H);
+        const FTransform Instance(FQuat::Identity, Tsugi::ToLocal(Centre.X, Centre.Z, -TileHeight / 2.0), Scale);
+        const int32 Index = Tiles->AddInstance(Instance);            // row-major, so Index == Y * W + X
+
+        const FLinearColor Colour = TsugiPalette::Linear((X + Y) % 2 == 0 ? TsugiPalette::Concrete : TsugiPalette::ConcreteAlt);
+        Tiles->SetCustomDataValue(Index, 0, Colour.R);
+        Tiles->SetCustomDataValue(Index, 1, Colour.G);
+        Tiles->SetCustomDataValue(Index, 2, Colour.B, /*bMarkRenderStateDirty*/ true);
+    }
+}
+        </script>
+      </div>
+      <p><code>TileHeight</code> is 0.1 and <code>TileInset</code> is 0.04, as in the C#. <code>HighlightCell</code> is then three more <code>SetCustomDataValue</code> calls on one instance.</p>
+    </li>
+    <li>
+      <p><strong>Draw placeholder track.</strong> Until lesson 8 bends real rails, draw each piece as two bars from the cell centre to the midpoints of its two sides. It uses <code>Tsugi::Connections</code> and <code>FTsugiBoardLayout::Step</code>, and it makes a wrong axis swap obvious at a glance: an <code>NE</code> piece must point away from you and to your right.</p>
+    </li>
+    <li>
+      <p><strong>Keep the display in step: <code>Sync</code> and <code>Validate</code>.</strong> <code>Sync</code> compares what is shown with the board, removes what changed and spawns what is new. <code>Validate</code> runs the win checker and dresses the clues: default ink, the line colour once a clue is met exactly, <code>Stop</code> red when a line holds more pieces than its clue.</p>
+      <script type="text/plain" data-lang="cpp" data-title="Unreal: ATsugiBoard::Sync">
+void ATsugiBoard::Sync(bool bAnimate)
+{
+    if (!Board.IsSet()) return;
+    const int32 W = Board->GetWidth(), H = Board->GetHeight();
+
+    for (int32 Y = 0; Y < H; ++Y)
+    for (int32 X = 0; X < W; ++X)
+    {
+        const FIntPoint Cell(X, Y);
+        const TOptional<FTsugiPiece> Piece = Board->Get(X, Y);
+        const FTsugiPiece* Shown = ShownState.Find(Cell);
+
+        if (Shown && Piece.IsSet() && *Shown == Piece.GetValue()) continue;      // already right
+
+        if (Shown)
+        {
+            if (UStaticMeshComponent* Component = ShownPieces.FindRef(Cell)) Component->DestroyComponent();
+            ShownPieces.Remove(Cell);
+            ShownState.Remove(Cell);
+        }
+
+        if (Piece.IsSet()) Spawn(X, Y, Piece.GetValue(), bAnimate && !Piece->bIsFixed);
+    }
+
+    Validate(bAnimate);
+}
+      </script>
+    </li>
+    <li>
+      <p><strong>Connect it to the flow.</strong> In <code>BeginPlay</code>, find the subsystem and listen for <code>OnLevelStarted</code>. Load the level it names, with its line's colour. Add two console commands, <code>Tsugi.Place x y KEY</code> and <code>Tsugi.Erase x y</code>, that call <code>TryPlace</code> and <code>TryErase</code> on the board and then <code>Sync(true)</code>.</p>
+      <p>Place one <code>BP_TsugiBoard</code> in <code>L_Tsugi</code> at about <code>(45, 0, 95)</code> with its <code>BoardRoot</code> scale at 0.06. It will move into the room in lesson 10.</p>
+    </li>
+    <li>
+      <p><strong>Import the kit art you need.</strong> Copy these from the Unity project into <code>Content/Art/Kit</code> by importing the FBX files: <code>spline-track.fbx</code>, <code>spline-segment.fbx</code>, <code>train-connector.fbx</code>, and from <code>Yamanote/</code> the two <code>E235</code> cars, with their texture. For each mesh, open it in the Static Mesh Editor and write down its size and which axis runs along the track. Lesson 8 needs both numbers.</p>
+      <div class="unverified">
+        <p><span class="tag">Measure, do not assume</span>How an FBX's axes and units arrive in Unreal depends on what the file declares and on the import options. This course cannot tell you the result for these files. Aim for: track running along local +X, 100 units long. Use the import rotation and uniform scale to get there, then confirm in the mesh editor.</p>
+      </div>
+    </li>
+  </ol>
+
+  <h2>Your port</h2>
+  <ul>
+    <li><code>FTsugiBoardLayout</code> and its six tests.</li>
+    <li><code>BuildTunnels</code>: for now a dark block at each <code>TunnelCenter</code>, with an S or E above it. The kit connector replaces it later.</li>
+    <li><code>BuildClues</code>: a pole and a <code>UTextRenderComponent</code> at each <code>ColumnClueAnchor</code> and <code>RowClueAnchor</code>. In <code>Tick</code>, yaw each sign to face the camera, as Unity's <code>LateUpdate</code> does, so the numbers read from any side of the table.</li>
+    <li><code>Validate</code>, including <code>bHasOverfullLine</code>, which the tutorial reads in lesson 15.</li>
+    <li><code>SetDimmed</code>: set <code>Dim</code> in the parameter collection to 0.4 or 1 with <code>UKismetMaterialLibrary::SetScalarParameterValue</code>.</li>
+    <li><code>Spawn</code> with a scale-in when <code>bAnimate</code> is set. <code>PieceView.cs</code> has the numbers: 220 ms, overshooting to 1.15. Lesson 13 covers ways to animate; for now a simple interpolation in <code>Tick</code> is fine.</li>
+  </ul>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li><code>Tsugi.Core.BoardLayout</code> tests pass.</li>
+    <li>In the editor, <code>Tsugi.Network</code>, <code>Tsugi.Line 0</code>, <code>Tsugi.Start 0</code> shows Ashgate with its fixed pieces.</li>
+    <li>Row 0 is the far row, and the row clues stand on the right-hand side. Compare with a screenshot or the Unity build.</li>
+    <li>An <code>NE</code> piece points away from me and to my right.</li>
+    <li>Placing a piece that completes a line turns that clue the line's colour; one piece too many turns it red.</li>
+    <li>The slabs are one draw call. Check with <code>stat scenerendering</code> or the GPU visualiser.</li>
+    <li>On the headset a cell measures six centimetres against a ruler.</li>
+    <li>Starting a 7×7 or 8×8 level keeps the near edge where it was.</li>
+  </ul>
+
+  <h2>Pitfalls</h2>
+  <ul>
+    <li><strong>Forgetting <code>RegisterComponent</code>.</strong> The component exists, shows in the debugger, and draws nothing.</li>
+    <li><strong>Mobility.</strong> Anything you move or create at runtime must be <em>Movable</em>. Attaching a movable component to a static parent logs a warning and refuses.</li>
+    <li><strong>Text render fonts.</strong> <code>UTextRenderComponent</code> uses an offline font asset with a fixed set of glyphs. Digits are fine. Japanese on the platform decals needs a font asset that contains those glyphs, exactly the trap the Unity project documents for its world-space text.</li>
+    <li><strong>Scale and collision.</strong> The board root is scaled to 0.06. Collision shapes scale with it, which is what you want, but anything you size in centimetres must be divided by that scale first.</li>
+    <li><strong>A cached mesh destroyed by teardown.</strong> One Unity build freed the cached slab mesh on <code>Clear</code>, and every board after the first drew without slabs. In Unreal the slab mesh is an asset and the instances are cleared, not the mesh. Keep it that way.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q">Why is one cell 100 local units with a root scale of 0.06, instead of 6 local units with a root scale of 1?</p>
+    <ul>
+      <li>Unreal cannot render objects smaller than 10 units.</li>
+      <li data-correct>Art authored a metre long fits a cell unscaled, and changing the cell size is one number on the root.</li>
+      <li>Physics requires it.</li>
+    </ul>
+    <p class="why">The two-hand handle scales the board from 4 to 9 cm per cell by changing only the root's scale. Nothing inside the board knows about centimetres.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">Unity dims a paused board by walking every renderer and setting a property block. What replaces that in Unreal?</p>
+    <ul>
+      <li>Walking every component and creating a dynamic material instance for each.</li>
+      <li data-correct>One scalar in a material parameter collection that the board's materials multiply by.</li>
+      <li>A post-process volume.</li>
+    </ul>
+    <p class="why">A post-process effect would dim the passthrough view of the room as well. The collection touches only materials that read it.</p>
+  </div>
+  <div class="quiz">
+    <p class="q"><code>FLinearColor(0.957f, 0.961f, 0.949f)</code> is meant to be the Paper colour <code>#F4F5F2</code>. What is wrong?</p>
+    <ul>
+      <li>Nothing.</li>
+      <li data-correct>Those are sRGB values placed in a linear colour without conversion, so the result is too bright.</li>
+      <li><code>FLinearColor</code> takes integers.</li>
+    </ul>
+    <p class="why">Write the hex as an <code>FColor</code> and convert with <code>FLinearColor(FColor)</code>, which applies the curve.</p>
+  </div>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+<script src="../assets/demos.js"></script>
+</body>
+</html>

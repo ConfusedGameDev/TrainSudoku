@@ -266,6 +266,42 @@ MonoBehaviour:
     m_Localized: COMMENCER
     m_Metadata:
       m_Items: []
+  - m_Id: 318851079933952
+    m_Localized: "Tu peux d\xE9placer ce plateau. Approche tes mains de la barre."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237120
+    m_Localized: Pince la barre des deux mains.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237121
+    m_Localized: "Bouge les mains pour le porter. \xC9carte-les ou rapproche-les pour changer sa taille."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237122
+    m_Localized: LE PLATEAU
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237123
+    m_Localized: "Ce plateau va o\xF9 tu veux. Pince sa barre des deux mains, une de chaque c\xF4t\xE9, puis porte-le, tourne-le ou \xE9carte les mains pour l'agrandir."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237124
+    m_Localized: PASSER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237125
+    m_Localized: REPLACER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237126
+    m_Localized: "Pour replacer le plateau \xE0 tout moment, appuie sur le bouton au dos du poignet pour mettre en pause, puis choisis R\xC9GLAGES et REPLACER LE PLATEAU."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237127
+    m_Localized: COMPRIS
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

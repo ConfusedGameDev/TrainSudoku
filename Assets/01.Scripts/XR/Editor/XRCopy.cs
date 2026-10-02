@@ -163,6 +163,38 @@ namespace TrainSudoku.XR.Editor
                 "Quand la voie relie S à E et que tous les nombres sont respectés, le train part. Prends ton temps : l'horloge ne décide que des étoiles."),
             [XRTutorialKeys.BriefNext] = new Row("NEXT", "つぎへ", "SIGUIENTE", "SUIVANT"),
             [XRTutorialKeys.BriefStart] = new Row("START", "はじめる", "EMPEZAR", "COMMENCER"),
+
+            // ---- The board lesson (XR-PRD 7): the callout's three lines, then the signboard's two cards. The closing card
+            // names the wrist menu's entries in the words the menu itself uses.
+            [XRTutorialKeys.MoveApproach] = new Row(
+                "You can move this board. Bring your hands to the rail.",
+                "この 盤は 動かせます。手を 手すりに 近づけて ください。",
+                "Puedes mover este tablero. Acerca las manos a la barra.",
+                "Tu peux déplacer ce plateau. Approche tes mains de la barre."),
+            [XRTutorialKeys.MovePinch] = new Row(
+                "Pinch the rail with both hands.",
+                "両手で 手すりを つまみます。",
+                "Pellizca la barra con las dos manos.",
+                "Pince la barre des deux mains."),
+            [XRTutorialKeys.MoveCarry] = new Row(
+                "Move your hands to carry it. Spread or close them to resize it.",
+                "手を 動かすと 盤も 動きます。両手を 広げたり 狭めたりして 大きさを 変えます。",
+                "Mueve las manos para llevarlo. Sepáralas o júntalas para cambiar su tamaño.",
+                "Bouge les mains pour le porter. Écarte-les ou rapproche-les pour changer sa taille."),
+            [XRTutorialKeys.MoveTitle] = new Row("THE BOARD", "盤", "EL TABLERO", "LE PLATEAU"),
+            [XRTutorialKeys.MoveBody] = new Row(
+                "This board goes wherever you want it. Pinch its rail with both hands, one on each side, then carry it, turn it, or pull your hands apart to make it bigger.",
+                "この 盤は 好きな 場所に 置けます。両手で 左右の 手すりを つまみ、運んだり 回したり、両手を 広げて 大きく したり できます。",
+                "Este tablero va donde tú quieras. Pellizca su barra con las dos manos, una a cada lado, y llévalo, gíralo o separa las manos para agrandarlo.",
+                "Ce plateau va où tu veux. Pince sa barre des deux mains, une de chaque côté, puis porte-le, tourne-le ou écarte les mains pour l'agrandir."),
+            [XRTutorialKeys.MoveSkip] = new Row("SKIP", "スキップ", "SALTAR", "PASSER"),
+            [XRTutorialKeys.MoveClosingTitle] = new Row("PLACE IT AGAIN", "置き直す", "RECOLOCAR", "REPLACER"),
+            [XRTutorialKeys.MoveClosingBody] = new Row(
+                "To place the board afresh at any time, press the button on the back of your wrist to pause, then choose SETTINGS and RE-PLACE BOARD.",
+                "盤を 置き直したい ときは、手首の ボタンを 押して 一時停止し、「設定」から 「盤を 置き直す」を 選びます。",
+                "Para volver a colocar el tablero en cualquier momento, pulsa el botón del dorso de la muñeca para pausar y elige AJUSTES y RECOLOCAR TABLERO.",
+                "Pour replacer le plateau à tout moment, appuie sur le bouton au dos du poignet pour mettre en pause, puis choisis RÉGLAGES et REPLACER LE PLATEAU."),
+            [XRTutorialKeys.MoveDone] = new Row("GOT IT", "わかった", "ENTENDIDO", "COMPRIS"),
         };
     }
 }

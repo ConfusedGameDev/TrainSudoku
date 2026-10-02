@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 16 · Sound, haptics, language</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="16"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 16</p>
+  <h1>Sound, haptics, language</h1>
+  <p class="lede">Three layers that sit on top of a working game. Each is a place where Unreal already provides what the Unity project had to build: voice management, haptic effects, and text that changes language without being rebuilt.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd>29 cues played in the room where they happen, a buzz in the controller that caused them, and every line of copy in English, Japanese, Spanish and French.</dd>
+    <dt>On the headset</dt><dd>A piece clicks into place under your hand. Change the language on the wrist menu and every sign changes at once.</dd>
+    <dt>Unity equivalent</dt><dd>Milestone XR10. Committed, but not yet verified on a headset in the Unity project.</dd>
+  </dl>
+
+  <h2>Part one: sound</h2>
+
+  <h3>The cue vocabulary</h3>
+  <p>Game code never names a sound file. It plays a <strong>cue</strong>, named for what happened: <code>Grab</code>, <code>Place</code>, <code>Error</code>, <code>LineCleared</code>, <code>Stamp</code>. A library asset maps each cue to a sound, a volume and a haptic. There are 29, numbered 1 to 29.</p>
+  <div class="trap">
+    <p><span class="tag">Append only</span>The library stores each slot by the cue's number. Insert or reorder an enum value and every later slot gets the wrong sound. A test pins the numbers. Port the enum with its explicit values and port the test.</p>
+  </div>
+  <p>Every cue is placed in the room: a piece cue plays from the piece, a board cue from the board, a UI cue from the panel pressed. <code>XRCueMap.For(DropResult)</code> decides which cue a grab or release plays, and it is engine-free and fully tested.</p>
+
+  <h3>Unreal concepts: the audio engine does the pooling</h3>
+  <p>The Unity player keeps a pool of eight audio sources so cues can overlap, and one more that loops. Unreal manages voices itself. You describe the rules in assets:</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Unity code</th><th>Unreal asset or call</th></tr></thead>
+      <tbody>
+        <tr><td>Eight pooled sources, oldest reused</td><td>A <strong>Sound Concurrency</strong> asset: max count 8, resolution "Stop Oldest"</td></tr>
+        <tr><td>Logarithmic rolloff, full volume within 0.3 m, silent by 6 m</td><td>A <strong>Sound Attenuation</strong> asset: inner radius 30, falloff distance 570, natural sound falloff</td></tr>
+        <tr><td>Doppler off</td><td>Nothing to do. There is none unless you add it.</td></tr>
+        <tr><td>Multiply every voice by the effects volume</td><td>A <strong>Sound Class</strong> for effects, with a Sound Mix override setting its volume</td></tr>
+        <tr><td>A looping source that follows the train and fades</td><td><code>UGameplayStatics::SpawnSoundAttached</code>, which returns a <code>UAudioComponent</code> with <code>FadeIn</code>, <code>FadeOut</code> and <code>SetPaused</code></td></tr>
+        <tr><td><code>PlayOneShot</code> at a position</td><td><code>UGameplayStatics::PlaySoundAtLocation</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>A tabletop game is heard from half a metre away, which is why the attenuation is so tight.</p>
+
+  <h3>Steps</h3>
+  <ol class="steps">
+    <li>
+      <p><strong>Port the cue enum, the map and their tests</strong> to <code>TsugiCore</code>: <code>ETsugiCue</code>, <code>FTsugiCueMap::For</code>, <code>Fanfare</code>, <code>IsFelt</code>, and <code>XRCueTests</code>.</p>
+    </li>
+    <li>
+      <p><strong>Declare the library.</strong></p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiCueLibrary.h">
+USTRUCT(BlueprintType)
+struct FTsugiCueEntry
+{
+    GENERATED_BODY()
+
+    /** Empty is a supported state: the cue is silent and its haptic still plays. */
+    UPROPERTY(EditAnywhere) TObjectPtr<USoundBase> Sound;
+
+    UPROPERTY(EditAnywhere, meta = (ClampMin = 0, ClampMax = 1)) float Volume = 1.f;
+
+    /** Controller buzz for the hand that caused it. Bare hands feel nothing, so nothing may rely on it. */
+    UPROPERTY(EditAnywhere) TObjectPtr<UHapticFeedbackEffect_Base> Haptic;
+
+    UPROPERTY(EditAnywhere, meta = (ClampMin = 0, ClampMax = 1)) float HapticScale = 1.f;
+};
+
+/** What each cue sounds and feels like. Every slot a person fills is here, never on an actor in the level. */
+UCLASS(BlueprintType)
+class TSUGIXR_API UTsugiCueLibrary : public UDataAsset
+{
+    GENERATED_BODY()
+
+public:
+    UPROPERTY(EditAnywhere, Category = "Cues") TMap<ETsugiCue, FTsugiCueEntry> Entries;
+    UPROPERTY(EditAnywhere, Category = "Cues") TObjectPtr<USoundAttenuation> Attenuation;
+    UPROPERTY(EditAnywhere, Category = "Cues") TObjectPtr<USoundConcurrency> Concurrency;
+};
+      </script>
+      <p>Import the clips from the Unity project's <code>Assets/05.Audio/</code>. Which clip fills which slot is in <code>Assets/03.Data/XR/Audio/XRCues.asset</code>; open it as text. Assign each imported sound to the effects Sound Class.</p>
+    </li>
+    <li>
+      <p><strong>Write the player.</strong> A world subsystem is a good home: it exists whenever a level does, and anything with a world can reach it.</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiCueSubsystem.cpp">
+void UTsugiCueSubsystem::Play(ETsugiCue Cue, const FVector& At, TOptional<ETsugiHand> Hand)
+{
+    if (!Library || Cue == ETsugiCue::None) return;
+    const FTsugiCueEntry* Entry = Library->Entries.Find(Cue);
+    if (!Entry) return;
+
+    if (Entry->Sound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(this, Entry->Sound, At, Entry->Volume, /*Pitch*/ 1.f, /*StartTime*/ 0.f,
+            Library->Attenuation, Library->Concurrency);
+    }
+
+    // Felt only in the hand that caused it, and only for the cues the table says are felt.
+    if (Hand.IsSet() && Entry->Haptic && FTsugiCueMap::IsFelt(Cue))
+    {
+        if (APlayerController* Controller = GetWorld()->GetFirstPlayerController())
+        {
+            Controller->PlayHapticEffect(Entry->Haptic,
+                Hand.GetValue() == ETsugiHand::Left ? EControllerHand::Left : EControllerHand::Right, Entry->HapticScale);
+        }
+    }
+}
+
+void UTsugiCueSubsystem::StartLoop(ETsugiCue Cue, USceneComponent* Follow)
+{
+    StopLoop();
+    const FTsugiCueEntry* Entry = Library ? Library->Entries.Find(Cue) : nullptr;
+    if (!Entry || !Entry->Sound || !Follow) return;
+
+    Loop = UGameplayStatics::SpawnSoundAttached(Entry->Sound, Follow, NAME_None, FVector::ZeroVector,
+        EAttachLocation::SnapToTarget, /*bStopWhenAttachedToDestroyed*/ true, /*Volume*/ 0.f, 1.f, 0.f, Library->Attenuation);
+    if (Loop) Loop->FadeIn(0.25f, Entry->Volume);
+}
+
+void UTsugiCueSubsystem::StopLoop()        { if (Loop) { Loop->FadeOut(0.25f, 0.f); Loop = nullptr; } }
+void UTsugiCueSubsystem::PauseLoop(bool b) { if (Loop) Loop->SetPaused(b); }
+      </script>
+    </li>
+    <li>
+      <p><strong>Call it where Unity does.</strong> Search the Unity XR code for <code>XRCuePlayer.Play</code>; there are a few dozen call sites and each names a cue and a position. The main ones: the piece hands on every grab and release, the press component on every button, roundels, the board on a line cleared and on the final piece, the train's start and loop, the arrival's stars, stamp and fanfare, the wrist menu opening, the board being placed, and the tutorial's chime.</p>
+    </li>
+    <li>
+      <p><strong>Connect the volume setting.</strong> Create a Sound Mix. When the effects volume preference changes, and once at start, call <code>UGameplayStatics::SetSoundMixClassOverride</code> for the effects class with volume <code>Level / 10</code>, and push the mix with <code>PushSoundMixModifier</code>. The music setting is stored and drives nothing, because there is no music. Leave it that way and say so in a comment.</p>
+    </li>
+  </ol>
+
+  <h2>Part two: haptics</h2>
+  <p>Unity sends an amplitude and a duration per cue. Unreal's unit is a <strong>haptic feedback effect</strong> asset: a curve of amplitude and frequency over time. Author three or four in the editor, such as a short tick, a firmer tap and a double pulse for errors, and reference them from the cue library with a scale. That is less data than Unity's table and easier to tune by feel.</p>
+  <p>Only fourteen cues are felt, per <code>XRCueMap.IsFelt</code>: the piece actions, the UI presses, the map selects and placing the board. Board, train and fanfare cues are heard only.</p>
+  <div class="note">
+    <p><span class="tag">Design rule</span>Tracked hands have nothing to buzz. Haptics are decoration, and nothing may be understandable only through them. Every felt cue also has a sound and something to see.</p>
+  </div>
+  <div class="unverified">
+    <p><span class="tag">Not confirmed</span>Whether <code>PlayHapticEffect</code> reaches Touch controllers through Epic's OpenXR path on 5.8 without extra setup was not tested. If nothing buzzes, check that the mapping context includes the haptic output binding for each hand, and look at Meta's haptics module as an alternative.</p>
+  </div>
+
+  <h2>Part three: language</h2>
+
+  <h3>Unreal concepts</h3>
+  <p><code>FText</code> is the only string type that localises. An <code>FText</code> is not the words; it is a reference to an entry that resolves to words in the current culture. Change the culture and every <code>FText</code> on screen changes, with no rebuild.</p>
+  <p>That removes a whole mechanism from the port. The Unity XR code raises <code>XRText.Changed</code> and every panel redraws itself in the new language. In Unreal, text blocks bound to localised text update themselves. Only text you have <em>formatted</em> into a final string needs refreshing.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Unity Localization</th><th>Unreal</th></tr></thead>
+      <tbody>
+        <tr><td>A String Table, keyed</td><td>A <strong>String Table</strong> asset, keyed. <code>FText::FromStringTable(TableId, Key)</code></td></tr>
+        <tr><td><code>GetLocalizedString(table, key, args)</code></td><td><code>FText::Format(Pattern, Args…)</code>. <code>{0}</code> placeholders work as they are.</td></tr>
+        <tr><td>Locales en, ja, es, fr</td><td>Cultures, in the <strong>Localization Dashboard</strong></td></tr>
+        <tr><td><code>LocalizationSettings.SelectedLocale = …</code></td><td><code>FInternationalization::Get().SetCurrentCulture(TEXT("ja"))</code></td></tr>
+        <tr><td>A baked SDF atlas for Japanese, rebuilt whenever copy changes</td><td>A composite font with a Japanese sub-family. Glyphs are rasterised on demand. Nothing to bake.</td></tr>
+        <tr><td>Proper nouns kept out of the table</td><td><code>FText::AsCultureInvariant(Name)</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The font atlas is worth a moment. The Unity project's notes on its Japanese atlas run to several paragraphs of hard-won detail: a deprecated static mode, a flag that discards the bake at build time, metrics that made every label 1.875 times too tall. None of that exists here. It is the clearest case in the course of the engine's own design removing a problem.</p>
+
+  <h3>Steps</h3>
+  <ol class="steps">
+    <li>
+      <p><strong>Get the copy out of Unity.</strong> All of it, in four languages, is in one file: <code>Assets/01.Scripts/XR/Editor/XRCopy.cs</code>. Its table is <code>internal</code>, so the exporter must sit in the same folder.</p>
+      <script type="text/plain" data-lang="csharp" data-title="Unity: XRCopyExport.cs, in Assets/01.Scripts/XR/Editor/">
+using System.IO;
+using System.Text;
+using UnityEditor;
+using UnityEngine;
+
+namespace TrainSudoku.XR.Editor
+{
+    internal static class XRCopyExport
+    {
+        [MenuItem("Window/TrainSudoku/XR/Export XR Copy CSV")]
+        private static void Export()
+        {
+            var sb = new StringBuilder("Key,en,ja,es,fr\n");
+            foreach (var pair in XRCopy.Rows)
+                sb.Append(Quote(pair.Key)).Append(',').Append(Quote(pair.Value.En)).Append(',').Append(Quote(pair.Value.Ja))
+                  .Append(',').Append(Quote(pair.Value.Es)).Append(',').Append(Quote(pair.Value.Fr)).Append('\n');
+
+            var path = Path.Combine(Application.dataPath, "../xr_copy.csv");
+            File.WriteAllText(path, sb.ToString(), new UTF8Encoding(false));
+            Debug.Log($"Wrote {XRCopy.Rows.Count} rows to {Path.GetFullPath(path)}");
+        }
+
+        private static string Quote(string text) => "\"" + (text ?? "").Replace("\"", "\"\"") + "\"";
+    }
+}
+      </script>
+    </li>
+    <li>
+      <p><strong>Create the string table.</strong> From <code>xr_copy.csv</code>, make a two-column file with the header <code>Key,SourceString</code> holding the key and the English. In the Content Browser, create a String Table asset, <code>ST_Tsugi</code>, and import that CSV into it. English is the source language.</p>
+    </li>
+    <li>
+      <p><strong>Use it.</strong> In the widget designer, bind each static label to its string table entry. In C++, look text up by key:</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiText.h">
+#pragma once
+
+#include "CoreMinimal.h"
+
+namespace TsugiText
+{
+    /** The table's id is its asset path. */
+    inline const FName Table = TEXT("/Game/Data/Localization/ST_Tsugi.ST_Tsugi");
+
+    /** A missing row reads as its key, which is loud on purpose. */
+    inline FText Get(const TCHAR* Key) { return FText::FromStringTable(Table, Key); }
+
+    /** "{0} / {1} CLEARED" and friends. */
+    template <typename... ArgTypes>
+    FText Format(const TCHAR* Key, ArgTypes&&... Args) { return FText::Format(Get(Key), Forward<ArgTypes>(Args)...); }
+}
+
+// On the sign:
+//   Title->SetText(TsugiText::Get(TEXT("xr.pause.title")));
+//   Cleared->SetText(TsugiText::Format(TEXT("xr.linemap.cleared"), FText::AsNumber(Done), FText::AsNumber(Total)));
+//   Station->SetText(FText::AsCultureInvariant(Level->DisplayName));     // a proper noun: never translated
+      </script>
+      <p>The coach's <code>Key</code> from lesson 15 goes straight into <code>TsugiText::Get</code>.</p>
+    </li>
+    <li>
+      <p><strong>Set up the Localization Dashboard.</strong> <em>Tools &gt; Localization Dashboard</em>. On the Game target: gather from string table assets under your localisation folder; set English as native; add <code>ja</code>, <code>es</code> and <code>fr</code>. Press <em>Gather Text</em>. Each culture now lists every key as untranslated.</p>
+    </li>
+    <li>
+      <p><strong>Bring the translations in.</strong> Export each culture as a <code>.po</code> file from the dashboard, fill in each entry's translation from the matching column of <code>xr_copy.csv</code> with a short script, import the files back, and press <em>Compile Text</em>. Write the script so it fails loudly on a key it cannot find in either direction: that is your "every key exists in every locale" check, which Unity has as <code>StringTableTests</code>.</p>
+    </li>
+    <li>
+      <p><strong>Build the font.</strong> Import <code>Barlow-Regular.ttf</code>, <code>Barlow-Medium.ttf</code>, <code>BarlowCondensed-SemiBold.ttf</code> and <code>NotoSansJP-Medium.otf</code> from the Unity project's <code>Assets/02.Graphics/Fonts/</code>. Their licence files are beside them; ship those too. Create one Font asset, <code>F_Tsugi</code>, as a composite font: Barlow as the default family, and a <strong>sub-font family</strong> using Noto for the Japanese ranges: hiragana, katakana, CJK ideographs, CJK punctuation and full-width forms.</p>
+      <p>Leave the sub-family's culture list empty so the ranges apply in every language. The settings page lists each language in its own words, so 日本語 must draw while the game is in French.</p>
+      <div class="note">
+        <p><span class="tag">Carry this over</span>Use the static Medium instance of Noto, as Unity does. A variable Noto file exposes only its thinnest weight to many font loaders, and the whole Japanese UI comes out hairline.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>Switch language at runtime.</strong></p>
+      <script type="text/plain" data-lang="cpp" data-title="Applying the player's choice">
+#include "Internationalization/Internationalization.h"
+#include "Internationalization/Culture.h"
+
+/** The locale the player chose on the wrist menu, if they chose one. Otherwise the device's language stands. */
+void UTsugiGameSubsystem::ApplyLocale()
+{
+    const FString Code = Preferences->GetLocaleCode();
+    if (Code.IsEmpty()) return;
+
+    FInternationalization& I18N = FInternationalization::Get();
+    if (I18N.GetCurrentCulture()->GetName() != Code) I18N.SetCurrentCulture(Code);
+}
+
+/** The settings row: walk to the next language and remember it. */
+void UTsugiGameSubsystem::NextLocale()
+{
+    static const TArray<FString> Codes = { TEXT("en"), TEXT("ja"), TEXT("es"), TEXT("fr") };
+    const FString Current = FInternationalization::Get().GetCurrentCulture()->GetTwoLetterISOLanguageName();
+    Preferences->SetLocaleCode(FTsugiPreferences::NextLocale(Codes, Current));
+    ApplyLocale();
+}
+      </script>
+      <p>Text blocks update by themselves. For anything you format in C++, such as the clock or "3 / 9 CLEARED", re-run the code that set it. Listen for <code>FTextLocalizationManager::Get().OnTextRevisionChangedEvent</code> and have the shell redraw the current view, as <code>XRGame.OnLocaleChanged</code> does.</p>
+    </li>
+    <li>
+      <p><strong>Package the languages.</strong> In <em>Project Settings &gt; Packaging</em>: add en, ja, es and fr to <em>Localizations to Package</em>, and set <em>Internationalization Support</em> to an option that includes CJK. Then test on the device, not in the editor.</p>
+    </li>
+  </ol>
+
+  <h2>Read first</h2>
+  <ul class="files">
+    <li><code>Assets/01.Scripts/XR/Rules/XRCue.cs</code><span>The enum, <code>XRCueMap.For</code>, <code>Fanfare</code>, <code>IsFelt</code>.</span></li>
+    <li><code>Assets/01.Scripts/XR/Audio/XRCuePlayer.cs</code>, <code>XRCueLibrary.cs</code>, <code>XRHaptics.cs</code><span>What you are replacing with assets.</span></li>
+    <li><code>Assets/03.Data/XR/Audio/XRCues.asset</code><span>Which clip, volume and buzz each cue has.</span></li>
+    <li><code>Assets/01.Scripts/XR/XRText.cs</code>, <code>XRKeys.cs</code>, <code>Wrist/XRLocale.cs</code><span>The reader, the key names, the language choice.</span></li>
+    <li><code>Assets/01.Scripts/XR/Editor/XRCopy.cs</code><span>Every line of copy in four languages.</span></li>
+    <li><code>Assets/99.Test/XR/EditMode/XRCueTests.cs</code></li>
+  </ul>
+
+  <h2>Your port</h2>
+  <ul>
+    <li><code>ETsugiCue</code>, <code>FTsugiCueMap</code> and their tests.</li>
+    <li>The cue library asset, filled from <code>XRCues.asset</code>, with the attenuation, concurrency, sound class and mix assets.</li>
+    <li>Every <code>Play</code> call site.</li>
+    <li>The haptic effect assets and their assignments.</li>
+    <li>The translation import script and its missing-key check.</li>
+    <li>Replace every placeholder English string from lessons 12 to 15 with a table lookup.</li>
+    <li>The Japanese environment art: the platform-edge warning きけん and the destination plate's 行. These are world-space text, drawn in every language. Decide between a text render component with an offline font containing those glyphs, or textures. They are art, not labels, and never go through the string table.</li>
+  </ul>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li><code>Tsugi.Core.Cue</code> tests pass, including the one that pins every cue's number.</li>
+    <li>Placing a piece makes a sound that comes from the piece: with eyes closed I can point at it.</li>
+    <li>An illegal drop and a steered drop sound different.</li>
+    <li>Ten quick drops in a row never cut the audio out or stack into noise.</li>
+    <li>With controllers, a grab buzzes the hand that grabbed and not the other. With bare hands nothing errors.</li>
+    <li>Effects volume 0 on the wrist menu silences every cue and the train loop; 10 restores them.</li>
+    <li>The five cues with no clip (Puff, Burst, Whistle, TrainLoop, TrainHurry) are silent and log no errors.</li>
+    <li>Pausing during the train run pauses its loop; resuming continues it.</li>
+    <li>Changing language on the wrist menu changes the signboard, the wrist menu, the callout and the placement sign immediately, on the device.</li>
+    <li>In Japanese, no label shows a missing-glyph box, and no label is oddly tall or thin.</li>
+    <li>In every language the settings row shows English, 日本語, Español and Français correctly.</li>
+    <li>Station and line names are identical in all four languages.</li>
+    <li>The language chosen survives a relaunch.</li>
+  </ul>
+
+  <h2>Pitfalls</h2>
+  <ul>
+    <li><strong>Translated in the editor, English on the headset.</strong> The cultures were not added to the packaging settings, or the compiled text was not rebuilt after an import. This is the most common localisation bug in Unreal.</li>
+    <li><strong>An <code>FString</code> in the middle.</strong> Convert localised text to <code>FString</code> and back and it is frozen in the language it had at that moment. Keep <code>FText</code> all the way to the widget.</li>
+    <li><strong>A cue per frame.</strong> Hover must not play a sound each frame the hand is over a button. Play on the change, not on the state.</li>
+    <li><strong>Sound from the wrong place.</strong> A UI cue plays from the fingertip that pressed, not from the centre of the sign. The press component hands you the hand; use its fingertip position.</li>
+    <li><strong>The store recommends, and does not require, spatialised 3D audio</strong> (VRC.Quest.Audio.1). Positioned sounds with attenuation meet the spirit of it. Meta's audio plugin adds head-related spatialisation if your team wants it later.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q">Where did the Unity project's eight-voice pool go in the Unreal port?</p>
+    <ul>
+      <li>It is ported as a pool of eight audio components.</li>
+      <li data-correct>It became a Sound Concurrency asset; the audio engine manages the voices.</li>
+      <li>It is dropped, so only one cue plays at a time.</li>
+    </ul>
+    <p class="why">The pool existed in Unity because a one-shot voice has no handle. Unreal's concurrency settings express the same rule declaratively.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">The player changes language. Which text on the sign needs code to refresh it?</p>
+    <ul>
+      <li>All of it.</li>
+      <li>None of it.</li>
+      <li data-correct>Only text built by formatting, such as "3 / 9 CLEARED".</li>
+    </ul>
+    <p class="why">A plain localised <code>FText</code> re-resolves itself. A formatted result was computed once from the pattern in the old language.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">A new cue, <code>TrayMove</code>, is needed. Where does it go in the enum?</p>
+    <ul>
+      <li>With the other tray and piece cues, near the top.</li>
+      <li data-correct>At the end, with the next unused number.</li>
+      <li>Anywhere; the library looks cues up by name.</li>
+    </ul>
+    <p class="why">The library stores slots by number. Inserting shifts every later slot onto the wrong sound.</p>
+  </div>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+</body>
+</html>

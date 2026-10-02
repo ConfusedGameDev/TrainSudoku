@@ -263,6 +263,42 @@ MonoBehaviour:
     m_Key: xr.brief.start
     m_Metadata:
       m_Items: []
+  - m_Id: 318851079933952
+    m_Key: xr.move.approach
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237120
+    m_Key: xr.move.pinch
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237121
+    m_Key: xr.move.carry
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237122
+    m_Key: xr.move.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237123
+    m_Key: xr.move.body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237124
+    m_Key: xr.move.skip
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237125
+    m_Key: xr.move.closing_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237126
+    m_Key: xr.move.closing_body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237127
+    m_Key: xr.move.done
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

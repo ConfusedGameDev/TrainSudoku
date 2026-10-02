@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 03 · Rules and automated tests</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="3"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 03</p>
+  <h1>Rules and automated tests</h1>
+  <p class="lede">You port the board, the legality rule, the win check, the path finder and the solver, and you port their tests with them. From here on, "does my port behave like the original" has an answer you can run.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd>The rules run in <code>TsugiCore</code> and about 65 ported test cases pass in the editor and from the command line.</dd>
+    <dt>On the headset</dt><dd>Nothing new.</dd>
+    <dt>Unity equivalent</dt><dd>Milestone M0, "Core rules".</dd>
+  </dl>
+
+  <h2>Play with the rule first</h2>
+  <p>This is the level the Unity tests call <em>Plan Example</em>, running on a JavaScript copy of the same rules. Pick an empty cell and read how each of its four sides is classified. That classification is the whole game.</p>
+  <div class="demo">
+    <h3>Legality and the win check</h3>
+    <div id="demo-legality"></div>
+  </div>
+  <p>The rule, from <code>Legality.cs</code>:</p>
+  <ul>
+    <li>A side is <strong>Forced</strong> when the neighbour there holds a piece that points back at this cell, or when the side is the S or E tunnel.</li>
+    <li>A side is <strong>Forbidden</strong> when the neighbour holds a piece that does not point back, or when the side is a board edge with no tunnel.</li>
+    <li>A side is <strong>Open</strong> when the neighbour is empty.</li>
+    <li>A key is legal when neither of its two sides is Forbidden and it includes every Forced side. Three Forced sides leave no legal key.</li>
+  </ul>
+
+  <h2>Unreal concepts</h2>
+
+  <h3>Automation tests</h3>
+  <p>Unreal's test framework is built into the engine. A test is a C++ class declared with a macro, compiled into your module when <code>WITH_DEV_AUTOMATION_TESTS</code> is on, which it is in editor and development builds and not in shipping builds.</p>
+  <p>There are two styles. A <strong>simple test</strong> is one function. An <strong>automation spec</strong> groups cases with <code>Describe</code> and <code>It</code>, which maps well onto an NUnit fixture: one spec per fixture, one <code>It</code> per <code>[Test]</code>. This course uses specs.</p>
+  <p>A test's name is a dotted path, such as <code>Tsugi.Core.Legality.TunnelSideIsForced</code>. The path is how you select tests to run.</p>
+
+  <h3>Owning plain C++ objects</h3>
+  <p>In C#, <code>Board</code> holds a reference to a shared <code>LevelData</code>, and the garbage collector keeps the level alive. Plain C++ objects are not collected in Unreal, so you choose who owns what:</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Type</th><th>Meaning</th><th>Used here for</th></tr></thead>
+      <tbody>
+        <tr><td>A value</td><td>Owned by whatever contains it; copied on assignment</td><td>The cells array inside a board</td></tr>
+        <tr><td><code>TSharedRef&lt;const T&gt;</code></td><td>Shared, never null, reference counted</td><td>The level a board and its clones all point at</td></tr>
+        <tr><td><code>TSharedPtr&lt;T&gt;</code></td><td>Shared, may be null</td><td>The solver's first solution, which may not exist</td></tr>
+        <tr><td><code>TUniquePtr&lt;T&gt;</code></td><td>One owner</td><td>The flow owned by the subsystem, in lesson 5</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>These are for plain C++ only. Never put a <code>UObject</code> in a <code>TSharedPtr</code>.</p>
+
+  <h3>Fixed-size and inline containers</h3>
+  <p><code>Legality.Classify</code> allocates a four-element array on every call in C#. In C++ you can return it on the stack with <code>TStaticArray&lt;T, 4&gt;</code>. Likewise a list that never exceeds six keys can be a <code>TArray&lt;T, TInlineAllocator&lt;6&gt;&gt;</code>, which keeps its storage inside the object. The solver calls these millions of times, so it matters.</p>
+
+  <h2>Read first</h2>
+  <ul class="files">
+    <li><code>Assets/01.Scripts/Core/Board.cs</code><span>107 lines. <code>TryPlace</code> checks legality; <code>SetUnchecked</code> does not and exists for the solver, tests and save restore.</span></li>
+    <li><code>Assets/01.Scripts/Core/Legality.cs</code><span>72 lines. The rule above.</span></li>
+    <li><code>Assets/01.Scripts/Core/PathFinder.cs</code><span>38 lines. Walks from the entrance; always returns the cells it visited.</span></li>
+    <li><code>Assets/01.Scripts/Core/WinChecker.cs</code><span>Three conditions: path connected, clues met exactly, no open ends. Closed side loops are legal.</span></li>
+    <li><code>Assets/01.Scripts/Core/Solver.cs</code><span>Row-major backtracking with two prunes and a node budget.</span></li>
+    <li><code>Assets/01.Scripts/Core/LevelText.cs</code><span>The text format for a level. Only tests and the importer use it, but the tests need it now.</span></li>
+    <li><code>Assets/99.Test/EditMode/TestLevels.cs</code><span>Shared fixtures: <code>Corridor()</code>, <code>PlanExample()</code> and its solution.</span></li>
+    <li><code>Assets/99.Test/EditMode/BoardTests.cs</code>, <code>LegalityTests.cs</code>, <code>WinCheckerTests.cs</code>, <code>SolverTests.cs</code>, <code>PieceKeyTests.cs</code>, <code>LevelTextTests.cs</code><span>What you port alongside the code.</span></li>
+  </ul>
+
+  <h2>Steps</h2>
+  <ol class="steps">
+    <li>
+      <p><strong>Declare the board.</strong> The C# indexer <code>board[x, y]</code> returning <code>Piece?</code> becomes <code>Get</code> returning <code>TOptional</code>. <code>Clone()</code> becomes the copy constructor the compiler writes for you.</p>
+      <script type="text/plain" data-lang="cpp" data-title="Unreal: TsugiBoard.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "TsugiLevelData.h"
+#include "TsugiPiece.h"
+
+/** Mutable play state for one level: the fixed pieces plus whatever the player has placed. */
+class TSUGICORE_API FTsugiBoard
+{
+public:
+    explicit FTsugiBoard(TSharedRef<const FTsugiLevelData> InLevel);
+
+    const FTsugiLevelData& GetLevel() const { return *Level; }
+    int32 GetWidth() const { return Level->GetWidth(); }
+    int32 GetHeight() const { return Level->GetHeight(); }
+
+    /** The piece in a cell, or unset when the cell is empty or outside the board. */
+    TOptional<FTsugiPiece> Get(int32 X, int32 Y) const;
+
+    bool InBounds(int32 X, int32 Y) const { return Level->InBounds(X, Y); }
+    bool IsEmpty(int32 X, int32 Y) const;
+    bool HasTunnel(int32 X, int32 Y, ETsugiDirection Side) const { return Level->HasTunnel(X, Y, Side); }
+    bool IsEntrance(int32 X, int32 Y, ETsugiDirection Side) const { return Level->IsEntrance(X, Y, Side); }
+    bool IsExit(int32 X, int32 Y, ETsugiDirection Side) const { return Level->IsExit(X, Y, Side); }
+
+    /** Places a player piece if the cell is empty and the key is legal there. */
+    bool TryPlace(int32 X, int32 Y, ETsugiPieceKey Key);
+
+    /** Removes a player piece. Fixed pieces and empty cells are left alone and return false. */
+    bool TryErase(int32 X, int32 Y);
+
+    /** Clears every player piece; fixed pieces stay. */
+    void Reset();
+
+    /** Writes a cell without any legality check. For the solver, tests and restoring a save. */
+    void SetUnchecked(int32 X, int32 Y, TOptional<FTsugiPiece> Piece);
+
+    int32 RowCount(int32 Y) const;
+    int32 ColumnCount(int32 X) const;
+    int32 PieceCount() const;
+
+private:
+    int32 Index(int32 X, int32 Y) const { return Y * GetWidth() + X; }
+
+    TSharedRef<const FTsugiLevelData> Level;
+    TArray<TOptional<FTsugiPiece>> Cells;   // row-major: y * Width + x
+};
+      </script>
+      <p>Create a level for a board with <code>MakeShared&lt;FTsugiLevelData&gt;(6, 6)</code>, fill it in, then pass it as <code>TSharedRef&lt;const FTsugiLevelData&gt;</code>. Once a board holds it, nobody can change it.</p>
+    </li>
+    <li>
+      <p><strong>Port legality.</strong> This is the file to get exactly right. Compare the two side by side.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="csharp" data-title="Unity: Legality.cs">
+public static DirectionClass[] Classify(Board board, int x, int y)
+{
+    var result = new DirectionClass[4];
+    foreach (var direction in DirectionExtensions.All)
+    {
+        var nx = x + direction.Dx();
+        var ny = y + direction.Dy();
+        DirectionClass cls;
+        if (!board.InBounds(nx, ny))
+            cls = board.HasTunnel(x, y, direction) ? DirectionClass.Forced : DirectionClass.Forbidden;
+        else if (board[nx, ny] is Piece neighbour)
+            cls = neighbour.Has(direction.Opposite()) ? DirectionClass.Forced : DirectionClass.Forbidden;
+        else
+            cls = DirectionClass.Open;
+        result[(int)direction] = cls;
+    }
+    return result;
+}
+
+public static bool IsLegal(DirectionClass[] classes, PieceKey key)
+{
+    var (a, b) = PieceKeys.Connections(key);
+    if (classes[(int)a] == DirectionClass.Forbidden || classes[(int)b] == DirectionClass.Forbidden) return false;
+    foreach (var direction in DirectionExtensions.All)
+        if (classes[(int)direction] == DirectionClass.Forced && direction != a && direction != b) return false;
+    return true;
+}
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="Unreal: TsugiLegality.cpp">
+#include "TsugiLegality.h"
+#include "TsugiBoard.h"
+
+FTsugiSideClasses FTsugiLegality::Classify(const FTsugiBoard& Board, int32 X, int32 Y)
+{
+    FTsugiSideClasses Result;
+    for (const ETsugiDirection Direction : Tsugi::AllDirections)
+    {
+        const int32 NX = X + Tsugi::Dx(Direction);
+        const int32 NY = Y + Tsugi::Dy(Direction);
+
+        ETsugiDirectionClass Class;
+        if (!Board.InBounds(NX, NY))
+        {
+            Class = Board.HasTunnel(X, Y, Direction) ? ETsugiDirectionClass::Forced : ETsugiDirectionClass::Forbidden;
+        }
+        else if (const TOptional<FTsugiPiece> Neighbour = Board.Get(NX, NY); Neighbour.IsSet())
+        {
+            Class = Neighbour->Has(Tsugi::Opposite(Direction)) ? ETsugiDirectionClass::Forced : ETsugiDirectionClass::Forbidden;
+        }
+        else
+        {
+            Class = ETsugiDirectionClass::Open;
+        }
+        Result[static_cast<int32>(Direction)] = Class;
+    }
+    return Result;
+}
+
+bool FTsugiLegality::IsLegal(const FTsugiSideClasses& Classes, ETsugiPieceKey Key)
+{
+    const auto [A, B] = Tsugi::Connections(Key);
+    if (Classes[static_cast<int32>(A)] == ETsugiDirectionClass::Forbidden) return false;
+    if (Classes[static_cast<int32>(B)] == ETsugiDirectionClass::Forbidden) return false;
+
+    for (const ETsugiDirection Direction : Tsugi::AllDirections)
+    {
+        if (Classes[static_cast<int32>(Direction)] == ETsugiDirectionClass::Forced && Direction != A && Direction != B)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="Unreal: TsugiLegality.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Containers/StaticArray.h"
+#include "TsugiPieceKey.h"
+
+class FTsugiBoard;
+
+enum class ETsugiDirectionClass : uint8 { Open, Forced, Forbidden };
+
+/** Index with static_cast<int32>(ETsugiDirection). */
+using FTsugiSideClasses = TStaticArray<ETsugiDirectionClass, 4>;
+using FTsugiKeyList = TArray<ETsugiPieceKey, TInlineAllocator<6>>;
+
+/** Placement legality, PRD section 3.3. */
+struct TSUGICORE_API FTsugiLegality
+{
+    static FTsugiSideClasses Classify(const FTsugiBoard& Board, int32 X, int32 Y);
+    static int32 ForcedCount(const FTsugiSideClasses& Classes);
+
+    /** Keys that may be placed in the cell. Empty for occupied cells, cells outside the board, or three or more forced sides. */
+    static FTsugiKeyList LegalKeys(const FTsugiBoard& Board, int32 X, int32 Y);
+
+    static bool IsLegal(const FTsugiBoard& Board, int32 X, int32 Y, ETsugiPieceKey Key);
+    static bool IsLegal(const FTsugiSideClasses& Classes, ETsugiPieceKey Key);
+};
+        </script>
+      </div>
+    </li>
+    <li>
+      <p><strong>Write the test fixtures.</strong> Put them in <code>TsugiCore/Private/Tests/</code>. <code>Corridor()</code> is the one most legality tests use: a 3×3 board, entrance west of (0,1), exit east of (2,1), every clue zero.</p>
+      <script type="text/plain" data-lang="cpp" data-title="Unreal: Private/Tests/TsugiTestLevels.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "TsugiBoard.h"
+
+namespace TsugiTestLevels
+{
+    inline FTsugiBoard Corridor()
+    {
+        TSharedRef<FTsugiLevelData> Level = MakeShared<FTsugiLevelData>(3, 3);
+        Level->Entrance = FTsugiTunnel(ETsugiDirection::West, 1);
+        Level->Exit = FTsugiTunnel(ETsugiDirection::East, 1);
+        return FTsugiBoard(Level);
+    }
+
+    // PlanExampleText, PlanExampleSolution, PlanExample(), SolvedPlanExample(Skip),
+    // TwoSolutionsText, LoopText: port these from TestLevels.cs once LevelText parses.
+}
+      </script>
+    </li>
+    <li>
+      <p><strong>Port one fixture as a spec.</strong> Here are three of the ten legality tests. Port the other seven the same way.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="csharp" data-title="Unity: LegalityTests.cs">
+[Test]
+public void TunnelSideIsForced()
+{
+    var classes = Legality.Classify(TestLevels.Corridor(), 0, 1);
+    Assert.AreEqual(DirectionClass.Forced, Class(classes, Direction.West));
+}
+
+[Test]
+public void NeighbourNotPointingAtTheCellIsForbidden()
+{
+    var board = TestLevels.Corridor();
+    TestLevels.Place(board, 1, 1, PieceKey.NS);
+    var classes = Legality.Classify(board, 0, 1);
+    Assert.AreEqual(DirectionClass.Forbidden, Class(classes, Direction.East));
+    CollectionAssert.AreEquivalent(new[] { PieceKey.NW, PieceKey.SW }, Legality.LegalKeys(board, 0, 1));
+}
+
+[Test]
+public void TwoForcedSidesLeaveExactlyOneKey()
+{
+    var board = TestLevels.Corridor();
+    TestLevels.Place(board, 1, 1, PieceKey.EW);
+    CollectionAssert.AreEqual(new[] { PieceKey.EW }, Legality.LegalKeys(board, 0, 1));
+}
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="Unreal: Private/Tests/TsugiLegalitySpec.cpp">
+#include "Misc/AutomationTest.h"
+#include "TsugiLegality.h"
+#include "Tests/TsugiTestLevels.h"
+
+#if WITH_DEV_AUTOMATION_TESTS
+
+BEGIN_DEFINE_SPEC(FTsugiLegalitySpec, "Tsugi.Core.Legality",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+    static ETsugiDirectionClass ClassOf(const FTsugiSideClasses& Classes, ETsugiDirection Direction)
+    {
+        return Classes[static_cast<int32>(Direction)];
+    }
+
+END_DEFINE_SPEC(FTsugiLegalitySpec)
+
+void FTsugiLegalitySpec::Define()
+{
+    It("TunnelSideIsForced", [this]()
+    {
+        const FTsugiSideClasses Classes = FTsugiLegality::Classify(TsugiTestLevels::Corridor(), 0, 1);
+        TestTrue(TEXT("West is forced"), ClassOf(Classes, ETsugiDirection::West) == ETsugiDirectionClass::Forced);
+    });
+
+    It("NeighbourNotPointingAtTheCellIsForbidden", [this]()
+    {
+        FTsugiBoard Board = TsugiTestLevels::Corridor();
+        TestTrue(TEXT("placed NS at (1,1)"), Board.TryPlace(1, 1, ETsugiPieceKey::NS));
+
+        const FTsugiSideClasses Classes = FTsugiLegality::Classify(Board, 0, 1);
+        TestTrue(TEXT("East is forbidden"), ClassOf(Classes, ETsugiDirection::East) == ETsugiDirectionClass::Forbidden);
+
+        const FTsugiKeyList Keys = FTsugiLegality::LegalKeys(Board, 0, 1);
+        TestEqual(TEXT("two legal keys"), Keys.Num(), 2);
+        TestTrue(TEXT("NW is legal"), Keys.Contains(ETsugiPieceKey::NW));
+        TestTrue(TEXT("SW is legal"), Keys.Contains(ETsugiPieceKey::SW));
+    });
+
+    It("TwoForcedSidesLeaveExactlyOneKey", [this]()
+    {
+        FTsugiBoard Board = TsugiTestLevels::Corridor();
+        Board.TryPlace(1, 1, ETsugiPieceKey::EW);
+
+        const FTsugiKeyList Keys = FTsugiLegality::LegalKeys(Board, 0, 1);
+        TestEqual(TEXT("one legal key"), Keys.Num(), 1);
+        TestTrue(TEXT("and it is EW"), Keys.Num() == 1 && Keys[0] == ETsugiPieceKey::EW);
+    });
+}
+
+#endif // WITH_DEV_AUTOMATION_TESTS
+        </script>
+      </div>
+      <div class="unverified">
+        <p><span class="tag">Check in your engine</span>The test flag names changed around 5.5 when <code>EAutomationTestFlags</code> became a scoped enum. If <code>EditorContext | ProductFilter</code> does not compile, open <code>Misc/AutomationTest.h</code> in the engine source and copy the flags an engine test uses.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>Run the tests.</strong> In the editor: <em>Tools &gt; Test Automation</em>, tick the <code>Tsugi</code> group and press <em>Start Tests</em>. From the command line, which is what a build server will use:</p>
+      <script type="text/plain" data-lang="bash" data-title="Terminal">
+"C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" ^
+  "C:\path\to\Tsugi\Tsugi.uproject" ^
+  -ExecCmds="Automation RunTests Tsugi.Core; Quit" ^
+  -unattended -nopause -nosplash -NullRHI -log
+      </script>
+      <p><code>-NullRHI</code> runs without a renderer. The rules tests need no world and no graphics, which is the point of keeping <code>TsugiCore</code> free of the engine.</p>
+    </li>
+    <li>
+      <p><strong>Port the solver last.</strong> It is the longest file and it depends on everything else. Three translation notes:</p>
+      <ul>
+        <li>The C# keeps a private nested class <code>Run</code>. Make it a class in the <code>.cpp</code> file's anonymous namespace.</li>
+        <li><code>int[,]</code> tables become one flat <code>TArray&lt;int32&gt;</code> indexed <code>Y * Width + X</code>.</li>
+        <li><code>long nodeBudget = long.MaxValue</code> becomes <code>int64 NodeBudget = MAX_int64</code>. <code>SolveResult.First</code> is a board that may not exist: return a <code>TOptional&lt;FTsugiBoard&gt;</code>.</li>
+      </ul>
+      <p>The search order must stay the same as the C#: cells in row-major order, "leave empty" tried before keys, keys tried in enum order. The order decides how many nodes a search visits, and lesson 4 verifies all 216 shipped levels against the same 5 million node budget the Unity tests use. A different order can push a level over it.</p>
+    </li>
+  </ol>
+
+  <h2>Your port</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Unity file</th><th>Unreal class</th><th>Tests to port</th><th>Cases</th></tr></thead>
+      <tbody>
+        <tr><td><code>Board.cs</code></td><td><code>FTsugiBoard</code></td><td><code>BoardTests</code></td><td>7</td></tr>
+        <tr><td><code>Legality.cs</code></td><td><code>FTsugiLegality</code></td><td><code>LegalityTests</code></td><td>10</td></tr>
+        <tr><td><code>PathFinder.cs</code></td><td><code>FTsugiPathFinder</code></td><td>covered by the win checker's</td><td></td></tr>
+        <tr><td><code>WinChecker.cs</code></td><td><code>FTsugiWinChecker</code>, <code>FTsugiWinResult</code></td><td><code>WinCheckerTests</code></td><td>7</td></tr>
+        <tr><td><code>Solver.cs</code></td><td><code>FTsugiSolver</code>, <code>FTsugiSolveResult</code></td><td><code>SolverTests</code></td><td>8</td></tr>
+        <tr><td><code>PieceKey.cs</code> (lesson 2)</td><td></td><td><code>PieceKeyTests</code></td><td>10</td></tr>
+        <tr><td><code>LevelText.cs</code></td><td><code>FTsugiLevelText</code></td><td><code>LevelTextTests</code></td><td>23</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>For a C# <code>[TestCase]</code> with several rows, loop over the rows inside <code>Define()</code> and create one <code>It</code> per row with the row in its name. For <code>LevelText.Parse</code>, which throws <code>LevelTextException</code> with a line number, return <code>bool</code> and fill an error struct carrying the message and the line.</p>
+  <p><code>LevelAuthoring.cs</code> is used only by the Unity level editor window. Skip it unless your team wants to author levels in Unreal.</p>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li>Every test under <code>Tsugi.Core</code> passes in the editor's Test Automation window.</li>
+    <li>The same tests pass from the command line with <code>-NullRHI</code>.</li>
+    <li><code>FTsugiSolver::Solve</code> on the Plan Example returns exactly one solution, and it matches <code>PlanExampleSolution</code> from <code>TestLevels.cs</code> cell for cell.</li>
+    <li>The "Lay the solution" button in the demo above shows <code>IsWin: true</code>, and I can explain each of the three conditions from it.</li>
+    <li>The solver reports <code>Exhausted</code> when given a node budget of 10 on the Plan Example.</li>
+    <li>I broke one rule on purpose, saw a test fail, and put it back.</li>
+  </ul>
+
+  <h2>Pitfalls</h2>
+  <ul>
+    <li><strong>Tests that never appear.</strong> A spec only registers when its <code>.cpp</code> is compiled into a loaded module. If the group is missing from the window, check the <code>#if</code> guard and that the file sits under the module's <code>Private/</code> folder.</li>
+    <li><strong>Deep recursion.</strong> The solver recurses once per cell, 64 levels on an 8×8 board. That is fine on PC. Keep the frames small all the same: Android threads have a smaller stack, and lesson 15 runs the solver on the headset.</li>
+    <li><strong>Structured bindings copy.</strong> <code>const auto [A, B] = Connections(Key)</code> is a copy of a two-byte struct. Good. Do the same with a board and you copy 64 cells per call.</li>
+    <li><strong><code>TOptional</code> is not a pointer.</strong> <code>Board.Get(x, y)</code> returns a copy. Changing it does not change the board. Write through <code>TryPlace</code>, <code>TryErase</code> or <code>SetUnchecked</code>.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q">A cell's north neighbour holds an <code>EW</code> piece. How is the cell's north side classified?</p>
+    <ul>
+      <li>Open</li>
+      <li>Forced</li>
+      <li data-correct>Forbidden</li>
+    </ul>
+    <p class="why">The neighbour exists and does not point south at this cell, so no key that uses the north side may be placed.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">Why does the board hold its level as <code>TSharedRef&lt;const FTsugiLevelData&gt;</code>?</p>
+    <ul>
+      <li>Because <code>UObject</code>s must be held in shared pointers.</li>
+      <li data-correct>The solver clones boards constantly; the clones share one immutable level instead of copying it.</li>
+      <li>So the garbage collector can find it.</li>
+    </ul>
+    <p class="why">The level is plain C++, so the collector is not involved at all. Reference counting keeps it alive for as long as any board uses it.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">A board has a continuous track from S to E, all clues met, and a separate closed loop of four curves elsewhere. Is it a win?</p>
+    <ul>
+      <li data-correct>Yes.</li>
+      <li>No, extra track is never allowed.</li>
+    </ul>
+    <p class="why">The three conditions are a connected path, exact clues, and no open ends. A closed loop has no open ends. <code>WinCheckerTests</code> has a case for exactly this, using <code>LoopText</code>.</p>
+  </div>
+
+  <h2>Sources</h2>
+  <ul class="sources">
+    <li><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/automation-test-framework-in-unreal-engine">Automation Test Framework</a> (Epic)</li>
+    <li><code>Docs/PRD.md</code>, sections 3.3 and 3.4, read against the code</li>
+  </ul>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+<script src="../assets/demos.js"></script>
+</body>
+</html>

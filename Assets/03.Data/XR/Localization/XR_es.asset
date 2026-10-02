@@ -266,6 +266,42 @@ MonoBehaviour:
     m_Localized: EMPEZAR
     m_Metadata:
       m_Items: []
+  - m_Id: 318851079933952
+    m_Localized: Puedes mover este tablero. Acerca las manos a la barra.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237120
+    m_Localized: Pellizca la barra con las dos manos.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237121
+    m_Localized: "Mueve las manos para llevarlo. Sep\xE1ralas o j\xFAntalas para cambiar su tama\xF1o."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237122
+    m_Localized: EL TABLERO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237123
+    m_Localized: "Este tablero va donde t\xFA quieras. Pellizca su barra con las dos manos, una a cada lado, y ll\xE9valo, g\xEDralo o separa las manos para agrandarlo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237124
+    m_Localized: SALTAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237125
+    m_Localized: RECOLOCAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237126
+    m_Localized: "Para volver a colocar el tablero en cualquier momento, pulsa el bot\xF3n del dorso de la mu\xF1eca para pausar y elige AJUSTES y RECOLOCAR TABLERO."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237127
+    m_Localized: ENTENDIDO
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

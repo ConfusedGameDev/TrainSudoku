@@ -43,3 +43,5 @@ MonoBehaviour:
   modelScale: 0.3
   heightOffset: 0
   shadowCatcherMaterial: {fileID: 2100000, guid: 4605ee2ef814703468e949bae74fe537, type: 2}
+  leftHandModel: {fileID: 919132149155446097, guid: bf7151579c38e2a44be94ba8773876c1, type: 3}
+  rightHandModel: {fileID: 919132149155446097, guid: 56186ccf27ad7864681108ed88349071, type: 3}
