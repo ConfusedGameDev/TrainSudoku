@@ -73,6 +73,9 @@ namespace TrainSudoku.XR
             PlaceSlots(1f);
         }
 
+        /// <summary>A slot's root, for the tutorial's ring to hang on (it slides with the tray). Null before <see cref="Build"/>.</summary>
+        public Transform SlotTransform(PieceKey key) => _slots[TrayDock.SlotOf(key)];
+
         /// <summary>Where a slot's piece sits, in world space: where a piece sent back to the tray flies to.</summary>
         public Vector3 SlotWorldPosition(PieceKey key)
         {

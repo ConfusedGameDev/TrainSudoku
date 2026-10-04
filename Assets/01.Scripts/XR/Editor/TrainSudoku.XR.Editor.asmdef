@@ -3,6 +3,11 @@
     "rootNamespace": "TrainSudoku.XR.Editor",
     "references": [
         "TrainSudoku.XR",
+        "TrainSudoku.XR.Rules",
+        "TrainSudoku.Core",
+        "TrainSudoku.Game",
+        "Unity.Localization",
+        "Unity.Localization.Editor",
         "Unity.XR.ARFoundation",
         "Unity.XR.ARSubsystems",
         "Unity.XR.CoreUtils",

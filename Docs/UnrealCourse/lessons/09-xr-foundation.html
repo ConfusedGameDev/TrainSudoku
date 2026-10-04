@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 09 · XR foundation</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="9"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 09</p>
+  <h1>XR foundation</h1>
+  <p class="lede">You build the player: a head, two hands that work as tracked hands or as controllers, and passthrough so the board sits in the real room. Then you reduce all of that hardware to two points per hand, which is all the game ever asks for.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd>A pawn with a camera and two motion controllers, a component that reports each hand's fingertip and pinch point every frame, and the grab interface declared.</dd>
+    <dt>On the headset</dt><dd>Your room in passthrough, the board floating in it, and a small sphere on each index fingertip and each pinch point, with hands or with controllers.</dd>
+    <dt>Unity equivalent</dt><dd>Milestone XR2, plus the input half of XR6.</dd>
+  </dl>
+
+  <h2>What the Unity edition learned about input</h2>
+  <p>The Unity build started on the XR Interaction Toolkit's sample rig and ended up using very little of it. Read this before you design anything, because every item cost a headset check to find.</p>
+  <ul>
+    <li><strong>No rays, anywhere.</strong> A ray reaching for one thing kept catching another: RESUME was pressed from across the room, the handle was grabbed by accident. Since 15 September 2026 everything is taken by a close pinch or grip, and every menu is pressed with a fingertip.</li>
+    <li><strong>The toolkit's poke never pressed a button on the headset.</strong> The game reads fingertip positions itself and decides what a press is.</li>
+    <li><strong>The sample rig switched rays back on by itself</strong>, so the game disables them every frame.</li>
+    <li><strong>The game already hides the toolkit behind one interface,</strong> <code>IGrabInput</code>. Nothing in the rules or the board knows which SDK is underneath.</li>
+  </ul>
+  <p>For you this is good news. You do not need an interaction framework. You need two positions per hand and a way to know when a pinch or grip starts and ends. Starting from a blank project means there are no rays to remove.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>The game asks for</th><th>From tracked hands</th><th>From controllers</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Fingertip</strong>: presses menus and roundels</td><td>Index fingertip joint</td><td>A point at the controller's tip</td></tr>
+        <tr><td><strong>Pinch point</strong>: where a grab takes hold</td><td>Midway between thumb tip and index tip</td><td>The controller's grip position</td></tr>
+        <tr><td><strong>Holding</strong>: a grab is in progress</td><td>Thumb and index tips are together</td><td>The grip button is squeezed</td></tr>
+        <tr><td><strong>Menu</strong></td><td>The wrist roundel (lesson 14)</td><td>The left controller's menu button</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The trigger is unused, apart from placing the board in lesson 10. The thumbsticks are unused.</p>
+
+  <h2>Unreal concepts</h2>
+
+  <h3>The pawn</h3>
+  <p>The player's body is a <code>APawn</code>. For XR it has a root scene component that stands for the origin of the tracking space, a camera component the headset drives, and one <code>UMotionControllerComponent</code> per hand. A motion controller component follows a named <em>motion source</em>, <code>Left</code> or <code>Right</code>, and it follows whichever is active: the controller, or the tracked hand.</p>
+
+  <h3>The game mode</h3>
+  <p>The game mode says which pawn class to spawn. Make a Blueprint subclass of your pawn so meshes and effects can be assigned in the editor, then a Blueprint game mode that names it, and select that game mode in <em>Project Settings &gt; Maps &amp; Modes</em>.</p>
+
+  <h3>Enhanced Input</h3>
+  <p>Unreal's input system has two asset types. An <strong>Input Action</strong> is a named intent with a value type: <code>IA_GripLeft</code>, a float. An <strong>Input Mapping Context</strong> binds actions to physical keys: "Oculus Touch (L) Grip Axis". You add a mapping context to the local player at start, then bind C++ functions to actions. It is the same idea as Unity's Input System action maps.</p>
+
+  <h3>Hand tracking through OpenXR</h3>
+  <p>With the OpenXR Hand Tracking plugin on, the engine exposes 26 joints per hand in world space. You read them through the head-mounted display function library. Meta's plugin adds its own hand component for drawing the hand mesh, which is useful as a visual and which you can add in the pawn's Blueprint without your C++ depending on Meta's modules.</p>
+
+  <h3>Passthrough</h3>
+  <p>Passthrough is a compositor layer drawn behind your scene. Your scene must leave the background transparent: no sky, nothing clearing to an opaque colour. Meta's plugin provides a subsystem that creates a persistent passthrough layer for the life of the app.</p>
+
+  <h2>Read first</h2>
+  <ul class="files">
+    <li><code>Assets/01.Scripts/XR/Grab/IGrabInput.cs</code><span>The interface you port. Three events, one flag, <code>AddTarget</code>, <code>TryGetHold</code>.</span></li>
+    <li><code>Assets/01.Scripts/XR/Grab/XRTouchPoints.cs</code><span>The two-points-per-hand idea, read off the rig. 91 lines.</span></li>
+    <li><code>Assets/01.Scripts/XR/Grab/XRIGrabInput.cs</code><span>The XRI implementation. Note <code>Reserved</code>, and that a hand may hold only one target.</span></li>
+    <li><code>Assets/01.Scripts/XR/Grab/XRTouchOnly.cs</code><span>The every-frame ray removal. You will not need it; read it to see what you are avoiding.</span></li>
+    <li><code>Docs/XR-PRD.md</code>, section 4.5<span>The input table: which button does what.</span></li>
+  </ul>
+
+  <h2>Steps</h2>
+  <ol class="steps">
+    <li>
+      <p><strong>Add the module dependencies.</strong> In <code>TsugiXR.Build.cs</code> add <code>"HeadMountedDisplay"</code> and <code>"EnhancedInput"</code>. Regenerate project files. If a header in this lesson is not found, search the engine source for it and add the module whose folder it sits in; XR headers have moved between modules across 5.x.</p>
+    </li>
+    <li>
+      <p><strong>Declare the pawn.</strong></p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="cpp" data-title="TsugiPawn.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Pawn.h"
+#include "TsugiPawn.generated.h"
+
+class UCameraComponent;
+class UMotionControllerComponent;
+class UTsugiHandsComponent;
+class UInputMappingContext;
+
+/** The player: a head and two hands. No locomotion and no rays; the player walks round a table. */
+UCLASS()
+class TSUGIXR_API ATsugiPawn : public APawn
+{
+    GENERATED_BODY()
+
+public:
+    ATsugiPawn();
+
+    UCameraComponent* GetHead() const { return Head; }
+    UTsugiHandsComponent* GetHands() const { return Hands; }
+
+    /** Controller bindings: grips and the left menu button. Assigned in BP_TsugiPawn. */
+    UPROPERTY(EditDefaultsOnly, Category = "Input")
+    TObjectPtr<UInputMappingContext> MappingContext;
+
+protected:
+    virtual void BeginPlay() override;
+    virtual void PawnClientRestart() override;
+
+private:
+    UPROPERTY(VisibleAnywhere) TObjectPtr<USceneComponent> TrackingOrigin;
+    UPROPERTY(VisibleAnywhere) TObjectPtr<UCameraComponent> Head;
+    UPROPERTY(VisibleAnywhere) TObjectPtr<UMotionControllerComponent> LeftController;
+    UPROPERTY(VisibleAnywhere) TObjectPtr<UMotionControllerComponent> RightController;
+    UPROPERTY(VisibleAnywhere) TObjectPtr<UTsugiHandsComponent> Hands;
+};
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="TsugiPawn.cpp">
+#include "TsugiPawn.h"
+#include "Camera/CameraComponent.h"
+#include "MotionControllerComponent.h"
+#include "HeadMountedDisplayFunctionLibrary.h"
+#include "EnhancedInputSubsystems.h"
+#include "InputMappingContext.h"
+#include "TsugiHandsComponent.h"
+
+ATsugiPawn::ATsugiPawn()
+{
+    PrimaryActorTick.bCanEverTick = false;
+
+    TrackingOrigin = CreateDefaultSubobject<USceneComponent>(TEXT("TrackingOrigin"));
+    SetRootComponent(TrackingOrigin);
+
+    Head = CreateDefaultSubobject<UCameraComponent>(TEXT("Head"));
+    Head->SetupAttachment(TrackingOrigin);
+
+    LeftController = CreateDefaultSubobject<UMotionControllerComponent>(TEXT("LeftController"));
+    LeftController->SetupAttachment(TrackingOrigin);
+    LeftController->SetTrackingMotionSource(TEXT("Left"));
+
+    RightController = CreateDefaultSubobject<UMotionControllerComponent>(TEXT("RightController"));
+    RightController->SetupAttachment(TrackingOrigin);
+    RightController->SetTrackingMotionSource(TEXT("Right"));
+
+    Hands = CreateDefaultSubobject<UTsugiHandsComponent>(TEXT("Hands"));
+}
+
+void ATsugiPawn::BeginPlay()
+{
+    Super::BeginPlay();
+
+    // The floor is the origin's height, so "one metre up" means one metre above the real floor.
+    UHeadMountedDisplayFunctionLibrary::SetTrackingOrigin(EHMDTrackingOrigin::LocalFloor);
+}
+
+void ATsugiPawn::PawnClientRestart()
+{
+    Super::PawnClientRestart();
+
+    const APlayerController* Controller = Cast<APlayerController>(GetController());
+    const ULocalPlayer* Player = Controller ? Controller->GetLocalPlayer() : nullptr;
+    if (auto* Input = Player ? Player->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>() : nullptr)
+    {
+        Input->ClearAllMappings();
+        if (MappingContext) Input->AddMappingContext(MappingContext, 0);
+    }
+}
+        </script>
+      </div>
+      <div class="unverified">
+        <p><span class="tag">Check in your engine</span><code>EHMDTrackingOrigin</code> gained and renamed values across 5.x. If <code>LocalFloor</code> is not there, use <code>Stage</code>. Either puts the floor at zero.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>Make the Blueprints.</strong> <code>BP_TsugiPawn</code> deriving from <code>ATsugiPawn</code>, and <code>BP_TsugiGameMode</code> deriving from <code>AGameModeBase</code> with its <em>Default Pawn Class</em> set to the pawn. Select the game mode in Project Settings. In the pawn Blueprint, add Meta's hand component under each motion controller for the hand visual, and a controller model for when controllers are in use.</p>
+      <p>In <em>Project Settings &gt; Plugins &gt; Meta XR &gt; Mobile</em>, set <strong>Hand Tracking Support</strong> to <em>Controllers and Hands</em> and <strong>Hand Tracking Frequency</strong> to <em>High</em>.</p>
+    </li>
+    <li>
+      <p><strong>Switch passthrough on.</strong> In the same settings page set <strong>Passthrough Enabled</strong>. Remove any sky or fog from <code>L_Tsugi</code>. In <code>BP_TsugiPawn</code>'s Event BeginPlay, add <em>Get Oculus XR Passthrough Subsystem</em> and call <em>Initialize Persistent Passthrough</em> with <em>Layer Placement</em> set to <strong>Underlay</strong>.</p>
+      <p>This is a Blueprint job on purpose. It is three nodes of setup, it touches only a plugin, and it keeps the Meta module out of your C++ dependency list for now.</p>
+      <div class="note">
+        <p><span class="tag">Store rule</span>Check <code>IsPassthroughRecommended</code> if you ever add a fully virtual mode. And note VRC.Quest.Functional.14: a passthrough app must show a passthrough loading screen, not a black one. Set <em>System Splash Screen Background</em> to <em>Passthrough (Contextual)</em> in the Meta XR settings.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>Create the input assets.</strong> Three Input Actions: <code>IA_GripLeft</code> and <code>IA_GripRight</code> (Axis1D float) and <code>IA_Menu</code> (bool). One mapping context, <code>IMC_Tsugi</code>, binding them to the left and right Touch grip axes and the left Touch menu button. Assign the context on <code>BP_TsugiPawn</code>.</p>
+    </li>
+    <li>
+      <p><strong>Read the hands.</strong> This component is the port of <code>XRTouchPoints</code>. Once a frame it works out, for each hand, whether it is tracked, where its fingertip is, where its pinch point is, and whether it is holding.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="cpp" data-title="TsugiHandsComponent.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
+#include "TsugiHand.h"                 // ETsugiHand, from TsugiCore
+#include "TsugiHandsComponent.generated.h"
+
+/** What one hand offers the game this frame, hands and controllers alike. World space, centimetres. */
+struct FTsugiHandState
+{
+    bool bTracked = false;
+    bool bIsController = false;
+
+    /** Presses menus and roundels: the index fingertip, or the controller's tip. */
+    FVector Fingertip = FVector::ZeroVector;
+
+    /** Where a grab takes hold: between thumb and index tips, or the controller's grip. */
+    FVector PinchPoint = FVector::ZeroVector;
+
+    /** A pinch or a grip is closed. */
+    bool bHolding = false;
+
+    /** The wrist joint, for the wrist menu (lesson 14). Hands only. */
+    FTransform Wrist = FTransform::Identity;
+};
+
+UCLASS(ClassGroup = "Tsugi", meta = (BlueprintSpawnableComponent))
+class TSUGIXR_API UTsugiHandsComponent : public UActorComponent
+{
+    GENERATED_BODY()
+
+public:
+    UTsugiHandsComponent();
+
+    const FTsugiHandState& Get(ETsugiHand Hand) const { return States[static_cast<int32>(Hand)]; }
+
+    /** A pinch closes under this gap between thumb and index tips, and opens again above the second. */
+    UPROPERTY(EditAnywhere, Category = "Hands") float PinchCloseCm = 2.0f;
+    UPROPERTY(EditAnywhere, Category = "Hands") float PinchOpenCm = 3.5f;
+
+    /** A grip closes above this squeeze and opens below the second. */
+    UPROPERTY(EditAnywhere, Category = "Hands") float GripClose = 0.6f;
+    UPROPERTY(EditAnywhere, Category = "Hands") float GripOpen = 0.4f;
+
+    UPROPERTY(EditAnywhere, Category = "Debug") bool bDrawPoints = false;
+
+    /** Fed by the pawn's Enhanced Input bindings. */
+    void SetGrip(ETsugiHand Hand, float Value) { Grip[static_cast<int32>(Hand)] = Value; }
+
+    virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+private:
+    bool ReadTrackedHand(ETsugiHand Hand, FTsugiHandState& State) const;
+    bool ReadController(ETsugiHand Hand, FTsugiHandState& State) const;
+
+    FTsugiHandState States[2];
+    float Grip[2] = { 0.f, 0.f };
+};
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="TsugiHandsComponent.cpp">
+#include "TsugiHandsComponent.h"
+#include "HeadMountedDisplayFunctionLibrary.h"
+#include "DrawDebugHelpers.h"
+
+UTsugiHandsComponent::UTsugiHandsComponent()
+{
+    PrimaryComponentTick.bCanEverTick = true;
+    // Before the game reads the hands this frame.
+    PrimaryComponentTick.TickGroup = TG_PrePhysics;
+}
+
+void UTsugiHandsComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+    for (const ETsugiHand Hand : { ETsugiHand::Left, ETsugiHand::Right })
+    {
+        FTsugiHandState& State = States[static_cast<int32>(Hand)];
+        const bool bWasHolding = State.bHolding;
+
+        FTsugiHandState Next;
+        if (!ReadTrackedHand(Hand, Next)) ReadController(Hand, Next);
+
+        if (Next.bTracked && !Next.bIsController)
+        {
+            // Hysteresis: a pinch held near the threshold must not flicker open and shut.
+            const double Gap = FVector::Dist(Next.Fingertip, Next.PinchPoint) * 2.0;   // tip to pinch point is half the gap
+            Next.bHolding = bWasHolding ? Gap < PinchOpenCm : Gap < PinchCloseCm;
+        }
+        else if (Next.bTracked)
+        {
+            const float Squeeze = Grip[static_cast<int32>(Hand)];
+            Next.bHolding = bWasHolding ? Squeeze > GripOpen : Squeeze > GripClose;
+        }
+
+        State = Next;
+
+        if (bDrawPoints && State.bTracked)
+        {
+            DrawDebugSphere(GetWorld(), State.Fingertip, 0.6f, 8, FColor::Yellow);
+            DrawDebugSphere(GetWorld(), State.PinchPoint, 0.6f, 8, State.bHolding ? FColor::Green : FColor::White);
+        }
+    }
+}
+
+bool UTsugiHandsComponent::ReadTrackedHand(ETsugiHand Hand, FTsugiHandState& State) const
+{
+    FXRHandTrackingState Tracking;
+    const EControllerHand Side = Hand == ETsugiHand::Left ? EControllerHand::Left : EControllerHand::Right;
+    if (!UHeadMountedDisplayFunctionLibrary::GetHandTrackingState(this, EXRSpaceType::UnrealWorldSpace, Side, Tracking)) return false;
+    if (!Tracking.bValid) return false;
+
+    const auto Joint = [&Tracking](EHandKeypoint Key) { return Tracking.HandKeyLocations[static_cast<int32>(Key)]; };
+
+    State.bTracked = true;
+    State.bIsController = false;
+    State.Fingertip = Joint(EHandKeypoint::IndexTip);
+    State.PinchPoint = (Joint(EHandKeypoint::ThumbTip) + Joint(EHandKeypoint::IndexTip)) * 0.5;
+    State.Wrist = FTransform(Tracking.HandKeyRotations[static_cast<int32>(EHandKeypoint::Wrist)], Joint(EHandKeypoint::Wrist));
+    return true;
+}
+
+// ReadController: yours. Use the pawn's motion controller component for that side: its world location is the
+// grip, and a point about 5 cm along its forward vector is the tip. bTracked is whether the component is tracked.
+        </script>
+      </div>
+      <div class="unverified">
+        <p><span class="tag">Check in your engine</span><code>GetHandTrackingState</code> and <code>FXRHandTrackingState</code> replaced the older <code>GetMotionControllerData</code> around 5.5. The field names here are from memory. Read <code>HeadMountedDisplayFunctionLibrary.h</code> and <code>HeadMountedDisplayTypes.h</code> and use what they declare. The pinch thresholds are starting values chosen for this course, not numbers from the Unity build, which took its pinch from the toolkit. Tune them on the headset.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>Feed the grips from Enhanced Input.</strong> In the pawn, override <code>SetupPlayerInputComponent</code>, cast the component to <code>UEnhancedInputComponent</code>, and bind <code>IA_GripLeft</code> and <code>IA_GripRight</code> for the <code>Triggered</code> and <code>Completed</code> events to functions that call <code>Hands-&gt;SetGrip</code>. Bind <code>IA_Menu</code> to a multicast delegate on the pawn, <code>OnMenuPressed</code>, which lesson 14 listens to.</p>
+    </li>
+    <li>
+      <p><strong>Declare the grab interface.</strong> Port <code>IGrabInput</code> now so the next two lessons have it. The distant-hold fields are left out: they exist in Unity for a ray that Quest no longer has.</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiGrabInput.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "TsugiHand.h"
+#include "TsugiPieceKey.h"
+
+class UPrimitiveComponent;
+
+/** Something a hand can take hold of: a tray slot, by its key, or a board cell. */
+struct FTsugiGrabTarget
+{
+    bool bIsTray = false;
+    ETsugiPieceKey Key = ETsugiPieceKey::NS;
+    int32 X = -1;
+    int32 Y = -1;
+
+    static FTsugiGrabTarget Tray(ETsugiPieceKey InKey) { FTsugiGrabTarget T; T.bIsTray = true; T.Key = InKey; return T; }
+    static FTsugiGrabTarget Cell(int32 InX, int32 InY) { FTsugiGrabTarget T; T.X = InX; T.Y = InY; return T; }
+
+    friend bool operator==(const FTsugiGrabTarget& A, const FTsugiGrabTarget& B)
+    {
+        return A.bIsTray == B.bIsTray && (A.bIsTray ? A.Key == B.Key : A.X == B.X && A.Y == B.Y);
+    }
+};
+
+/**
+ * How hands reach the game, whatever the hardware. An implementation turns pinches and grips into grabs and
+ * releases of targets; the piece logic turns those into rule calls. Neither the rules nor the board know which
+ * implementation is in use.
+ */
+class ITsugiGrabInput
+{
+public:
+    virtual ~ITsugiGrabInput() = default;
+
+    TMulticastDelegate<void(ETsugiHand, const FTsugiGrabTarget&)> OnGrabbed;
+    TMulticastDelegate<void(ETsugiHand)> OnReleased;
+
+    /** A target started or stopped being within reach of any hand; the flag is whether any hand still is. */
+    TMulticastDelegate<void(const FTsugiGrabTarget&, bool)> OnHoverChanged;
+
+    /** Whether new grabs may start: off between levels, while paused and while the board is being moved. A hold already begun carries on. */
+    bool bAcceptsGrabs = true;
+
+    /** Where something else has first claim on a pinch: the board handle's rail, which wraps the corner cell. */
+    TFunction<bool(const FVector& PinchPoint)> Reserved;
+
+    /** Makes a target grabbable through Volume whenever Grabbable says it has something to give. */
+    virtual void AddTarget(UPrimitiveComponent* Volume, const FTsugiGrabTarget& Target, TFunction<bool()> Grabbable) = 0;
+
+    /** Where Hand holds its target this frame; false when it holds none. */
+    virtual bool TryGetHold(ETsugiHand Hand, FVector& OutPinchPoint) const = 0;
+};
+      </script>
+      <p>Lesson 11 implements it on top of <code>UTsugiHandsComponent</code>.</p>
+    </li>
+  </ol>
+
+  <h2>Your port</h2>
+  <ul>
+    <li><code>ReadController</code>, and a choice of where the controller's "fingertip" is. Try it against a cube: the tip should be where you naturally poke with the controller.</li>
+    <li>The Enhanced Input bindings and <code>OnMenuPressed</code>.</li>
+    <li>A console variable, <code>Tsugi.DrawHands 1</code>, that turns <code>bDrawPoints</code> on. You will use it in every remaining lesson.</li>
+  </ul>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li>On the headset I see my room in passthrough with the board from lesson 7 in it, and no black background at any point after the splash.</li>
+    <li>With controllers down, a sphere sits on each index fingertip and each pinch point, and follows them without visible lag.</li>
+    <li>Pinching turns that hand's pinch sphere green; it does not flicker when I hold my fingers almost together.</li>
+    <li>Picking the controllers up moves the spheres to the controllers; squeezing a grip turns the sphere green.</li>
+    <li>Putting the controllers down returns to hands within a second or two.</li>
+    <li>The left menu button logs a line through <code>OnMenuPressed</code>.</li>
+    <li>There is no ray, laser or teleport arc anywhere.</li>
+  </ul>
+
+  <h2>Pitfalls</h2>
+  <ul>
+    <li><strong>World space depends on the pawn.</strong> Joint positions in "Unreal world space" already include the pawn's transform. If you move the pawn, they move. Leave the pawn at the tracking origin; the board moves, the player does not.</li>
+    <li><strong>The system gesture is reserved.</strong> The palm-up pinch belongs to the operating system (VRC.Quest.Input.8). The wrist menu in lesson 14 sits on the back of the wrist for that reason.</li>
+    <li><strong>Hands vanish near each other and near the table.</strong> Tracking drops when one hand covers the other. Treat <code>bTracked</code> going false as "let go", never as "keep the last pose".</li>
+    <li><strong>Testing without the headset.</strong> VR Preview over Link works for hands and controllers but not for every mixed-reality feature. For anything that involves the room, package to the device.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q">Why does the game define its own pinch point instead of using an interaction framework's grab?</p>
+    <ul>
+      <li>Frameworks cannot detect pinches.</li>
+      <li data-correct>The game needs only two points and a held flag per hand, and the Unity edition found that framework rays and pokes misfired on the headset. A small interface keeps the rest of the game independent of the SDK.</li>
+      <li>Meta forbids third-party interaction frameworks.</li>
+    </ul>
+    <p class="why">The interface also makes a later port to other hardware a matter of writing one new implementation, which is what the Unity project planned for Vision Pro.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">A pinch closes at a 2 cm gap. Why does it not open again at 2 cm?</p>
+    <ul>
+      <li data-correct>Tracking noise near the threshold would toggle the hold many times a second; a wider opening gap gives it room.</li>
+      <li>Fingers cannot physically reopen to 2 cm.</li>
+    </ul>
+    <p class="why">The same idea appears in the Unity code as <code>WatchCheck</code> (show at 45°, hide at 65°) and in the handle's touch and let-go distances.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">The background behind the board is black on the headset. Which is the least likely cause?</p>
+    <ul>
+      <li>A sky sphere left in the level.</li>
+      <li>Passthrough not enabled in the Meta XR settings.</li>
+      <li data-correct>The board's materials are opaque.</li>
+    </ul>
+    <p class="why">Opaque objects are meant to cover passthrough. A black background means either the layer was never created or something is filling the frame behind everything.</p>
+  </div>
+
+  <h2>Sources</h2>
+  <ul class="sources">
+    <li><a href="https://developers.meta.com/horizon/documentation/unreal/unreal-passthrough-overview-gs/">Get started with passthrough</a> (Meta)</li>
+    <li><a href="https://developers.meta.com/horizon/documentation/unreal/unreal-hand-tracking/">Hand tracking in Unreal</a> (Meta)</li>
+    <li><a href="https://developers.meta.com/horizon/documentation/unreal/unreal-plugin-settings/">Meta XR plugin settings</a> (Meta)</li>
+    <li><code>Docs/XR-PRD.md</code> decision X16; <code>Docs/XR-Agent.md</code> on rays and poke</li>
+  </ul>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+</body>
+</html>

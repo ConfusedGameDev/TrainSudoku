@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 13 · Flow on the platform and the train run</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="13"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 13</p>
+  <h1>Flow on the platform and the train run</h1>
+  <p class="lede">You have a flow, a board, a tray, a sign and a map. This lesson wires them into one game: each state shows the right things, a won board sends a train through the track you laid, and an unfinished level comes back as you left it.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd>A shell actor that builds and conducts everything, <code>FTsugiTrackPath</code> in <code>TsugiCore</code>, and a train actor.</dd>
+    <dt>On the headset</dt><dd>The whole loop with no console: network, line, station, play, the train, arrival, next station.</dd>
+    <dt>Unity equivalent</dt><dd>Milestone XR7, "Flow on the platform", and the train from XR4.</dd>
+  </dl>
+
+  <h2>Unreal concepts</h2>
+
+  <h3>Who owns what</h3>
+  <p>In Unity, <code>XRGame</code> owns the flow <em>and</em> the things on show. In your port those are split along Unreal's own lines:</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Lives in</th><th>Lifetime</th><th>Holds</th></tr></thead>
+      <tbody>
+        <tr><td><code>UTsugiGameSubsystem</code></td><td>The app</td><td>Flow, save, preferences, level list</td></tr>
+        <tr><td><code>ATsugiShell</code>, an actor in <code>L_Tsugi</code></td><td>The level</td><td>The board, map, sign, tray, piece hands, train, steam; and the reaction to each state</td></tr>
+        <tr><td><code>ATsugiPawn</code></td><td>The level</td><td>Head, hands, grab input</td></tr>
+        <tr><td><code>ATsugiBoardPlacement</code></td><td>The level</td><td>Where the board root is in the room</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The shell is the port of <code>XRGame.Build</code> and <code>XRGame.OnStateChanged</code>. It decides nothing about rules; it shows and hides.</p>
+
+  <h3>Spawning actors and finding each other</h3>
+  <p><code>GetWorld()-&gt;SpawnActor&lt;T&gt;(Class, Transform)</code> creates an actor at runtime. Spawn from a <code>TSubclassOf&lt;T&gt;</code> property so the Blueprint subclass, with its art assigned, is what gets created. Attach spawned actors to the board root with <code>AttachToComponent</code> so they move with the board.</p>
+  <p>Avoid searching the level for actors by class each frame. Have the shell hold pointers to what it spawned, and have the level contain exactly one shell that looks up the pawn and the placement once in <code>BeginPlay</code>.</p>
+
+  <h3>Animation without coroutines</h3>
+  <p>Unity code animates with coroutines: a function that yields each frame. Unreal has no direct equivalent in C++. Pick by what the motion is:</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Motion</th><th>Unreal tool</th><th>Here</th></tr></thead>
+      <tbody>
+        <tr><td>Continuous, driven by state</td><td><code>Tick</code>, with <code>FMath::FInterpTo</code> or your own maths</td><td>The train, signs turning to face the head</td></tr>
+        <tr><td>A fixed short tween</td><td>A small struct holding start time and duration, advanced in <code>Tick</code>; or <code>FTimeline</code> with a curve asset</td><td>A piece scaling in (220 ms), a clue popping (160 ms)</td></tr>
+        <tr><td>Something springy</td><td><code>UKismetMathLibrary::FloatSpringInterp</code> with an <code>FFloatSpringState</code></td><td>The train's squash and stretch</td></tr>
+        <tr><td>Wait, then do one thing</td><td>A timer</td><td>The falling piece's puff</td></tr>
+        <tr><td>Authored UI motion</td><td>A UMG widget animation</td><td>The arrival stamp</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The Unity phone game animates on unscaled time because it pauses with <code>timeScale</code>. The XR edition pauses by stopping the flow's clock and locking input, not by stopping time, so ordinary delta time is fine.</p>
+
+  <h2>Read first</h2>
+  <ul class="files">
+    <li><code>Assets/01.Scripts/XR/XRGame.cs</code><span><code>Build</code>, <code>OnStateChanged</code>, <code>OnLevelStarted</code>, <code>ShowNetworkViews</code>, <code>ShowLineViews</code>, <code>ShowArrivalSign</code>, <code>When</code>.</span></li>
+    <li><code>Assets/01.Scripts/Core/TrackPath.cs</code><span>160 lines. The route by arc length: a straight run in from the tunnel, each cell's curve, a straight run out.</span></li>
+    <li><code>Assets/01.Scripts/XR/Train/XRTrainRun.cs</code><span>488 lines. <code>Run</code>, <code>Update</code> and <code>PlaceCars</code> are the train. The rest is the hand-push and the rubbery stretch.</span></li>
+    <li><code>Assets/01.Scripts/XR/Rules/QuickBoard.cs</code><span>A testing aid that pre-lays most of a board so a station plays in seconds.</span></li>
+    <li><code>Assets/99.Test/EditMode/TrackPathTests.cs</code><span>7 cases.</span></li>
+  </ul>
+
+  <h2>Steps</h2>
+  <ol class="steps">
+    <li>
+      <p><strong>Build the shell.</strong> It waits for the board to be placed, creates everything under the board root, connects events, and starts the flow. This is <code>XRGame.Start</code> and <code>Build</code>.</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiShell.cpp (BeginPlay and Build)">
+void ATsugiShell::BeginPlay()
+{
+    Super::BeginPlay();
+
+    Game = GetGameInstance()->GetSubsystem<UTsugiGameSubsystem>();
+    Pawn = Cast<ATsugiPawn>(UGameplayStatics::GetPlayerPawn(this, 0));
+    Placement = Cast<ATsugiBoardPlacement>(UGameplayStatics::GetActorOfClass(this, ATsugiBoardPlacement::StaticClass()));
+    if (!Game || !Pawn || !Placement) return;
+
+    // The flow starts once the board is in the room, and not before.
+    if (Placement->IsPlaced()) Build();
+    else Placement->OnPlaced.AddUObject(this, &ATsugiShell::Build);
+}
+
+void ATsugiShell::Build()
+{
+    if (Board) return;                                        // "Re-place board" fires OnPlaced again
+
+    USceneComponent* Root = Placement->GetBoardRoot();
+    const FAttachmentTransformRules Snap = FAttachmentTransformRules::SnapToTargetNotIncludingScale;
+
+    Board = GetWorld()->SpawnActor<ATsugiBoard>(BoardClass);
+    Board->AttachToComponent(Root, Snap);
+    Map = GetWorld()->SpawnActor<ATsugiPlatformMap>(MapClass);
+    Map->AttachToComponent(Root, Snap);
+    Sign = GetWorld()->SpawnActor<ATsugiSignboard>(SignClass);
+    Sign->AttachToComponent(Root, Snap);
+    Tray = GetWorld()->SpawnActor<ATsugiTray>(TrayClass);
+    Tray->AttachToComponent(Root, Snap);
+
+    Map->OnLineChosen.AddUObject(this, &ATsugiShell::HandleLineChosen);
+    Map->OnStationChosen.AddUObject(this, &ATsugiShell::HandleStationChosen);
+
+    PieceHands->OnActed.AddUObject(this, &ATsugiShell::HandleActed);
+    PieceHands->OnBoardChanged.AddUObject(this, &ATsugiShell::HandleBoardChanged);
+
+    // A pinch on the handle's rail is the handle's, never the corner cell's piece under it.
+    Pawn->GetGrab()->Reserved = [this](const FVector& Point) { return Placement->GetHandle() && Placement->GetHandle()->Claims(Point); };
+
+    FTsugiGameFlow& Flow = Game->GetFlow();
+    StateHandle = Flow.OnStateChanged.AddUObject(this, &ATsugiShell::HandleStateChanged);
+    LevelHandle = Flow.OnLevelStarted.AddUObject(this, &ATsugiShell::HandleLevelStarted);
+
+    // Straight to the network: XR has no main menu.
+    Flow.ShowNetwork();
+}
+
+void ATsugiShell::EndPlay(const EEndPlayReason::Type Reason)
+{
+    // The flow outlives this actor. Take our handlers off it.
+    if (Game)
+    {
+        Game->GetFlow().OnStateChanged.Remove(StateHandle);
+        Game->GetFlow().OnLevelStarted.Remove(LevelHandle);
+    }
+    Super::EndPlay(Reason);
+}
+      </script>
+      <p>The class properties are <code>TSubclassOf&lt;ATsugiBoard&gt; BoardClass</code> and so on, set in <code>BP_TsugiShell</code> to your Blueprint subclasses. Delete the board you placed in the level by hand in lesson 7; the shell spawns it now.</p>
+    </li>
+    <li>
+      <p><strong>React to every state.</strong> Compare this with the Unity method. The structure is the same; that is the point of having ported the flow unchanged.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="csharp" data-title="Unity: XRGame.OnStateChanged (abridged)">
+if (previous == GameState.Play && current == GameState.Pause) SaveProgress();
+if (previous == GameState.Play && current != GameState.Play && _hands != null) _hands.End();
+if (previous == GameState.Pause) _display.SetDimmed(false);
+_menu.Close();
+
+switch (current)
+{
+    case GameState.Network:
+        ClearBoard();
+        ShowNetworkViews();
+        FitHandle(XRPlatformMap.HalfWidth);
+        break;
+    case GameState.LevelSelect:
+        ClearBoard();
+        ShowLineViews();
+        FitHandle(XRPlatformMap.HalfWidth);
+        break;
+    case GameState.Play:
+        _map.Hide();
+        _tray.gameObject.SetActive(true);
+        // A resume keeps the board; a start or retry loads its level next, in OnLevelStarted.
+        if (previous == GameState.Pause && _display.Board != null) _hands.Begin(_display, _tray);
+        ShowStationSign();
+        break;
+    case GameState.Pause:
+        _display.SetDimmed(true);
+        ShowPausedSign();
+        break;
+    case GameState.TrainRun:
+        _tray.gameObject.SetActive(false);
+        _sign.Hide();
+        _display.RunTrain(CurrentLevel.DisplayName, OnTrainFinished);
+        break;
+    case GameState.Win:
+        ShowArrivalSign();
+        XRCuePlayer.Play(XRCueMap.Fanfare(Flow.LastResult?.Stars ?? 0), _sign.transform.position);
+        break;
+}
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="Unreal: ATsugiShell::HandleStateChanged">
+void ATsugiShell::HandleStateChanged(ETsugiGameState Previous, ETsugiGameState Current)
+{
+    FTsugiGameFlow& Flow = Game->GetFlow();
+
+    if (Previous == ETsugiGameState::Play && Current == ETsugiGameState::Pause) SaveProgress();
+    if (Previous == ETsugiGameState::Play && Current != ETsugiGameState::Play) PieceHands->End();
+    if (Previous == ETsugiGameState::Pause) Board->SetDimmed(false);
+
+    switch (Current)
+    {
+        case ETsugiGameState::Network:
+            ClearBoard();
+            Map->ShowNetwork(Game->GetNetwork(), [&Flow](int32 Line) { return Flow.IsLineUnlocked(Line); });
+            Sign->ShowMasthead(TotalStars());
+            Sign->PlaceBehind(ATsugiPlatformMap::FarEdge);
+            FitHandle(ATsugiPlatformMap::HalfWidth);
+            break;
+
+        case ETsugiGameState::LevelSelect:
+            ClearBoard();
+            ShowLineViews();
+            FitHandle(ATsugiPlatformMap::HalfWidth);
+            break;
+
+        case ETsugiGameState::Play:
+            Map->Hide();
+            Tray->SetActorHiddenInGame(false);
+            // A resume keeps the board; a start or retry loads its level next, in HandleLevelStarted.
+            if (Previous == ETsugiGameState::Pause && Board->GetBoard()) PieceHands->Begin(Board, Tray);
+            ShowStationSign();
+            break;
+
+        case ETsugiGameState::Pause:
+            Board->SetDimmed(true);                    // the flow has stopped the clock; pieces and handle lock
+            ShowPausedSign();
+            break;
+
+        case ETsugiGameState::TrainRun:
+            Tray->SetActorHiddenInGame(true);
+            Sign->Hide();
+            // No skip: on the headset a stray pinch after the winning drop kept cutting the run short.
+            Train->Run(*Board->GetBoard(), Game->GetCurrentLevel()->DisplayName);
+            break;
+
+        case ETsugiGameState::Win:
+            ShowArrivalSign();
+            break;
+
+        default:
+            break;
+    }
+}
+        </script>
+      </div>
+      <p>Every button on the sign and every roundel goes through one guard, the port of <code>When</code>: act only if the flow is still in the state that drew the button.</p>
+    </li>
+    <li>
+      <p><strong>Load a level, and resume one.</strong> <code>OnLevelStarted</code> carries the saved attempt, if there is one. Apply it with <code>FTsugiLevelProgress::ApplyTo</code>, which writes cells with <code>SetUnchecked</code>. The flow has already restored the clock to the saved time, idle, waiting for the first grab.</p>
+      <script type="text/plain" data-lang="cpp" data-title="Unreal: ATsugiShell::HandleLevelStarted">
+void ATsugiShell::HandleLevelStarted(int32 FlatIndex, const TOptional<FTsugiLevelProgress>& Resume)
+{
+    const UTsugiLevelDefinition* Level = Game->GetLevel(FlatIndex);
+    if (!Level) return;
+    const UTsugiLineDefinition* Line = Game->GetCurrentLine();
+
+    Board->Load(Level->ToLevelData(), Line ? Line->Color : TsugiPalette::Warn);
+    FitHandle(FTsugiBoardLayout::HalfWidth(Level->Width));
+
+    // Put back without legality checks: replaying the pieces one by one can refuse a board the player
+    // was allowed to build.
+    if (Resume.IsSet() && Resume->ApplyTo(*Board->GetBoard()) > 0) Board->Sync(false);
+
+    bTouchedThisLevel = false;
+    Tray->SetActorHiddenInGame(false);
+    Tray->Rebuild();
+    PieceHands->Begin(Board, Tray);
+    ShowStationSign();
+}
+      </script>
+    </li>
+    <li>
+      <p><strong>Port <code>TrackPath</code>.</strong> It joins the solved board's curves into one route measured by arc length, with a one-cell straight into each tunnel so the train starts and ends out of sight. <code>Sample(distance)</code> finds the segment by binary search and returns a position and a tangent; beyond either end it continues straight. It belongs in <code>TsugiCore</code> and comes with seven tests.</p>
+    </li>
+    <li>
+      <p><strong>Run the train.</strong> One actor under the board, one static mesh component per car: a locomotive and seven wagons, the kit's E235 models at 0.3 scale.</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiTrain.cpp">
+void ATsugiTrain::Run(const FTsugiBoard& Board, const FString& Destination)
+{
+    Path = FTsugiTrackPath::TryBuild(Board);             // TOptional: a board with no route has none
+    NoRouteRemaining = 1.5f;
+    Distance = RevealDistance - 0.05;                    // the locomotive starts just inside the entrance tunnel
+    bRunning = true;
+    SetActorTickEnabled(true);
+    SetPlate(Destination);
+}
+
+void ATsugiTrain::Tick(float DeltaSeconds)
+{
+    Super::Tick(DeltaSeconds);
+    if (!bRunning) return;
+
+    if (!Path.IsSet())
+    {
+        NoRouteRemaining -= DeltaSeconds;
+        if (NoRouteRemaining <= 0.f) Finish();
+        return;
+    }
+
+    Distance += SpeedCellsPerSecond * DeltaSeconds;      // 2.5 cells a second
+    PlaceCars();
+
+    const double Tail = Distance - (Cars.Num() - 1) * CarSpacing;      // 0.9 cells apart
+    if (Tail > Path->GetLength() - RevealDistance + 0.1) Finish();
+}
+
+void ATsugiTrain::PlaceCars()
+{
+    for (int32 Index = 0; Index < Cars.Num(); ++Index)
+    {
+        const double S = Distance - Index * CarSpacing;
+        const FTsugiPathSample Sample = Path->Sample(S);
+
+        // BoardLayout's frame to board-local. The tangent is (east, north); Unreal's yaw is atan2(Y, X) = atan2(east, north).
+        const FVector Location = Tsugi::ToLocal(Sample.X, Sample.Z, HeightCells);
+        const double Yaw = FMath::RadiansToDegrees(FMath::Atan2(Sample.TangentX, Sample.TangentZ));
+        Cars[Index]->SetRelativeLocationAndRotation(Location, FRotator(0.0, Yaw + ModelYawOffset, 0.0));
+
+        // A car shows only between the two reveal points, so it appears and vanishes inside the tunnels.
+        const bool bVisible = S >= RevealDistance && S <= Path->GetLength() - RevealDistance;
+        Cars[Index]->SetVisibility(bVisible);
+    }
+}
+
+void ATsugiTrain::Finish()
+{
+    bRunning = false;
+    SetActorTickEnabled(false);
+    for (UStaticMeshComponent* Car : Cars) Car->SetVisibility(false);
+    OnFinished.Broadcast();
+}
+      </script>
+      <p><code>RevealDistance</code> comes from the board: about a third of the way into the tunnel tube. Hiding is a visibility switch, not clipping: an eight-car train is far longer than any tunnel that fits on the platform.</p>
+      <p>The shell answers <code>OnFinished</code> by calling <code>Flow.FinishTrainRun()</code>, guarded so it only does so in the <code>TrainRun</code> state.</p>
+    </li>
+    <li>
+      <p><strong>Connect play to the flow.</strong></p>
+      <script type="text/plain" data-lang="cpp" data-title="Unreal: the two piece-hands handlers">
+void ATsugiShell::HandleActed(const FTsugiDropResult& Result)
+{
+    FTsugiGameFlow& Flow = Game->GetFlow();
+    if (Flow.GetState() != ETsugiGameState::Play) return;
+
+    // The player's first interaction with the board starts the clock.
+    if (!bTouchedThisLevel && Result.Outcome != ETsugiDropOutcome::Refused)
+    {
+        bTouchedThisLevel = true;
+        Flow.BoardTouched();
+    }
+}
+
+void ATsugiShell::HandleBoardChanged()
+{
+    FTsugiGameFlow& Flow = Game->GetFlow();
+    if (Flow.GetState() != ETsugiGameState::Play) return;
+
+    Flow.SaveProgress(*Board->GetBoard());               // auto-save after every change
+    if (Board->GetLastResult().bIsWin) Flow.CompleteLevel();
+}
+      </script>
+    </li>
+    <li>
+      <p><strong>Tick the small things.</strong> In the shell's <code>Tick</code>: set <code>bAcceptsGrabs</code> (Play, a board loaded, handle not moving); make the handle available except in Pause and while a piece is held; update the sign's clock from <code>Flow.Timer</code> and <code>Flow.GetStarTier()</code> in Play and Pause.</p>
+    </li>
+    <li>
+      <p><strong>Add the quick-test aid.</strong> Port <code>QuickBoard</code> and expose it as a console variable, <code>Tsugi.QuickRails</code>, default <strong>0</strong>. With a value of 3, all but three rails of each board are pre-laid in memory, so a station plays in seconds. Never apply it to the tutorial station. The Unity scene ships with this at 3; do not copy that.</p>
+    </li>
+  </ol>
+
+  <h2>Your port</h2>
+  <ul>
+    <li><code>FTsugiTrackPath</code> and <code>TrackPathTests</code>.</li>
+    <li><code>FTsugiQuickBoard</code> and <code>QuickBoardTests</code>.</li>
+    <li>The rest of the shell: <code>ShowLineViews</code> with a mark for each station (open, in progress, stars, next), <code>ShowStationSign</code>, <code>ShowPausedSign</code>, <code>ShowArrivalSign</code>, <code>ClearBoard</code>, <code>TotalStars</code>, the map's two handlers.</li>
+    <li>The destination plate above the locomotive: the station's name followed by 行 ("bound for"). This is environment art in Japanese, like the platform-edge decals, and needs a font with those glyphs.</li>
+    <li>Stretch goal, after everything else works: the hand on the train. A fingertip within about a centimetre of a car shakes it, pushes the train up to three times its speed, and squashes and stretches the cars on a loose spring. The constants are at the top of <code>XRTrainRun.cs</code>.</li>
+  </ul>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li><code>Tsugi.Core.TrackPath</code> and <code>QuickBoard</code> tests pass.</li>
+    <li>With no console input: place the board, press line TS, press Ashgate, and the board, tray and station sign appear.</li>
+    <li>The clock on the sign stays at 00:00 until I first take a piece.</li>
+    <li>Completing the board hides the tray and sign and runs the train from S to E along my track, appearing inside one tunnel and vanishing inside the other.</li>
+    <li>Each car faces along the track through every curve.</li>
+    <li>After the train, the arrival shows my time and stars; NEXT starts the next station; at a line's ninth station it returns to the network.</li>
+    <li>Leaving a half-built level by quitting the app and returning shows "continue" state on the map, and choosing it restores my pieces and the clock.</li>
+    <li>RETRY from the arrival gives a clean board and a clock at zero.</li>
+    <li>Pressing a sign button twice quickly never produces an <code>ensure</code> in the log.</li>
+    <li><code>Tsugi.QuickRails</code> is 0 in every config file in source control.</li>
+  </ul>
+
+  <h2>Pitfalls</h2>
+  <ul>
+    <li><strong>Delegates that outlive their listener.</strong> The subsystem's flow lives for the whole app; the shell lives for the level. Remove handlers in <code>EndPlay</code>, or bind with <code>AddUObject</code>, which skips destroyed objects. Do both.</li>
+    <li><strong>Order inside one state change.</strong> On Retry, the flow raises the state change to Play and then <code>OnLevelStarted</code>. The state handler must not assume the board is loaded yet. That is why "begin the piece hands" in the Play case only happens when coming from Pause.</li>
+    <li><strong>The handle's footprint.</strong> The rail wraps the near corner of whatever is on show. A 6×6 board's corner is nearer the middle than the map card's. Call <code>FitHandle</code> on every change, or the rail floats beside nothing.</li>
+    <li><strong>A train on a board with no route.</strong> The debug win path can reach TrainRun on an unsolved board. The train then waits 1.5 seconds and finishes, so the flow never hangs. Keep that branch.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q">Why does the shell spawn <code>BoardClass</code>, a <code>TSubclassOf&lt;ATsugiBoard&gt;</code>, and not <code>ATsugiBoard</code> itself?</p>
+    <ul>
+      <li>C++ classes cannot be spawned.</li>
+      <li data-correct>The Blueprint subclass is where the meshes and materials are assigned; spawning the C++ class directly gives a board with no art.</li>
+      <li>It is faster.</li>
+    </ul>
+    <p class="why">C++ declares the slots, the Blueprint fills them. Spawn the Blueprint.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">A car's path sample has tangent (east 1, north 0). What is its yaw in Unreal?</p>
+    <ul>
+      <li>0°</li>
+      <li data-correct>90°</li>
+      <li>−90°</li>
+    </ul>
+    <p class="why">North is local +X, yaw 0. East is local +Y, a quarter turn: <code>atan2(east, north) = atan2(1, 0) = 90°</code>. It matches <code>BoardLayout.Yaw(East)</code>.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">The Unity phone game lets the player tap to skip the train. Why does XR not?</p>
+    <ul>
+      <li>Skipping is impossible without a touchscreen.</li>
+      <li data-correct>On the headset, a stray pinch just after the winning drop kept triggering the skip.</li>
+      <li>The train is shorter in XR.</li>
+    </ul>
+    <p class="why">The skip was removed after the XR7 headset check. It is a design decision recorded in the spec, so do not add one back as a convenience.</p>
+  </div>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+</body>
+</html>

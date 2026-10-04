@@ -91,6 +91,9 @@ namespace TrainSudoku.XR
         /// <summary>A row or column holds more pieces than its clue asks for.</summary>
         public bool HasOverfullLine { get; private set; }
 
+        /// <summary>The last <see cref="Sync"/> turned a row or column green that was not before: the tutorial's clue line reads it.</summary>
+        public bool LineJustSatisfied { get; private set; }
+
         /// <summary>The chamfered slab every tile is cut from, at unit size; the tray's tiles and the ghost share it.</summary>
         public Mesh TileMesh => _tileMesh;
 
@@ -306,6 +309,7 @@ namespace TrainSudoku.XR
             Board = null;
             LastResult = null;
             HasOverfullLine = false;
+            LineJustSatisfied = false;
         }
 
         private void OnDestroy() => Clear();
@@ -330,12 +334,14 @@ namespace TrainSudoku.XR
         private void Validate(bool announce)
         {
             LastResult = WinChecker.Evaluate(Board);
+            LineJustSatisfied = false;
             if (_columnClues == null) return;
             var overfull = false;
             for (var x = 0; x < _columnClues.Length; x++)
             {
                 var exceeded = Board.ColumnCount(x) > Level.ColumnClues[x];
                 overfull |= exceeded;
+                LineJustSatisfied |= LastResult.ColumnSatisfied[x] && !_columnSatisfied[x];
                 _columnClues[x].Dress(LastResult.ColumnSatisfied[x], exceeded);
                 if (announce && LastResult.ColumnSatisfied[x] && !_columnSatisfied[x]) PopScale.Play(_columnClues[x].Face, CluePopScale, CluePopDuration);
                 _columnSatisfied[x] = LastResult.ColumnSatisfied[x];
@@ -345,6 +351,7 @@ namespace TrainSudoku.XR
             {
                 var exceeded = Board.RowCount(y) > Level.RowClues[y];
                 overfull |= exceeded;
+                LineJustSatisfied |= LastResult.RowSatisfied[y] && !_rowSatisfied[y];
                 _rowClues[y].Dress(LastResult.RowSatisfied[y], exceeded);
                 if (announce && LastResult.RowSatisfied[y] && !_rowSatisfied[y]) PopScale.Play(_rowClues[y].Face, CluePopScale, CluePopDuration);
                 _rowSatisfied[y] = LastResult.RowSatisfied[y];

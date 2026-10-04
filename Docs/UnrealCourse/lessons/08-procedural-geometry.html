@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 08 · Procedural geometry</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="8"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 08</p>
+  <h1>Procedural geometry</h1>
+  <p class="lede">The kit has one straight piece of rail. The game needs it bent into four curves. You first try the feature Unreal already has for this, see where it falls short, then port the Unity mesh bender and bake six finished meshes in the editor.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd>Six static mesh assets, <code>SM_Track_NS</code> to <code>SM_Track_SE</code>, generated from the kit rail and sleeper by an editor command, replacing the placeholder bars.</dd>
+    <dt>On the headset</dt><dd>Real rails and sleepers on the board, joining flush from cell to cell.</dd>
+    <dt>Unity equivalent</dt><dd>Milestone M5, "piece placement with bent track meshes".</dd>
+  </dl>
+
+  <h2>The curve</h2>
+  <p>A track piece's centre line is either a straight through the cell centre or a quarter circle of radius 0.5 about the corner the two sides share. Neighbouring pieces therefore meet at side midpoints with matching tangents. <code>TrackCurve</code> gives position and tangent at any <code>t</code> from 0 to 1, and its length is 1 for a straight and π/4 for a curve.</p>
+  <div class="demo">
+    <h3>Bending a strip round a quarter circle</h3>
+    <div id="demo-bend"></div>
+  </div>
+  <p>Move the sliders and note two things. With three slices the arc is a polyline: the kit rail has only three rings of vertices along its length, so bending it as imported gives exactly that. And as the half width approaches 0.5 the inner edge collapses onto the arc centre, because the along-track scale factor there reaches zero.</p>
+
+  <h2>Unreal concepts</h2>
+
+  <h3>Four ways to get a mesh that is not an imported file</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Tool</th><th>Where it runs</th><th>Good for</th><th>Cost</th></tr></thead>
+      <tbody>
+        <tr><td><code>USplineMeshComponent</code></td><td>Runtime, in the vertex shader</td><td>Bending an existing mesh along a curve with no code</td><td>One draw call per piece, no instancing, adds no vertices</td></tr>
+        <tr><td><code>UProceduralMeshComponent</code></td><td>Runtime, on the CPU</td><td>Simple generated shapes that change: map strokes, rings</td><td>You supply every vertex; rebuilt in game thread</td></tr>
+        <tr><td><code>UDynamicMeshComponent</code></td><td>Runtime or editor</td><td>Mesh editing operations: booleans, extrudes</td><td>Heavier dependency (Geometry Scripting)</td></tr>
+        <tr><td>A <code>UStaticMesh</code> built from an <code>FMeshDescription</code></td><td>Editor, saved as an asset</td><td>Anything that can be computed once, ahead of time</td><td>Nothing at runtime</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>There are six keys and one art style, so there are exactly six bent meshes, and they never change. That is the last row. On a mobile headset, work you can do in the editor is work the device does not do.</p>
+
+  <h3>Mesh descriptions</h3>
+  <p>An <code>FMeshDescription</code> is Unreal's editable mesh format: vertices, <em>vertex instances</em> (a vertex as seen by one face, carrying its normal, tangent and UV), triangles and polygon groups (one per material). Every imported static mesh keeps its mesh description in the editor, which is why the baker needs no "Read/Write enabled" flag. In a packaged game that source data is gone, which is another reason to bake.</p>
+
+  <h3>Winding</h3>
+  <div class="trap">
+    <p><span class="tag">Trap</span>Unity treats a triangle as front-facing when its vertices run <strong>clockwise</strong>. Unreal treats it as front-facing when they run <strong>counter-clockwise</strong>. The axis conversion in this course does not mirror anything, so every generated triangle must have two of its indices swapped on the way into Unreal.</p>
+    <p>Get this wrong and the face is culled with no error. That exact bug sat in the Unity project's own generated track mesh for several milestones.</p>
+  </div>
+  <div class="unverified">
+    <p><span class="tag">Prove it yourself</span>Do not take the winding rule on trust. Step 3 has you generate a single triangle and look at which side draws.</p>
+  </div>
+
+  <h2>Read first</h2>
+  <ul class="files">
+    <li><code>Assets/01.Scripts/Core/TrackCurve.cs</code><span>92 lines. <code>Arc()</code> finds the centre, start angle and signed sweep.</span></li>
+    <li><code>Assets/01.Scripts/XR/Board/TrackMeshBender.cs</code><span>The warp. Read the remarks on <code>AppendBent</code> about the Jacobian <code>k</code>.</span></li>
+    <li><code>Assets/01.Scripts/XR/Board/TrackMeshResampler.cs</code><span>Slices a mesh into bands along its length so a curve has enough rings. <code>Precedes</code> is what stops cracks.</span></li>
+    <li><code>Assets/01.Scripts/XR/Board/TrackMeshProfile.cs</code><span>The parameters. <code>SleeperCount</code> keeps tie spacing even between straights and curves.</span></li>
+    <li><code>Assets/01.Scripts/XR/Board/ProceduralBoardMesh.cs</code><span>The chamfered slab and the tunnel arch. <code>QuadMeshBuilder</code> checks each quad's winding against an outward vector.</span></li>
+    <li><code>Assets/99.Test/EditMode/TrackCurveTests.cs</code>, <code>TrackMeshBenderTests.cs</code><span>7 and 10 cases. The bender tests assert millimetres.</span></li>
+    <li><code>Assets/03.Data/XR/XRBoardAssets.asset</code><span>The values in use: <code>curveSlices: 16</code>, <code>sleepersPerCell: 2</code>, <code>widthScale: 1</code>, <code>sleeperWidthScale: 0.7</code>, even spacing on.</span></li>
+  </ul>
+
+  <h2>Steps</h2>
+  <ol class="steps">
+    <li>
+      <p><strong>Port <code>TrackCurve</code></strong> to <code>TsugiCore</code> as <code>FTsugiTrackCurve</code>, in the same cell-local frame as <code>FTsugiBoardLayout</code>: X east, Z north, origin at the cell centre. Port its seven tests. The train in lesson 13 uses it too.</p>
+    </li>
+    <li>
+      <p><strong>Try the engine's own tool first.</strong> A spline mesh component bends a static mesh along a cubic curve on the GPU. Replace the placeholder bars for curved keys with this and look at the result on the headset.</p>
+      <script type="text/plain" data-lang="cpp" data-title="A curve with USplineMeshComponent">
+#include "Components/SplineMeshComponent.h"
+
+USplineMeshComponent* Rail = NewObject<USplineMeshComponent>(this);
+Rail->SetMobility(EComponentMobility::Movable);
+Rail->SetStaticMesh(RailMesh);                       // the kit rail, running along +X, 100 units long
+Rail->SetForwardAxis(ESplineMeshAxis::X);
+Rail->SetupAttachment(PiecesRoot);
+Rail->RegisterComponent();
+
+const FTsugiTrackCurve Curve = FTsugiTrackCurve::For(Key);
+const FTsugiGroundPoint P0 = Curve.Position(0.0), P1 = Curve.Position(1.0);
+const FTsugiGroundPoint T0 = Curve.Tangent(0.0),  T1 = Curve.Tangent(1.0);
+
+// A cubic that hugs a quarter circle of radius R has end tangents of length (4/3)*tan(pi/8)*3*R = 1.657 R.
+const double Handle = Curve.IsStraight() ? Curve.Length() : 1.657 * FTsugiTrackCurve::Radius;
+
+Rail->SetStartAndEnd(
+    Tsugi::ToLocal(P0.X, P0.Z), Tsugi::ToLocal(T0.X, T0.Z) * Handle,
+    Tsugi::ToLocal(P1.X, P1.Z), Tsugi::ToLocal(T1.X, T1.Z) * Handle,
+    /*bUpdateMesh*/ true);
+      </script>
+      <p>You will see a curve after twenty lines of code, and you will see its two problems. The rail is faceted, because the shader bends the vertices the mesh has and the kit rail has three rings. And every piece is its own draw call. A full 8×8 board has dozens of pieces. Keep this code for comparison, then move on.</p>
+    </li>
+    <li>
+      <p><strong>Prove the winding rule.</strong> In the editor module, write a command that builds a static mesh of one triangle with corners at <code>(0,0,0)</code>, <code>(100,0,0)</code>, <code>(0,100,0)</code> in that order, places it in the level, and look from above (+Z) and from below. Note which side draws. Then swap two indices and look again. Write the answer as a comment at the top of your mesh-writing function. From now on you know, and nobody has to believe a tutorial.</p>
+    </li>
+    <li>
+      <p><strong>Define a plain mesh container in <code>TsugiCore</code>.</strong> The bender's maths depends on nothing but vectors, so it can be tested without the engine, as it is in Unity.</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiCore/Public/TsugiMeshData.h">
+#pragma once
+
+#include "CoreMinimal.h"
+
+/**
+ * A mesh as plain arrays, in the track frame the Unity code uses: X to the right of travel, Y up,
+ * Z along the track. One unit is one cell. Triangles are wound as Unity winds them (clockwise front).
+ * Converted to Unreal's frame and winding in exactly one place: the baker.
+ */
+struct TSUGICORE_API FTsugiMeshData
+{
+    TArray<FVector> Positions;
+    TArray<FVector> Normals;       // empty, or one per position
+    TArray<FVector4> Tangents;     // empty, or one per position; W is the bitangent sign
+    TArray<FVector2D> UVs;         // empty, or one per position
+    TArray<int32> Triangles;       // three indices per triangle
+
+    FBox Bounds() const { return FBox(Positions); }
+    bool HasNormals() const { return Normals.Num() == Positions.Num(); }
+    bool HasTangents() const { return Tangents.Num() == Positions.Num(); }
+    bool HasUVs() const { return UVs.Num() == Positions.Num(); }
+};
+      </script>
+    </li>
+    <li>
+      <p><strong>Port the warp.</strong> This is the heart of the lesson. A source vertex at <code>(x, y, z)</code> goes to the point on the curve at the <code>t</code> its <code>z</code> maps to, offset <code>x</code> to the right of travel and <code>y</code> up. Normals and tangents cannot simply be rotated, because the warp stretches the outside of a bend and squeezes the inside.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="csharp" data-title="Unity: TrackMeshBender.AppendBent">
+var minZ = source.bounds.min.z;
+var depth = Mathf.Max(source.bounds.size.z, 1e-5f);
+var stretch = (float)(curve.Length * (t1 - t0)) / depth;
+var curvature = CurvatureSign(curve) / (float)TrackCurve.Radius;
+
+for (var i = 0; i < sourceVertices.Length; i++)
+{
+    var v = sourceVertices[i];
+    var t = t0 + (t1 - t0) * Mathf.Clamp01((v.z - minZ) / depth);
+    var (px, pz) = curve.Position(t);
+    var (tx, tz) = curve.Tangent(t);
+    var forward = new Vector3((float)tx, 0f, (float)tz);
+    var right = new Vector3(forward.z, 0f, -forward.x);
+    var x = v.x * widthScale;
+    var k = Mathf.Max(1e-4f, stretch * (1f + curvature * x));
+
+    vertices.Add(new Vector3((float)px, 0f, (float)pz) + right * x + Vector3.up * v.y);
+
+    if (hasNormals)
+    {
+        var n = sourceNormals[i];
+        normals.Add((right * n.x + Vector3.up * n.y + forward * (n.z / k)).normalized);
+    }
+
+    if (hasTangents)
+    {
+        var tan = sourceTangents[i];
+        var rotated = (right * tan.x + Vector3.up * tan.y + forward * (tan.z * k)).normalized;
+        tangents.Add(new Vector4(rotated.x, rotated.y, rotated.z, tan.w));
+    }
+
+    if (hasUv) uv.Add(sourceUv[i]);
+}
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="Unreal: FTsugiTrackMeshBender::AppendBent">
+void FTsugiTrackMeshBender::AppendBent(const FTsugiMeshData& Source, const FTsugiTrackCurve& Curve,
+    double T0, double T1, double WidthScale, FTsugiMeshData& Out)
+{
+    const FBox Bounds = Source.Bounds();
+    const double MinZ = Bounds.Min.Z;
+    const double Depth = FMath::Max(Bounds.GetSize().Z, 1e-5);
+    const double Stretch = Curve.Length() * (T1 - T0) / Depth;
+    const double Curvature = CurvatureSign(Curve) / FTsugiTrackCurve::Radius;
+
+    const bool bNormals = Source.HasNormals(), bTangents = Source.HasTangents(), bUVs = Source.HasUVs();
+    const FVector Up(0.0, 1.0, 0.0);                       // track frame: Y is up
+    const int32 First = Out.Positions.Num();
+
+    for (int32 Index = 0; Index < Source.Positions.Num(); ++Index)
+    {
+        const FVector& V = Source.Positions[Index];
+        const double T = T0 + (T1 - T0) * FMath::Clamp((V.Z - MinZ) / Depth, 0.0, 1.0);
+        const FTsugiGroundPoint P = Curve.Position(T);
+        const FTsugiGroundPoint Tangent = Curve.Tangent(T);
+
+        const FVector Forward(Tangent.X, 0.0, Tangent.Z);
+        const FVector Right(Forward.Z, 0.0, -Forward.X);
+        const double X = V.X * WidthScale;
+
+        // The Jacobian along the track. It reaches zero at |x| = Radius: art that wide folds onto the arc centre.
+        const double K = FMath::Max(1e-4, Stretch * (1.0 + Curvature * X));
+
+        Out.Positions.Add(FVector(P.X, 0.0, P.Z) + Right * X + Up * V.Y);
+
+        if (bNormals)
+        {
+            const FVector& N = Source.Normals[Index];
+            Out.Normals.Add((Right * N.X + Up * N.Y + Forward * (N.Z / K)).GetSafeNormal());
+        }
+
+        if (bTangents)
+        {
+            const FVector4& Tan = Source.Tangents[Index];
+            const FVector Rotated = (Right * Tan.X + Up * Tan.Y + Forward * (Tan.Z * K)).GetSafeNormal();
+            Out.Tangents.Add(FVector4(Rotated.X, Rotated.Y, Rotated.Z, Tan.W));
+        }
+
+        if (bUVs) Out.UVs.Add(Source.UVs[Index]);
+    }
+
+    for (const int32 Index : Source.Triangles) Out.Triangles.Add(First + Index);
+}
+        </script>
+      </div>
+      <p>Why divide the normal's along-track part by <code>k</code> and multiply the tangent's? A tangent lies in the surface and stretches with it. A normal must stay perpendicular to the stretched surface, so it transforms by the inverse. Skip this and curved rails are lit as if they were still straight.</p>
+    </li>
+    <li>
+      <p><strong>Port the rest of the build.</strong> <code>Build</code> lays the rails across the whole curve, then sleepers at <code>(i + 0.5) / count</code>. Starting half a pitch in at both ends means two neighbouring pieces never both put a tie on the shared edge.</p>
+      <p>A sleeper is bent across its own stretch of the curve when its half width is under 0.9 of the radius. Wider than that and it is dropped in rigidly, turned to face along the track, because bending it would pinch its inner end to a point. At <code>sleeperWidthScale</code> 0.7 the kit tie spans radius 0.150 to 0.859, clear of the centre, so it bends.</p>
+    </li>
+    <li>
+      <p><strong>Port the resampler.</strong> It slices every triangle into bands along Z by clipping against constant-Z planes, then fan-triangulates each piece. Attributes are interpolated, never recomputed, so hard edges and UV seams survive. The one subtle part is <code>Precedes</code>: when a shared edge is cut, both triangles must compute the cut from the same end, or floating-point differences leave hairline cracks.</p>
+    </li>
+    <li>
+      <p><strong>Write the baker in <code>TsugiEditor</code>.</strong> It reads the two source meshes, converts them to the track frame, runs the bender for each key, converts back, flips the winding, and saves six assets.</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiEditor: reading and writing mesh descriptions (shape)">
+#include "Engine/StaticMesh.h"
+#include "MeshDescription.h"
+#include "StaticMeshAttributes.h"
+#include "AssetRegistry/AssetRegistryModule.h"
+
+// Unreal local (X along the track, Y right, Z up, 100 per cell)  ->  track frame (X right, Y up, Z along, 1 per cell)
+static FVector ToTrackFrame(const FVector3f& P) { return FVector(P.Y, P.Z, P.X) / Tsugi::CellUnits; }
+static FVector3f ToUnrealPosition(const FVector& P) { return FVector3f(Tsugi::ToLocal(P.X, P.Z, P.Y)); }
+static FVector3f ToUnrealDirection(const FVector& D) { return FVector3f(D.Z, D.X, D.Y); }
+
+static FTsugiMeshData Read(const UStaticMesh* Mesh)
+{
+    FTsugiMeshData Data;
+    const FMeshDescription* Description = Mesh->GetMeshDescription(0);
+    FStaticMeshConstAttributes Attributes(*Description);
+    const auto Positions = Attributes.GetVertexPositions();
+    const auto Normals = Attributes.GetVertexInstanceNormals();
+    const auto UVs = Attributes.GetVertexInstanceUVs();
+
+    // One output vertex per triangle corner. Simple, and it keeps hard edges without any welding logic.
+    for (const FTriangleID Triangle : Description->Triangles().GetElementIDs())
+    {
+        const TArrayView<const FVertexInstanceID> Corners = Description->GetTriangleVertexInstances(Triangle);
+
+        // Unreal winds counter-clockwise, the bender expects Unity's clockwise: take the corners as 0, 2, 1.
+        for (const int32 Corner : { 0, 2, 1 })
+        {
+            const FVertexInstanceID Instance = Corners[Corner];
+            Data.Triangles.Add(Data.Positions.Num());
+            Data.Positions.Add(ToTrackFrame(Positions[Description->GetVertexInstanceVertex(Instance)]));
+            const FVector3f N = Normals[Instance];
+            Data.Normals.Add(FVector(N.Y, N.Z, N.X));
+            Data.UVs.Add(FVector2D(UVs.Get(Instance, 0)));
+        }
+    }
+    return Data;
+}
+
+static UStaticMesh* Write(const FTsugiMeshData& Data, const FString& PackagePath, const FString& Name, UMaterialInterface* Material)
+{
+    FMeshDescription Description;
+    FStaticMeshAttributes Attributes(Description);
+    Attributes.Register();
+    const FPolygonGroupID Group = Description.CreatePolygonGroup();
+
+    auto Positions = Attributes.GetVertexPositions();
+    auto Normals = Attributes.GetVertexInstanceNormals();
+    auto UVs = Attributes.GetVertexInstanceUVs();
+
+    for (int32 T = 0; T + 2 < Data.Triangles.Num(); T += 3)
+    {
+        FVertexInstanceID Corners[3];
+        // Back to Unreal's winding: 0, 2, 1 again.
+        const int32 Order[3] = { Data.Triangles[T], Data.Triangles[T + 2], Data.Triangles[T + 1] };
+        for (int32 C = 0; C < 3; ++C)
+        {
+            const FVertexID Vertex = Description.CreateVertex();
+            Positions[Vertex] = ToUnrealPosition(Data.Positions[Order[C]]);
+            Corners[C] = Description.CreateVertexInstance(Vertex);
+            Normals[Corners[C]] = ToUnrealDirection(Data.Normals[Order[C]]);
+            UVs.Set(Corners[C], 0, FVector2f(Data.UVs[Order[C]]));
+        }
+        Description.CreateTriangle(Group, Corners);
+    }
+
+    UPackage* Package = CreatePackage(*(PackagePath / Name));
+    UStaticMesh* Mesh = NewObject<UStaticMesh>(Package, *Name, RF_Public | RF_Standalone);
+    Mesh->GetStaticMaterials().Add(FStaticMaterial(Material));
+
+    Mesh->SetNumSourceModels(1);
+    FMeshBuildSettings& Settings = Mesh->GetSourceModel(0).BuildSettings;
+    Settings.bRecomputeNormals = false;                 // the bender already corrected them
+    Settings.bRecomputeTangents = true;
+    Mesh->CreateMeshDescription(0, MoveTemp(Description));
+    Mesh->CommitMeshDescription(0);
+    Mesh->Build();
+
+    FAssetRegistryModule::AssetCreated(Mesh);
+    Package->MarkPackageDirty();
+    return Mesh;
+}
+      </script>
+      <div class="unverified">
+        <p><span class="tag">Not compiled</span>The mesh description API is large and has shifted between releases. Treat this as the list of calls to look up, not as finished code. Engine source to read: <code>StaticMeshAttributes.h</code>, <code>MeshDescription.h</code>, and any editor code that calls <code>CreateMeshDescription</code>. The two conversion helpers assume the kit rail was imported running along +X; adjust them to what you measured in lesson 7.</p>
+      </div>
+      <p>Expose the bake as a console command, <code>Tsugi.BakeTrack</code>, that reads the rail and sleeper from a settings object and writes to <code>/Game/Art/Track</code>. Because one vertex is written per corner, let the static mesh build weld identical vertices; it does by default.</p>
+    </li>
+    <li>
+      <p><strong>Use the baked meshes.</strong> Give <code>ATsugiBoard</code> an array of six meshes indexed by key, assigned in <code>BP_TsugiBoard</code>. <code>Spawn</code> picks the mesh for the key. The mesh is already in cell-local position and orientation, so the component only needs the cell centre. Because a baked mesh is an ordinary static mesh, pieces of the same key can later share an instanced component if lesson 17 says draw calls are a problem.</p>
+    </li>
+  </ol>
+
+  <h2>Your port</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Unity file</th><th>Unreal</th><th>Module</th><th>Tests</th></tr></thead>
+      <tbody>
+        <tr><td><code>TrackCurve.cs</code></td><td><code>FTsugiTrackCurve</code></td><td><code>TsugiCore</code></td><td><code>TrackCurveTests</code> (7)</td></tr>
+        <tr><td><code>TrackMeshProfile.cs</code></td><td><code>FTsugiTrackMeshProfile</code>, holding two <code>FTsugiMeshData</code></td><td><code>TsugiCore</code></td><td></td></tr>
+        <tr><td><code>TrackMeshResampler.cs</code></td><td><code>FTsugiTrackMeshResampler</code></td><td><code>TsugiCore</code></td><td rowspan="2"><code>TrackMeshBenderTests</code> (10)</td></tr>
+        <tr><td><code>TrackMeshBender.cs</code></td><td><code>FTsugiTrackMeshBender</code></td><td><code>TsugiCore</code></td></tr>
+        <tr><td><code>ProceduralTrackMesh.cs</code></td><td>A box-built straight rail as <code>FTsugiMeshData</code>, used by the tests as a source</td><td><code>TsugiCore</code></td><td></td></tr>
+        <tr><td><code>ProceduralBoardMesh.cs</code>: chamfered tile, arch portal</td><td>Bake as assets with the same writer, or model them. Your choice.</td><td><code>TsugiEditor</code></td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The Unity bender caches meshes per profile and key and frees them on level teardown, and one test covers that cache. Baked assets need no cache. Drop that test and say so in a comment where it would have been.</p>
+  <p>Leave <code>ProceduralBoardMesh.FillRing</code> out. It is the phone's hold-to-erase ring; in XR, lifting a piece erases it.</p>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li><code>Tsugi.Core.TrackCurve</code> tests pass: a curve's length reads π/4, and its ends sit on side midpoints.</li>
+    <li>I saw the faceted spline-mesh curve from step 2 on the headset before replacing it.</li>
+    <li>My single-triangle experiment is written up in a comment, and it says which winding Unreal draws.</li>
+    <li><code>Tsugi.Core.TrackMeshBender</code> tests pass, including "follows the arc within a millimetre" and "ends land on the cell side midpoints".</li>
+    <li><code>Tsugi.BakeTrack</code> produces six assets, and running it twice leaves source control clean.</li>
+    <li>On the board, rails are continuous across every cell boundary, on straights and curves, with no gap, overlap or doubled sleeper.</li>
+    <li>No bent rail shows a face lit from the wrong side or missing from above.</li>
+    <li>A level loads with no mesh generation in the frame: confirm with Unreal Insights or by logging.</li>
+  </ul>
+
+  <h2>Pitfalls</h2>
+  <ul>
+    <li><strong>Curve smoothness comes only from rings along the length.</strong> Raising slices fixes facets; nothing else does. Sixteen is the shipped value. Straights are never cut.</li>
+    <li><strong>The source's extent defines the cell.</strong> The bender maps the source's bounding box along Z onto <code>t</code> from 0 to 1. A rail that is not exactly one cell long still fills the cell, but a rail with stray geometry beyond its ends will be squeezed. Check the bounds you read.</li>
+    <li><strong>Sleeper count below about six leaves gaps on a continuous deck.</strong> The shipped XR value is 2 per cell, a ladder of separate ties, which is deliberate. With even spacing on, a curve gets <code>round(2 × π/4) = 2</code> as well.</li>
+    <li><strong>Double conversion.</strong> The mesh is converted from Unreal to the track frame on read and back on write. If rails come out mirrored or lying on their side, one of the two conversions does not match how the FBX was imported.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q">A rail mesh has three rings of vertices along its length. You bend it with a spline mesh component. How many straight facets does the quarter circle have?</p>
+    <ul>
+      <li>Sixteen</li>
+      <li data-correct>Two</li>
+      <li>It is perfectly smooth, because the GPU bends it.</li>
+    </ul>
+    <p class="why">The shader moves existing vertices. Three rings make two spans. Smoothness needs more rings, which is the resampler's job.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">Why are the bent meshes baked in the editor and not generated on the headset when a level loads?</p>
+    <ul>
+      <li>Generated meshes cannot be rendered on Android.</li>
+      <li data-correct>There are only six and they never change, so the device would be repeating work whose answer is always the same; and the source mesh data is not in a packaged build by default.</li>
+      <li>The editor produces better normals.</li>
+    </ul>
+    <p class="why">Unity generates them at runtime and caches them, which needed the source meshes marked Read/Write. Baking removes both the cost and the flag.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">On a curve, a vertex sits at half width <code>x</code> on the inside of the bend. What happens to the along-track scale <code>k</code> as <code>x</code> approaches the radius?</p>
+    <ul>
+      <li>It doubles.</li>
+      <li data-correct>It approaches zero: that part of the mesh is squeezed onto the arc centre.</li>
+      <li>It stays at 1.</li>
+    </ul>
+    <p class="why"><code>k = stretch × (1 + curvature × x)</code>. On the inside, <code>curvature × x</code> approaches −1. That is why ties are narrowed to 0.7 and why anything wider is placed rigidly.</p>
+  </div>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+<script src="../assets/demos.js"></script>
+</body>
+</html>

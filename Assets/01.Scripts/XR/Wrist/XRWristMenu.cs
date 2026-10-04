@@ -35,7 +35,7 @@ namespace TrainSudoku.XR
     ///
     /// It shows and asks; the shell (<see cref="XRGame"/>) decides. Pressing the roundel raises <see cref="Toggled"/>, an
     /// entry raises <see cref="Chosen"/>, and the settings that act on the board raise their own events. Dominant hand,
-    /// volumes and language are written straight to <see cref="XRPreferences"/>. Copy is English until XR10.
+    /// volumes and language are written straight to <see cref="XRPreferences"/>. Copy comes from the `XR` String Table, and an open page redraws when the language changes.
     /// </remarks>
     public sealed class XRWristMenu : MonoBehaviour
     {
@@ -97,14 +97,17 @@ namespace TrainSudoku.XR
         private XRPreferences _preferences;
         private UIDocument _roundel;
         private UIDocument _panel;
-        private readonly XRPanelTouch _roundelTouch = new XRPanelTouch("wrist roundel", PixelsPerUnit, RoundelSlop, RoundelArmMargin);
+        private readonly XRPanelTouch _roundelTouch = new XRPanelTouch("wrist roundel", PixelsPerUnit, RoundelSlop, RoundelArmMargin) { Cue = XRCue.WristOpen };
         private readonly XRPanelTouch _panelTouch = new XRPanelTouch("wrist menu", PixelsPerUnit);
         private Hand _wristHand = Hand.Left;
         private readonly WatchCheck _watch = new WatchCheck();
         private InputAction _menuButton;
         private float _lastPress = float.NegativeInfinity;
         private IReadOnlyList<WristItem> _items = Array.Empty<WristItem>();
-        private string _title = "";
+        private Func<string> _title = () => "";
+
+        /// <summary>The settings page is on show rather than the entries: what a change of language redraws.</summary>
+        private bool _onSettings;
         private bool _offered;
 
         /// <summary>Whether the roundel is worn and the panel open, and since when the roundel has shown.</summary>
@@ -204,8 +207,17 @@ namespace TrainSudoku.XR
 
         private static InteractorHandedness Handed(Hand hand) => hand == Hand.Left ? InteractorHandedness.Left : InteractorHandedness.Right;
 
+        /// <summary>The language changed: an open page redraws in it (its copy and its fonts both follow the locale).</summary>
+        private void OnLocaleChanged()
+        {
+            if (!_open) return;
+            if (_onSettings) ShowSettings();
+            else ShowMain();
+        }
+
         private void OnEnable()
         {
+            XRText.Changed += OnLocaleChanged;
             _menuButton = new InputAction("Wrist Menu", InputActionType.Button);
             // The left controller's menu button (4.5); the right one's belongs to the system.
             _menuButton.AddBinding("<XRController>{LeftHand}/{MenuButton}");
@@ -219,14 +231,19 @@ namespace TrainSudoku.XR
 
         private void OnDisable()
         {
+            XRText.Changed -= OnLocaleChanged;
             if (_menuButton == null) return;
             _menuButton.performed -= OnMenuButton;
             _menuButton.Dispose();
             _menuButton = null;
         }
 
-        private void OnMenuButton(InputAction.CallbackContext context) =>
+        private void OnMenuButton(InputAction.CallbackContext context)
+        {
+            // No fingertip to sound from: the button is on the left controller, under the wrist.
+            if (Camera.main != null) XRCuePlayer.Play(XRCue.WristOpen, Camera.main.transform.position, Hand.Left);
             Press($"the menu button ({(context.control != null ? context.control.path : "?")})");
+        }
 
         /// <summary>The roundel or the menu button, pressed by <paramref name="source"/>, which the log names.</summary>
         private void Press(string source)
@@ -245,10 +262,11 @@ namespace TrainSudoku.XR
         // ------------------------------------------------------------------ opening and closing
 
         /// <summary>Opens the panel over the wrist, or the controller, or ahead of the eyes, with <paramref name="items"/> under <paramref name="title"/>.</summary>
-        public void Open(IReadOnlyList<WristItem> items, string title)
+        /// <param name="title">Read again whenever the page redraws, so it follows a change of language.</param>
+        public void Open(IReadOnlyList<WristItem> items, Func<string> title)
         {
             _items = items ?? Array.Empty<WristItem>();
-            _title = title ?? "";
+            _title = title ?? (() => "");
             _panelTouch.IgnoredHand = PlacePanel();
             // The fingertip that pressed the roundel starts afresh here too.
             _panelTouch.Disarm();
@@ -422,8 +440,9 @@ namespace TrainSudoku.XR
 
         private void ShowMain()
         {
+            _onSettings = false;
             var card = Begin(_items.Count);
-            Header(card, _title);
+            Header(card, _title());
             foreach (var item in _items)
             {
                 var chosen = item;
@@ -434,34 +453,34 @@ namespace TrainSudoku.XR
         /// <summary>Settings (6.4): dominant hand, the board's height, re-placing it, language, and music and effects volume.</summary>
         private void ShowSettings()
         {
+            _onSettings = true;
             var card = Begin(7);
-            Header(card, "SETTINGS");
+            Header(card, XRText.Get(XRKeys.WristSettings));
 
             var hand = Line(card);
-            Caption(hand, "HAND");
-            Key(hand, "LEFT", () => SetHand(Hand.Left), _preferences.DominantHand == Hand.Left);
-            Key(hand, "RIGHT", () => SetHand(Hand.Right), _preferences.DominantHand == Hand.Right);
+            Caption(hand, XRText.Get(XRKeys.SettingsHand));
+            Key(hand, XRText.Get(XRKeys.SettingsLeft), () => SetHand(Hand.Left), _preferences.DominantHand == Hand.Left);
+            Key(hand, XRText.Get(XRKeys.SettingsRight), () => SetHand(Hand.Right), _preferences.DominantHand == Hand.Right);
 
             var height = Line(card);
-            Caption(height, "BOARD");
-            Key(height, "LOWER", () => NudgeBoard?.Invoke(-NudgeStep), false);
-            Key(height, "RAISE", () => NudgeBoard?.Invoke(NudgeStep), false);
+            Caption(height, XRText.Get(XRKeys.SettingsBoard));
+            Key(height, XRText.Get(XRKeys.SettingsLower), () => NudgeBoard?.Invoke(-NudgeStep), false);
+            Key(height, XRText.Get(XRKeys.SettingsRaise), () => NudgeBoard?.Invoke(NudgeStep), false);
 
-            Key(Line(card), "RE-PLACE BOARD", () => ReplaceBoard?.Invoke(), false);
+            Key(Line(card), XRText.Get(XRKeys.SettingsReplace), () => ReplaceBoard?.Invoke(), false);
 
             var language = Line(card);
-            Caption(language, "LANGUAGE");
-            var code = XRLocale.CurrentCode;
-            Key(language, string.IsNullOrEmpty(code) ? "SYSTEM" : code.ToUpperInvariant(), () =>
-            {
-                XRLocale.Next(_preferences);
-                ShowSettings();
-            }, false);
+            Caption(language, XRText.Get(XRKeys.SettingsLanguage));
+            // Each language named in its own words, in the one face that can draw them all. The page redraws itself once
+            // the new locale is in (OnLocaleChanged): its tables load after the choice, not with it.
+            var name = Key(language, XRLocale.NativeName(XRLocale.CurrentCode), () => XRLocale.Next(_preferences), false);
+            if (_assets != null && _assets.JapaneseFont != null)
+                name.style.unityFontDefinition = new StyleFontDefinition(FontDefinition.FromSDFFont(_assets.JapaneseFont));
 
-            Volume(Line(card), "MUSIC", () => _preferences.MusicVolume, delta => _preferences.StepMusic(delta));
-            Volume(Line(card), "EFFECTS", () => _preferences.EffectsVolume, delta => _preferences.StepEffects(delta));
+            Volume(Line(card), XRText.Get(XRKeys.SettingsMusic), () => _preferences.MusicVolume, delta => _preferences.StepMusic(delta));
+            Volume(Line(card), XRText.Get(XRKeys.SettingsEffects), () => _preferences.EffectsVolume, delta => _preferences.StepEffects(delta));
 
-            Key(Line(card), "‹  BACK", ShowMain, false);
+            Key(Line(card), "‹  " + XRText.Get(XRKeys.SettingsBack), ShowMain, false);
         }
 
         private void SetHand(Hand hand)
@@ -495,12 +514,12 @@ namespace TrainSudoku.XR
         {
             switch (item)
             {
-                case WristItem.Resume: return "RESUME";
-                case WristItem.Retry: return "RETRY";
-                case WristItem.BackToMap: return "LINE MAP";
-                case WristItem.BackToNetwork: return "NETWORK";
-                case WristItem.Settings: return "SETTINGS";
-                case WristItem.Close: return "CLOSE";
+                case WristItem.Resume: return XRText.Get(XRKeys.WristResume);
+                case WristItem.Retry: return XRText.Get(XRKeys.WristRetry);
+                case WristItem.BackToMap: return XRText.Get(XRKeys.WristLineMap);
+                case WristItem.BackToNetwork: return XRText.Get(XRKeys.WristNetwork);
+                case WristItem.Settings: return XRText.Get(XRKeys.WristSettings);
+                case WristItem.Close: return XRText.Get(XRKeys.WristClose);
                 default: return item.ToString().ToUpperInvariant();
             }
         }
@@ -539,7 +558,7 @@ namespace TrainSudoku.XR
         }
 
         /// <summary>A button filling its share of a row, registered for a fingertip.</summary>
-        private void Key(VisualElement line, string text, Action clicked, bool primary)
+        private Button Key(VisualElement line, string text, Action clicked, bool primary)
         {
             var button = XRSignageUi.Button(_assets, text, clicked, primary);
             button.style.flexGrow = 1;
@@ -551,6 +570,7 @@ namespace TrainSudoku.XR
             button.style.fontSize = 42f;
             line.Add(button);
             _panelTouch.Add(button, clicked);
+            return button;
         }
 
         private void Caption(VisualElement line, string text)

@@ -1,0 +1,307 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9620f8c34305754d8cc9a7e49e852d9, type: 3}
+  m_Name: XR_fr
+  m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Tables.StringTable
+  m_LocaleId:
+    m_Code: fr
+  m_SharedData: {fileID: 11400000, guid: 86a4935ea0fa24643b3cb9114c118263, type: 2}
+  m_Metadata:
+    m_Items: []
+  m_TableData:
+  - m_Id: 3436908544
+    m_Localized: "R\xC9SEAU"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3495628800
+    m_Localized: Choisis une ligne sur le plateau
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017408
+    m_Localized: PLAN DE LIGNE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017409
+    m_Localized: "{0} / {1} TERMIN\xC9ES"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017410
+    m_Localized: Choisis une station sur le plateau
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017411
+    m_Localized: REPRENDRE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017412
+    m_Localized: EN PAUSE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017413
+    m_Localized: REPRENDRE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017414
+    m_Localized: "Recommencer, le plan et les r\xE9glages sont dans le menu du poignet"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017415
+    m_Localized: "ARRIV\xC9E"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017416
+    m_Localized: CE TRAJET  {0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017417
+    m_Localized: MEILLEUR  {0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017418
+    m_Localized: NOUVEAU RECORD
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017419
+    m_Localized: "\xC0 L'HEURE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017420
+    m_Localized: "L\xC9GER RETARD"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017421
+    m_Localized: "RETARD\xC9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017422
+    m_Localized: PLAN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017423
+    m_Localized: REFAIRE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017424
+    m_Localized: STATION SUIVANTE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017425
+    m_Localized: "VERS LE R\xC9SEAU"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017426
+    m_Localized: REPRENDRE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017427
+    m_Localized: RECOMMENCER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017428
+    m_Localized: PLAN DE LIGNE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017429
+    m_Localized: "R\xC9SEAU"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017430
+    m_Localized: "R\xC9GLAGES"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017431
+    m_Localized: FERMER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017432
+    m_Localized: MAIN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017433
+    m_Localized: GAUCHE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017434
+    m_Localized: DROITE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017435
+    m_Localized: PLATEAU
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017436
+    m_Localized: BAISSER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017437
+    m_Localized: MONTER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017438
+    m_Localized: REPLACER LE PLATEAU
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017439
+    m_Localized: LANGUE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017440
+    m_Localized: MUSIQUE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017441
+    m_Localized: EFFETS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017442
+    m_Localized: RETOUR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017443
+    m_Localized: Pince pour poser le plateau ici
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017444
+    m_Localized: "Aucune table trouv\xE9e. Pince pour poser le plateau ici,\nou lance la configuration de l'espace dans les r\xE9glages du casque."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017445
+    m_Localized: Regarde une table
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017446
+    m_Localized: "Pince la pi\xE8ce \xE9clair\xE9e dans le bac et l\xE2che-la sur le cercle. C'est l\xE0 que va la voie suivante."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017447
+    m_Localized: "Ensuite : la pi\xE8ce \xE9clair\xE9e, sur le cercle."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017448
+    m_Localized: "Essaie maintenant la pi\xE8ce \xE9clair\xE9e ici. Elle ne rejoint pas la voie d'\xE0 c\xF4t\xE9. Regarde l'aper\xE7u."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017449
+    m_Localized: "Elle est revenue : une voie pos\xE9e \xE0 c\xF4t\xE9 d'une autre doit la rejoindre. Maintenant, celle qui est \xE9clair\xE9e."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017450
+    m_Localized: Chaque nombre compte les voies. Cette ligne a maintenant exactement celles qu'elle demande.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017451
+    m_Localized: "Pose-en une au mauvais endroit, expr\xE8s. Trouve la pi\xE8ce qui va dans cette case."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017452
+    m_Localized: "Ce nombre est pass\xE9 au rouge : trop de voies sur sa ligne. Pince la voie pour la retirer."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017453
+    m_Localized: "Jette-la, ou l\xE2che-la hors du plateau."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017454
+    m_Localized: Tu as compris. Suis le cercle jusqu'au terminus.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017455
+    m_Localized: La voie suivante, ici.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017456
+    m_Localized: Celle-ci d'abord.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017457
+    m_Localized: "Prends la pi\xE8ce \xE9clair\xE9e."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017458
+    m_Localized: "Cette voie \xE9tait d\xE9j\xE0 pos\xE9e. Retire une des tiennes."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017459
+    m_Localized: Cette ligne a plus de voies que son nombre. Retires-en une.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017460
+    m_Localized: LA LIGNE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017461
+    m_Localized: "Ashgate n'a pas encore de chemin de fer. Pose une pi\xE8ce de voie par case pour relier le tunnel S au tunnel E."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017462
+    m_Localized: LES NOMBRES
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017463
+    m_Localized: "Chaque nombre indique combien de pi\xE8ces sa ligne ou sa colonne doit contenir. Exactement autant : il passe au vert quand le compte est juste, au rouge quand il est d\xE9pass\xE9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017464
+    m_Localized: "D\xC9PART"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017465
+    m_Localized: "Quand la voie relie S \xE0 E et que tous les nombres sont respect\xE9s, le train part. Prends ton temps : l'horloge ne d\xE9cide que des \xE9toiles."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017466
+    m_Localized: SUIVANT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017467
+    m_Localized: COMMENCER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851079933952
+    m_Localized: "Tu peux d\xE9placer ce plateau. Approche tes mains de la barre."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237120
+    m_Localized: Pince la barre des deux mains.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237121
+    m_Localized: "Bouge les mains pour le porter. \xC9carte-les ou rapproche-les pour changer sa taille."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237122
+    m_Localized: LE PLATEAU
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237123
+    m_Localized: "Ce plateau va o\xF9 tu veux. Pince sa barre des deux mains, une de chaque c\xF4t\xE9, puis porte-le, tourne-le ou \xE9carte les mains pour l'agrandir."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237124
+    m_Localized: PASSER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237125
+    m_Localized: REPLACER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237126
+    m_Localized: "Pour replacer le plateau \xE0 tout moment, appuie sur le bouton au dos du poignet pour mettre en pause, puis choisis R\xC9GLAGES et REPLACER LE PLATEAU."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237127
+    m_Localized: COMPRIS
+    m_Metadata:
+      m_Items: []
+  references:
+    version: 2
+    RefIds: []

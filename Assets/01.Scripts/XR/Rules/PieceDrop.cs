@@ -14,6 +14,13 @@ namespace TrainSudoku.XR.Rules
 
         public Board Board { get; }
 
+        /// <summary>
+        /// Optional: which landings the tutorial accepts right now, as (x, y, key). A landing it refuses is sent back
+        /// marked <see cref="DropResult.Steered"/>, and its ghost reads illegal so hover and release agree. Null, the
+        /// normal game, accepts every landing the rules do. Lifts and throws are never gated.
+        /// </summary>
+        public Func<int, int, PieceKey, bool> Gate { get; set; }
+
         public PieceDrop(Board board)
         {
             Board = board ?? throw new ArgumentNullException(nameof(board));
@@ -50,7 +57,7 @@ namespace TrainSudoku.XR.Rules
             if (!(Held(hand) is HeldPiece held) || !cell.HasValue) return GhostTint.None;
             var (x, y) = cell.Value;
             if (!Board.InBounds(x, y)) return GhostTint.None;
-            return CanLand(held.Key, x, y) ? GhostTint.Legal : GhostTint.Illegal;
+            return Admitted(held.Key, x, y) && CanLand(held.Key, x, y) ? GhostTint.Legal : GhostTint.Illegal;
         }
 
         /// <summary>
@@ -69,6 +76,7 @@ namespace TrainSudoku.XR.Rules
                 return new DropResult(DropOutcome.Puffed, hand, key, null, origin);
 
             var (x, y) = cell.Value;
+            if (!Admitted(key, x, y)) return SendBack(hand, key, cell, origin, steered: true);
             if (!(Board[x, y] is Piece existing))
             {
                 if (!Board.TryPlace(x, y, key)) return SendBack(hand, key, cell, origin);
@@ -100,14 +108,17 @@ namespace TrainSudoku.XR.Rules
         /// An illegal drop never costs the player anything: the piece goes back where it came from. A lifted piece is
         /// re-seated in its cell if that is still legal, and puffs if the board has changed around it since.
         /// </summary>
-        private DropResult SendBack(Hand hand, PieceKey key, (int X, int Y)? cell, (int X, int Y)? origin)
+        private DropResult SendBack(Hand hand, PieceKey key, (int X, int Y)? cell, (int X, int Y)? origin, bool steered = false)
         {
-            if (!origin.HasValue) return new DropResult(DropOutcome.Returned, hand, key, cell, illegalDrop: true);
+            var illegal = !steered;
+            if (!origin.HasValue) return new DropResult(DropOutcome.Returned, hand, key, cell, illegalDrop: illegal, steered: steered);
             var (ox, oy) = origin.Value;
             return Board.TryPlace(ox, oy, key)
-                ? new DropResult(DropOutcome.Returned, hand, key, cell, origin, illegalDrop: true, boardChanged: true)
-                : new DropResult(DropOutcome.Puffed, hand, key, cell, origin, illegalDrop: true);
+                ? new DropResult(DropOutcome.Returned, hand, key, cell, origin, illegalDrop: illegal, boardChanged: true, steered: steered)
+                : new DropResult(DropOutcome.Puffed, hand, key, cell, origin, illegalDrop: illegal, steered: steered);
         }
+
+        private bool Admitted(PieceKey key, int x, int y) => Gate == null || Gate(x, y, key);
 
         private static DropResult Refuse(Hand hand, RefuseReason reason, PieceKey key, (int X, int Y)? cell) =>
             new DropResult(DropOutcome.Refused, hand, key, cell, refuseReason: reason);

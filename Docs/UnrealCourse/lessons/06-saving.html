@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 06 · Saving</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="6"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 06</p>
+  <h1>Saving</h1>
+  <p class="lede">Progress is one small JSON file, written on every change and built to survive a crash mid-write and a damaged file. You port the format and the file store, and move the headset's own settings from <code>PlayerPrefs</code> to Unreal config.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd><code>save.json</code> on the headset in the same format Unity writes, a file store that swaps in atomically, and preferences that survive a restart.</dd>
+    <dt>On the headset</dt><dd>Complete a level with console commands, kill the app, start it again: the next level is unlocked.</dd>
+    <dt>Unity equivalent</dt><dd>Milestone M9, "JSON save with auto-save".</dd>
+  </dl>
+
+  <h2>The format</h2>
+  <script type="text/plain" data-lang="json" data-title="save.json, version 2">
+{
+  "version": 2,
+  "bestTimes": {
+    "ashfold": 88.25,
+    "simple": 41.5
+  },
+  "stars": {
+    "ashfold": 3,
+    "simple": 2
+  },
+  "inProgress": {
+    "corner": {
+      "elapsed": 40.25,
+      "pieces": [
+        { "x": 1, "y": 0, "key": "NE" }
+      ]
+    }
+  }
+}
+  </script>
+  <p>Rules the reader follows, from <code>SaveJson.cs</code>:</p>
+  <ul>
+    <li>Keys are written sorted, so two saves with the same content are the same text.</li>
+    <li>Any well-formed JSON is accepted and unknown members are ignored.</li>
+    <li>A bad entry under <code>bestTimes</code> fails the whole file. Unlocking is derived from best times, so a half-read set would silently lock levels.</li>
+    <li>A bad entry under <code>stars</code> or <code>inProgress</code> is skipped. Neither may cost the player their best times.</li>
+    <li>A version 1 file has no <code>stars</code>. It loads, <code>AwardMissingStars</code> fills the stars in from each level's thresholds, and the next write is version 2.</li>
+  </ul>
+  <div class="note">
+    <p><span class="tag">Docs drift</span><code>CLAUDE.md</code> still shows the version 1 format. The code is at version 2. Port the code.</p>
+  </div>
+
+  <h2>Unreal concepts</h2>
+
+  <h3>Files and paths</h3>
+  <p><code>FPaths</code> names the engine's folders; <code>FFileHelper</code> reads and writes whole files; <code>IFileManager</code> moves and deletes them. All three are in the <code>Core</code> module, so the file store can stay in <code>TsugiCore</code>.</p>
+  <p><code>FPaths::ProjectSavedDir()</code> is the equivalent of <code>Application.persistentDataPath</code>: the per-app writable folder on every platform.</p>
+
+  <h3>The Json module</h3>
+  <p>Unreal has a JSON reader and writer in the <code>Json</code> module, which depends only on <code>Core</code>. Add it to <code>TsugiCore.Build.cs</code>. You get a DOM of <code>FJsonObject</code> and <code>FJsonValue</code>, which replaces the 250-line hand-written parser in the C#. That parser existed only because Core could not reference Unity's JSON.</p>
+
+  <h3>USaveGame, and why this port does not use it</h3>
+  <p>The usual Unreal way to save is a <code>USaveGame</code> subclass with <code>UPROPERTY</code> fields, written with <code>UGameplayStatics::SaveGameToSlot</code>. It is binary, versioned by the engine, and needs almost no code. If you were starting fresh you would probably use it.</p>
+  <p>Here the format is a contract. It is pinned by tests, it is readable when a tester sends you their file, and the reader's tolerance rules are deliberate. Keeping it means 40 test cases come across and behaviour stays identical. Know that <code>USaveGame</code> exists; you will meet it in every other Unreal project.</p>
+
+  <h3>Config</h3>
+  <p>Settings that belong to the device, such as which hand is dominant, are not progress. Unity kept them in <code>PlayerPrefs</code>. Unreal's equivalent is the config system: <code>.ini</code> files layered from engine defaults down to a per-user file. <code>GConfig</code> reads and writes them, and <code>GGameUserSettingsIni</code> names the per-user file that survives updates.</p>
+
+  <h2>Read first</h2>
+  <ul class="files">
+    <li><code>Assets/01.Scripts/Core/SaveJson.cs</code><span><code>Write</code> is the layout. In <code>TryRead</code>, find the three places where a bad entry fails the file or is skipped.</span></li>
+    <li><code>Assets/01.Scripts/Core/FileSaveStore.cs</code><span><code>Save()</code> is the temp-file swap. <code>Reload()</code> sets a bad file aside as <code>.corrupt</code>.</span></li>
+    <li><code>Assets/01.Scripts/XR/Rules/XRPreferences.cs</code><span>Dominant hand, two volumes, locale, behind <code>IPreferenceStore</code>.</span></li>
+    <li><code>Assets/01.Scripts/XR/Wrist/XRPlayerPrefsStore.cs</code><span>24 lines: the device side of that interface.</span></li>
+    <li><code>Assets/99.Test/EditMode/SaveJsonTests.cs</code>, <code>FileSaveStoreTests.cs</code>, <code>StarsAndSaveV2Tests.cs</code>, <code>Assets/99.Test/XR/EditMode/XRPreferencesTests.cs</code></li>
+  </ul>
+
+  <h2>Steps</h2>
+  <ol class="steps">
+    <li>
+      <p><strong>Port the writer by hand.</strong> The module's own writer would work, but writing the text yourself keeps the key order and the layout exactly as the tests expect.</p>
+      <script type="text/plain" data-lang="cpp" data-title="Unreal: TsugiSaveJson.cpp (Write)">
+#include "TsugiSaveJson.h"
+#include "TsugiPieceKey.h"
+
+namespace
+{
+    void AppendString(FString& Out, const FString& Text)
+    {
+        Out += TEXT('"');
+        for (const TCHAR Character : Text)
+        {
+            switch (Character)
+            {
+                case TEXT('"'):  Out += TEXT("\\\""); break;
+                case TEXT('\\'): Out += TEXT("\\\\"); break;
+                case TEXT('\n'): Out += TEXT("\\n");  break;
+                case TEXT('\r'): Out += TEXT("\\r");  break;
+                case TEXT('\t'): Out += TEXT("\\t");  break;
+                default:
+                    if (Character < 0x20) Out += FString::Printf(TEXT("\\u%04x"), static_cast<uint32>(Character));
+                    else Out += Character;
+            }
+        }
+        Out += TEXT('"');
+    }
+
+    /** Ordinal order, like StringComparer.Ordinal. FString's own < ignores case, which is not the same order. */
+    TArray<FString> SortedKeys(TArray<FString> Keys)
+    {
+        Keys.Sort([](const FString& A, const FString& B) { return A.Compare(B, ESearchCase::CaseSensitive) < 0; });
+        return Keys;
+    }
+}
+
+FString FTsugiSaveJson::Write(const FTsugiSaveData& Data)
+{
+    FString Out;
+    Out += FString::Printf(TEXT("{\n  \"version\": %d"), FTsugiSaveData::CurrentVersion);   // always the current version
+
+    Out += TEXT(",\n  \"bestTimes\": {");
+    bool bFirst = true;
+    TArray<FString> Ids;
+    Data.BestTimes.GetKeys(Ids);
+    for (const FString& Id : SortedKeys(Ids))
+    {
+        Out += bFirst ? TEXT("\n    ") : TEXT(",\n    ");
+        AppendString(Out, Id);
+        Out += TEXT(": ") + FString::SanitizeFloat(Data.BestTimes[Id]);
+        bFirst = false;
+    }
+    Out += bFirst ? TEXT("}") : TEXT("\n  }");
+
+    // "stars" and "inProgress": the same pattern. Port them from SaveJson.Write.
+
+    Out += TEXT("\n}\n");
+    return Out;
+}
+      </script>
+      <div class="trap">
+        <p><span class="tag">One real difference</span>C# writes doubles with the round-trip format, so 12 seconds is <code>12</code>. <code>FString::SanitizeFloat</code> writes <code>12.0</code>. Both are valid JSON and each side reads the other's file. A Unity test that compares exact text for a whole number will need its expected string changed; a test that reads back what it wrote will not.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>Port the reader on the Json module.</strong> The skeleton shows the two different tolerance rules.</p>
+      <script type="text/plain" data-lang="cpp" data-title="Unreal: TsugiSaveJson.cpp (TryRead)">
+#include "Dom/JsonObject.h"
+#include "Serialization/JsonReader.h"
+#include "Serialization/JsonSerializer.h"
+
+bool FTsugiSaveJson::TryRead(const FString& Json, FTsugiSaveData& OutData)
+{
+    TSharedPtr<FJsonObject> Root;
+    const TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Json);
+    if (!FJsonSerializer::Deserialize(Reader, Root) || !Root.IsValid()) return false;
+
+    FTsugiSaveData Result;
+
+    double Version = 0;
+    if (Root->TryGetNumberField(TEXT("version"), Version)) Result.Version = static_cast<int32>(Version);
+
+    // bestTimes: one bad entry fails the whole file.
+    if (Root->HasField(TEXT("bestTimes")))
+    {
+        const TSharedPtr<FJsonObject>* Times = nullptr;
+        if (!Root->TryGetObjectField(TEXT("bestTimes"), Times)) return false;
+        for (const auto& Pair : (*Times)->Values)
+        {
+            double Seconds = 0;
+            if (!Pair.Value.IsValid() || !Pair.Value->TryGetNumber(Seconds)) return false;
+            if (Seconds < 0 || !FMath::IsFinite(Seconds)) return false;
+            Result.BestTimes.Add(FString(Pair.Key), Seconds);
+        }
+    }
+
+    // stars: a bad entry is skipped, never fatal. Valid values are 1 to 3.
+    // inProgress: a bad entry is skipped. An entry needs a finite, non-negative "elapsed" and a "pieces" array
+    // whose items each have integer x, y and a key that TryParsePieceKey accepts.
+
+    OutData = MoveTemp(Result);
+    return true;
+}
+      </script>
+      <div class="unverified">
+        <p><span class="tag">Check in your engine</span>The <code>FJsonObject</code> accessors changed their string parameter types across 5.x releases. If a call does not compile, read <code>Dom/JsonObject.h</code> and use what it declares.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>Port the file store.</strong> The write is the part that matters. A crash between the two steps leaves either the old file or the new one, never half of one.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="csharp" data-title="Unity: FileSaveStore.cs">
+private void Save()
+{
+    try
+    {
+        var directory = System.IO.Path.GetDirectoryName(Path);
+        if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+        var temp = Path + ".tmp";
+        File.WriteAllText(temp, SaveJson.Write(_data), new UTF8Encoding(false));
+        if (File.Exists(Path)) File.Replace(temp, Path, null);
+        else File.Move(temp, Path);
+    }
+    catch (IOException e)
+    {
+        _log?.Invoke($"Could not write the save file: {e.Message}");
+    }
+}
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="Unreal: TsugiFileSaveStore.cpp">
+#include "TsugiFileSaveStore.h"
+#include "TsugiSaveJson.h"
+#include "HAL/FileManager.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+
+void FTsugiFileSaveStore::Save()
+{
+    IFileManager& Files = IFileManager::Get();
+    Files.MakeDirectory(*FPaths::GetPath(Path), /*Tree*/ true);
+
+    const FString Temp = Path + TEXT(".tmp");
+    if (!FFileHelper::SaveStringToFile(FTsugiSaveJson::Write(Data), *Temp, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM))
+    {
+        Log(TEXT("Could not write the save file."));
+        return;
+    }
+
+    // Replace in one step: a crash here leaves either the old file or the new one.
+    if (!Files.Move(*Path, *Temp, /*Replace*/ true, /*EvenIfReadOnly*/ true))
+    {
+        Log(TEXT("Could not swap the save file into place."));
+    }
+}
+
+void FTsugiFileSaveStore::Reload()
+{
+    bLoadedFromCorruptFile = false;
+    Data = FTsugiSaveData();
+
+    IFileManager& Files = IFileManager::Get();
+    if (!Files.FileExists(*Path)) return;
+
+    FString Text;
+    if (!FFileHelper::LoadFileToString(Text, *Path))
+    {
+        Log(TEXT("Could not read the save file."));
+        return;
+    }
+
+    FTsugiSaveData Loaded;
+    if (FTsugiSaveJson::TryRead(Text, Loaded))
+    {
+        Data = MoveTemp(Loaded);
+        return;
+    }
+
+    bLoadedFromCorruptFile = true;
+    Log(TEXT("The save file is not valid; starting with no progress and keeping a copy with the .corrupt suffix."));
+    Files.Move(*(Path + TEXT(".corrupt")), *Path, /*Replace*/ true);
+}
+        </script>
+      </div>
+      <p>The C# takes an <code>Action&lt;string&gt;</code> for logging so Core does not depend on Unity's logger. In Unreal, logging is in <code>Core</code>, so <code>Log</code> can simply be <code>UE_LOG</code> with a category you declare in <code>TsugiCore</code>.</p>
+    </li>
+    <li>
+      <p><strong>Switch the subsystem to the file store.</strong> One line changes in <code>UTsugiGameSubsystem::Initialize</code>:</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiGameSubsystem.cpp">
+const FString SavePath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("save.json"));
+UE_LOG(LogTsugiFlow, Log, TEXT("Save file: %s"), *FPaths::ConvertRelativePathToFull(SavePath));
+Store = MakeShared<FTsugiFileSaveStore>(SavePath);
+      </script>
+      <p>Read that log line on the headset and write the path into <code>BUILDING.md</code>. You will want to pull the file off the device when testing.</p>
+      <div class="unverified">
+        <p><span class="tag">Not confirmed</span>Where <code>ProjectSavedDir</code> lands on Quest depends on an Android project setting about using the external files directory. The Unity build writes under <code>/sdcard/Android/data/&lt;package&gt;/files/</code>. Do not assume the Unreal path; log it.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>Port the preferences.</strong> <code>XRPreferences</code> and its in-memory store go to <code>TsugiCore</code> unchanged in shape. The device store goes to <code>TsugiXR</code> and writes config.</p>
+      <script type="text/plain" data-lang="cpp" data-title="Unreal: TsugiConfigPreferenceStore.cpp">
+#include "TsugiConfigPreferenceStore.h"
+#include "Misc/ConfigCacheIni.h"
+
+namespace
+{
+    const TCHAR* Section = TEXT("Tsugi.XR");
+}
+
+int32 FTsugiConfigPreferenceStore::GetInt(const FString& Key, int32 Fallback) const
+{
+    int32 Value = Fallback;
+    GConfig->GetInt(Section, *Key, Value, GGameUserSettingsIni);
+    return Value;
+}
+
+void FTsugiConfigPreferenceStore::SetInt(const FString& Key, int32 Value)
+{
+    GConfig->SetInt(Section, *Key, Value, GGameUserSettingsIni);
+    GConfig->Flush(false, GGameUserSettingsIni);     // PlayerPrefs.Save()
+}
+
+// GetString / SetString: the same with GConfig->GetString and SetString.
+      </script>
+      <p>Keep the four key names from the C# (<code>tsugi.xr.dominantHand</code> and so on). Create the preferences in the subsystem beside the flow and expose them with a getter.</p>
+    </li>
+    <li>
+      <p><strong>Save at the same moments Unity does.</strong> For now, add a <code>Tsugi.Save</code> console command. The real triggers arrive with the systems that raise them: after every board change (lesson 11), on entering Pause (lesson 14) and when the app loses focus or is suspended (lesson 14).</p>
+    </li>
+  </ol>
+
+  <h2>Your port</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Unity file</th><th>Unreal class</th><th>Module</th><th>Tests to port</th></tr></thead>
+      <tbody>
+        <tr><td><code>SaveJson.cs</code></td><td><code>FTsugiSaveJson</code>, <code>FTsugiSaveData</code></td><td><code>TsugiCore</code></td><td><code>SaveJsonTests</code> (29 cases)</td></tr>
+        <tr><td><code>FileSaveStore.cs</code></td><td><code>FTsugiFileSaveStore</code></td><td><code>TsugiCore</code></td><td><code>FileSaveStoreTests</code> (12)</td></tr>
+        <tr><td>the save half of <code>StarsAndSaveV2Tests</code></td><td></td><td></td><td>16 cases, including the v1 to v2 migration</td></tr>
+        <tr><td><code>XRPreferences.cs</code>, <code>DropResult.cs</code>'s <code>Hand</code> enum</td><td><code>FTsugiPreferences</code>, <code>ITsugiPreferenceStore</code>, <code>ETsugiHand</code></td><td><code>TsugiCore</code></td><td><code>XRPreferencesTests</code></td></tr>
+        <tr><td><code>XRPlayerPrefsStore.cs</code></td><td><code>FTsugiConfigPreferenceStore</code></td><td><code>TsugiXR</code></td><td>checked by hand on the device</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The file store tests write real files. Give each test its own folder under <code>FPaths::AutomationTransientDir()</code> and delete it afterwards.</p>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li>All tests under <code>Tsugi.Core.SaveJson</code>, <code>FileSaveStore</code>, <code>StarsAndSave</code> and <code>Preferences</code> pass.</li>
+    <li>A <code>save.json</code> copied from a Unity build loads in the Unreal build with the same best times and stars.</li>
+    <li>A version 1 file loads, gains stars, and is written back as version 2.</li>
+    <li>Replacing <code>save.json</code> with <code>{ broken</code> and starting the game produces <code>save.json.corrupt</code> and a fresh save, with one warning in the log.</li>
+    <li>On the headset: complete level 0 by console, force-stop the app, relaunch; level 1 starts.</li>
+    <li>On the headset: a preference written by console survives a relaunch.</li>
+  </ul>
+
+  <h2>Pitfalls</h2>
+  <ul>
+    <li><strong>A byte-order mark.</strong> Unity writes UTF-8 without a BOM. Ask <code>SaveStringToFile</code> for the same, as the code above does, or a file written by one engine may be refused by the other's strict reader.</li>
+    <li><strong>Writing on every change is deliberate.</strong> The file is a few kilobytes. Do not batch or delay writes to "optimise" them: a headset can be taken off and the app killed at any moment.</li>
+    <li><strong>Restoring a board.</strong> A saved attempt is applied with <code>SetUnchecked</code>, never by replaying <code>TryPlace</code>. Replaying in raster order can refuse a board that is perfectly legal, because legality depends on what was already there.</li>
+    <li><strong>Nothing XR-only goes in <code>save.json</code>.</strong> Decision X1 in the XR spec. The anchor id, the cell size and the dominant hand live in preferences.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q">The file has a valid <code>bestTimes</code> block and one entry in <code>inProgress</code> whose <code>key</code> is <code>"XX"</code>. What does the reader do?</p>
+    <ul>
+      <li>Rejects the file and sets it aside as corrupt.</li>
+      <li data-correct>Loads the best times and skips that in-progress entry.</li>
+      <li>Loads the entry with a default key.</li>
+    </ul>
+    <p class="why">An unfinished attempt is worth less than the player's record. Only a bad best time, which unlocking depends on, fails the file.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">Why write to <code>save.json.tmp</code> and then move it over <code>save.json</code>?</p>
+    <ul>
+      <li>It is faster than writing in place.</li>
+      <li data-correct>If the app dies during the write, the previous save is still intact.</li>
+      <li>Android does not allow overwriting files.</li>
+    </ul>
+    <p class="why">Writing in place truncates the file first. A crash at that moment leaves an empty save.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">Where does the dominant-hand setting belong?</p>
+    <ul>
+      <li>In <code>save.json</code>, with the rest of the player's data.</li>
+      <li data-correct>In per-user config, through the preference store.</li>
+      <li>In a data asset.</li>
+    </ul>
+    <p class="why">It belongs to the device and the person wearing it, not to puzzle progress. Data assets are read-only content shipped in the build.</p>
+  </div>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+</body>
+</html>

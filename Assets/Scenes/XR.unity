@@ -444,6 +444,7 @@ MonoBehaviour:
   network: {fileID: 11400000, guid: 18fa057227d204e359a11e887abe3e35, type: 2}
   assets: {fileID: 11400000, guid: 8b9c117c414dc4b4e990bdc7e9c2c5fd, type: 2}
   signage: {fileID: 11400000, guid: 5582cd2c5d6f16a4783f9b5c331aecf8, type: 2}
+  cues: {fileID: 11400000, guid: 7fd05d31925d7404cabbc57ef98dbab8, type: 2}
   placement: {fileID: 2147283166}
   grabInput: {fileID: 1320072772}
   dominantHand: 1

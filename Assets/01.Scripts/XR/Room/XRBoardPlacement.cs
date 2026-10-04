@@ -28,10 +28,10 @@ namespace TrainSudoku.XR
         private const string CellKey = "tsugi.xr.boardCell";
 
         /// <summary>
-        /// The range the two-hand handle may scale a cell to, in metres (X6, revised 2026-09-14): below 4 cm a piece is
-        /// too small to pinch reliably with hand tracking.
+        /// The range the two-hand handle may scale a cell to, in metres (X6, revised 2026-10-02): below 5 cm a piece is
+        /// too small to pinch accurately off the board with hand tracking. The first floor, 4 cm, was too low on the headset.
         /// </summary>
-        public const float MinCellSize = 0.04f;
+        public const float MinCellSize = 0.05f;
         public const float MaxCellSize = 0.09f;
 
         /// <summary>How close to a detected surface a board let go of by the handle must be to settle onto it, in metres.</summary>
@@ -468,8 +468,8 @@ namespace TrainSudoku.XR
         }
 
         /// <summary>
-        /// The one thing the XR edition ever attaches to the head, and only while placing (XR-PRD 8). The copy is
-        /// English until XR10 gives XR its String Table.
+        /// The one thing the XR edition ever attaches to the head, and only while placing (XR-PRD 8). Its copy is the `XR`
+        /// String Table's, in a face that can draw it (<see cref="XRPalette.CopyFont"/>), set on every show.
         /// </summary>
         private void BuildSign()
         {
@@ -489,11 +489,18 @@ namespace TrainSudoku.XR
             var forward = Flat(head.forward);
             _sign.transform.SetPositionAndRotation(head.position + forward * SignDistance + Vector3.up * SignRaise,
                 Quaternion.LookRotation(forward, Vector3.up));
-            _sign.text = onSurface
-                ? "Pinch to put the board here"
+            var font = XRPalette.CopyFont;
+            if (_sign.font != font)
+            {
+                _sign.font = font;
+                _sign.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+            }
+
+            _sign.text = XRText.Get(onSurface
+                ? XRKeys.PlacementPinch
                 : !_surfacesAllowed || Time.time - _locatingSince > NoSurfaceHintDelay
-                    ? "No table found. Pinch to place the board here,\nor run Space Setup in the headset settings."
-                    : "Look at a table";
+                    ? XRKeys.PlacementNoTable
+                    : XRKeys.PlacementLook);
         }
     }
 }

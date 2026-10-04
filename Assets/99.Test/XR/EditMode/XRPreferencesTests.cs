@@ -43,6 +43,17 @@ namespace TrainSudoku.XR.Tests
         }
 
         [Test]
+        public void TheBoardLessonIsOwedUntilItIsDoneAndThenNeverAgain()
+        {
+            var store = new InMemoryPreferenceStore();
+            var first = new XRPreferences(store);
+            Assert.IsFalse(first.BoardLessonDone);
+            first.BoardLessonDone = true;
+
+            Assert.IsTrue(new XRPreferences(store).BoardLessonDone);
+        }
+
+        [Test]
         public void VolumeStaysInItsRange()
         {
             var preferences = new XRPreferences(new InMemoryPreferenceStore());

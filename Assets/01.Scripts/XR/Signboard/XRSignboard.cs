@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using TrainSudoku.Core;
 using TrainSudoku.Game;
+using TrainSudoku.XR.Rules;
 using UnityEngine;
 using UnityEngine.UIElements;
 using static TrainSudoku.XR.XRSignageUi;
@@ -26,7 +27,7 @@ namespace TrainSudoku.XR
     /// A world-space <see cref="UIDocument"/> that is switched off loses whatever was built into it, so every view is
     /// built afresh into the live root each time it is shown, and hiding the board switches the whole sign off.
     ///
-    /// Copy is English until XR10 brings the XR String Table; the words are the phone's where the phone has them.
+    /// Copy comes from the `XR` String Table (<see cref="XRText"/>); the words are the phone's where the phone has them.
     /// </remarks>
     public sealed class XRSignboard : MonoBehaviour
     {
@@ -83,6 +84,7 @@ namespace TrainSudoku.XR
         /// <summary>The verdict stamp while it is being pressed on, and when that starts; null once it rests.</summary>
         private VisualElement _stamp;
         private float _stampAt;
+        private bool _stampHeard;
 
         public static XRSignboard Create(Transform boardRoot, XRSignageAssets assets)
         {
@@ -182,10 +184,10 @@ namespace TrainSudoku.XR
             words.Add(Text("NEXT STATION", 60f, true, XRPalette.InkDim, 12f));
 
             var strip = Led(card);
-            strip.Add(Text("NETWORK", 64f, true, XRPalette.Led, 6f));
+            strip.Add(Text(XRText.Get(XRKeys.MastheadNetwork), 64f, true, XRPalette.Led, 6f));
             strip.Add(Spacer());
             strip.Add(StarTally(stars));
-            Put(card, Text("Choose a line on the platform", 42f, false, XRPalette.InkDim)).style.marginTop = 18f;
+            Put(card, Text(XRText.Get(XRKeys.MastheadHint), 42f, false, XRPalette.InkDim)).style.marginTop = 18f;
         }
 
         /// <summary>One line's map (6.2): its code and name, and how far along it the player is, on the LED strip.</summary>
@@ -201,14 +203,14 @@ namespace TrainSudoku.XR
             words.style.marginLeft = 40f;
             row.Add(words);
             words.Add(Text(line != null ? line.DisplayName.ToUpperInvariant() : "", 118f, true, XRPalette.Ink, 4f));
-            words.Add(Text("LINE MAP", 56f, true, XRPalette.InkDim, 10f));
+            words.Add(Text(XRText.Get(XRKeys.LineMapTitle), 56f, true, XRPalette.InkDim, 10f));
 
             var strip = Led(card);
-            strip.Add(Text($"{cleared} / {stations} CLEARED", 64f, true, XRPalette.Led, 6f));
+            strip.Add(Text(XRText.Get(XRKeys.LineMapCleared, cleared, stations), 64f, true, XRPalette.Led, 6f));
             strip.Add(Spacer());
             strip.Add(StarTally(stars));
 
-            Put(card, Text("Choose a station on the platform", 42f, false, XRPalette.InkDim)).style.marginTop = 18f;
+            Put(card, Text(XRText.Get(XRKeys.LineMapHint), 42f, false, XRPalette.InkDim)).style.marginTop = 18f;
         }
 
         /// <summary>Play (6.2): the station, the clock and the stars still there to beat.</summary>
@@ -252,17 +254,42 @@ namespace TrainSudoku.XR
             var head = StationHead(card, line, stationIndex);
             Put(head, Text(station != null ? station.DisplayName.ToUpperInvariant() : "", 60f, true, XRPalette.Ink, 3f)).style.marginLeft = 24f;
             head.Add(Spacer());
-            head.Add(Button("RESUME", resume, true));
+            head.Add(Button(XRText.Get(XRKeys.PauseResume), resume, true));
 
             var strip = Led(card);
             strip.style.flexGrow = 1;
             strip.style.marginTop = 24f;
-            strip.Add(Text("PAUSED", 120f, true, XRPalette.Led, 12f));
+            strip.Add(Text(XRText.Get(XRKeys.PauseTitle), 120f, true, XRPalette.Led, 12f));
             strip.Add(Spacer());
             _clock = Text("00:00", 150f, true, XRPalette.Led, 4f);
             strip.Add(_clock);
 
-            Put(card, Text("Retry, the line map and settings are on the wrist menu", 42f, false, XRPalette.InkDim)).style.marginTop = 18f;
+            Put(card, Text(XRText.Get(XRKeys.PauseHint), 42f, false, XRPalette.InkDim)).style.marginTop = 18f;
+        }
+
+        /// <summary>
+        /// One card of the tutorial's rules briefing (6.2, 7): shown once per session on the tutorial station with no rails
+        /// laid, in place of the station view, which comes back after the last card.
+        /// </summary>
+        public void ShowBriefing(LineDefinition line, int page, int pages, string title, string body, string button, Action next)
+        {
+            var card = Begin();
+            var head = Row(card);
+            head.style.alignItems = Align.Center;
+            head.Add(Badge(line, 96f));
+            Put(head, Text(title, 88f, true, XRPalette.Ink, 6f)).style.marginLeft = 32f;
+            head.Add(Spacer());
+            head.Add(Text($"{page + 1} / {pages}", 52f, true, XRPalette.InkDim, 4f));
+
+            var words = Put(card, Text(body, 50f, false, XRPalette.Ink));
+            words.style.whiteSpace = WhiteSpace.Normal;
+            words.style.marginTop = 30f;
+            words.style.flexGrow = 1;
+            words.style.unityTextAlign = TextAnchor.UpperLeft;
+
+            var buttons = Row(card);
+            buttons.style.justifyContent = Justify.FlexEnd;
+            buttons.Add(Button(button, next, true));
         }
 
         /// <summary>The clock, and the star targets the run has fallen out of reach of, dimmed. Cheap to call every frame.</summary>
@@ -292,7 +319,7 @@ namespace TrainSudoku.XR
             var words = new VisualElement();
             words.style.marginLeft = 28f;
             head.Add(words);
-            words.Add(Text("ARRIVAL", 46f, true, XRPalette.InkDim, 10f));
+            words.Add(Text(XRText.Get(XRKeys.ArrivalTitle), 46f, true, XRPalette.InkDim, 10f));
             words.Add(Text(station != null ? station.DisplayName.ToUpperInvariant() : "", 96f, true, XRPalette.Ink, 3f));
             head.Add(Spacer());
 
@@ -301,9 +328,9 @@ namespace TrainSudoku.XR
 
             var strip = Led(card);
             strip.style.marginTop = 22f;
-            strip.Add(Text($"THIS RUN  {ProgressTracker.FormatTime(result.Time)}", 60f, true, XRPalette.Led, 4f));
+            strip.Add(Text(XRText.Get(XRKeys.ArrivalThisRun, ProgressTracker.FormatTime(result.Time)), 60f, true, XRPalette.Led, 4f));
             strip.Add(Spacer());
-            strip.Add(Text($"BEST  {ProgressTracker.FormatTime(result.BestTime)}", 60f, true, XRPalette.Led, 4f));
+            strip.Add(Text(XRText.Get(XRKeys.ArrivalBest, ProgressTracker.FormatTime(result.BestTime)), 60f, true, XRPalette.Led, 4f));
 
             // The verdict is stamped on beside the new-best flag, as on the phone's arrival.
             var verdict = Row(card);
@@ -311,7 +338,7 @@ namespace TrainSudoku.XR
             verdict.style.alignItems = Align.Center;
             if (result.IsNewBest)
             {
-                var best = Text("NEW BEST", 44f, true, XRPalette.Ink, 8f);
+                var best = Text(XRText.Get(XRKeys.ArrivalNewBest), 44f, true, XRPalette.Ink, 8f);
                 best.style.backgroundColor = XRPalette.Warn;
                 best.style.paddingLeft = best.style.paddingRight = 16f;
                 Round(best, 10f);
@@ -319,16 +346,16 @@ namespace TrainSudoku.XR
             }
 
             verdict.Add(Spacer());
-            var (punctuality, ink) = result.Stars >= 3 ? ("ON TIME", XRPalette.Success)
-                : result.Stars == 2 ? ("SLIGHT DELAY", XRPalette.Warn) : ("DELAYED", XRPalette.Stop);
+            var (punctuality, ink) = result.Stars >= 3 ? (XRText.Get(XRKeys.ArrivalOnTime), XRPalette.Success)
+                : result.Stars == 2 ? (XRText.Get(XRKeys.ArrivalSlightDelay), XRPalette.Warn) : (XRText.Get(XRKeys.ArrivalDelayed), XRPalette.Stop);
             verdict.Add(Stamp(punctuality, ink));
 
             var buttons = Row(card);
             buttons.style.marginTop = StyleKeyword.Auto;
             buttons.style.justifyContent = Justify.FlexEnd;
-            buttons.Add(Button("LINE MAP", map, false));
-            buttons.Add(Button("RUN AGAIN", retry, false));
-            buttons.Add(Button(lineComplete ? "TO THE NETWORK" : "NEXT STATION", next, true));
+            buttons.Add(Button(XRText.Get(XRKeys.ArrivalMap), map, false));
+            buttons.Add(Button(XRText.Get(XRKeys.ArrivalRetry), retry, false));
+            buttons.Add(Button(XRText.Get(lineComplete ? XRKeys.ArrivalToNetwork : XRKeys.ArrivalNext), next, true));
         }
 
         /// <summary>The top row in play and paused: the line's badge and the station's code.</summary>
@@ -361,6 +388,7 @@ namespace TrainSudoku.XR
             stamp.style.opacity = 0f;
             _stamp = stamp;
             _stampAt = Time.unscaledTime + StampDelay;
+            _stampHeard = false;
             return stamp;
         }
 
@@ -372,6 +400,13 @@ namespace TrainSudoku.XR
             if (elapsed < 0f) return;
 
             var press = Mathf.Clamp01(elapsed / StampPressSeconds);
+            if (press >= StampImpact && !_stampHeard)
+            {
+                // The thump on impact, from the sign.
+                _stampHeard = true;
+                XRCuePlayer.Play(XRCue.Stamp, _panel != null ? _panel.position : transform.position);
+            }
+
             var shake = Mathf.Clamp01((elapsed - StampPressSeconds) / StampShakeSeconds);
             var scale = press < StampImpact
                 ? Mathf.Lerp(StampFrom, StampHit, EaseIn(press / StampImpact))

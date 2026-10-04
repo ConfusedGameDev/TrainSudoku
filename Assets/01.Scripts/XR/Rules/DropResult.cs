@@ -24,7 +24,7 @@ namespace TrainSudoku.XR.Rules
         Moved,
         /// <summary>The piece landed on a player piece, which puffed.</summary>
         Replaced,
-        /// <summary>An illegal drop: the piece flew back to the tray, or back into the cell it was lifted from.</summary>
+        /// <summary>An illegal drop, or one the tutorial steered away: the piece flew back to the tray, or back into the cell it was lifted from.</summary>
         Returned,
         /// <summary>The piece is gone in a small puff: released off the platform, or an illegal drop whose cell of origin no longer takes it.</summary>
         Puffed,
@@ -99,13 +99,20 @@ namespace TrainSudoku.XR.Rules
         /// <summary>The release was an illegal drop: <see cref="DropOutcome.Returned"/>, or <see cref="DropOutcome.Puffed"/> because the way back was closed.</summary>
         public bool IllegalDrop { get; }
 
+        /// <summary>
+        /// The release was sent back by <see cref="PieceDrop.Gate"/>, not by the rules: a legal drop the tutorial is not
+        /// asking for yet. It returns like an illegal drop, but with a note rather than the error cue (XR-PRD 7).
+        /// </summary>
+        public bool Steered { get; }
+
         /// <summary>The board changed, so the validator runs and the clues update.</summary>
         public bool BoardChanged { get; }
 
         public RefuseReason RefuseReason { get; }
 
         internal DropResult(DropOutcome outcome, Hand hand, PieceKey key, (int X, int Y)? cell, (int X, int Y)? origin = null,
-            PieceKey? replacedKey = null, bool illegalDrop = false, bool boardChanged = false, RefuseReason refuseReason = RefuseReason.None)
+            PieceKey? replacedKey = null, bool illegalDrop = false, bool boardChanged = false, RefuseReason refuseReason = RefuseReason.None,
+            bool steered = false)
         {
             Outcome = outcome;
             Hand = hand;
@@ -114,6 +121,7 @@ namespace TrainSudoku.XR.Rules
             Origin = origin;
             ReplacedKey = replacedKey;
             IllegalDrop = illegalDrop;
+            Steered = steered;
             BoardChanged = boardChanged;
             RefuseReason = refuseReason;
         }

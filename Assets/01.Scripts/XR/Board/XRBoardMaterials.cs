@@ -26,6 +26,7 @@ namespace TrainSudoku.XR
         private static Material _platformEdge;
         private static Material _ghostLegal;
         private static Material _ghostIllegal;
+        private static Material _ghostHand;
         private static Color _lineColour = XRPalette.Warn;
 
         public static Material Tile => _tile != null ? _tile : _tile = Create("XR Tile", XRPalette.Concrete);
@@ -55,6 +56,9 @@ namespace TrainSudoku.XR
         /// <summary>The ghost over a cell where letting go would land (XR-PRD 4.3), and over one where it would send the piece back.</summary>
         public static Material GhostLegal => _ghostLegal != null ? _ghostLegal : _ghostLegal = CreateFade("XR Ghost Legal", XRPalette.GhostLegal);
         public static Material GhostIllegal => _ghostIllegal != null ? _ghostIllegal : _ghostIllegal = CreateFade("XR Ghost Illegal", XRPalette.GhostIllegal);
+
+        /// <summary>The board lesson's ghost hands (7): paper, see-through.</summary>
+        public static Material GhostHand => _ghostHand != null ? _ghostHand : _ghostHand = CreateFade("XR Ghost Hand", XRPalette.GhostHand);
 
         private static readonly System.Collections.Generic.Dictionary<Color32, Material> Solids =
             new System.Collections.Generic.Dictionary<Color32, Material>();

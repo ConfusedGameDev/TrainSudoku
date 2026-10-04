@@ -86,7 +86,23 @@ namespace TrainSudoku.XR
             if (Texts.TryGetValue(font, out var material) && material != null) return material;
             material = new Material(_text) { name = font.name + " (occluded)", mainTexture = font.material.mainTexture };
             Texts[font] = material;
+            if (!_watchingFonts)
+            {
+                // A dynamic font (the Noto that draws Japanese) grows its texture as new characters are asked for, and
+                // the twin would go on sampling the old one: every glyph added since would print as garbage.
+                _watchingFonts = true;
+                Font.textureRebuilt += OnFontTextureRebuilt;
+            }
+
             return material;
+        }
+
+        private static bool _watchingFonts;
+
+        private static void OnFontTextureRebuilt(Font font)
+        {
+            if (font != null && Texts.TryGetValue(font, out var material) && material != null)
+                material.mainTexture = font.material.mainTexture;
         }
     }
 }

@@ -250,6 +250,42 @@ namespace TrainSudoku.XR.Editor
             return asset;
         }
 
+        // The XR Hands sample's hand models, which the board lesson shows at the rail (XR-PRD 7).
+        const string HandModelFolder = "Assets/Samples/XR Hands";
+        const string LeftHandModelName = "LeftHand";
+        const string RightHandModelName = "RightHand";
+
+        /// <summary>
+        /// The board lesson's ghost hands: points <see cref="XRBoardAssets"/> at the XR Hands sample's two hand models,
+        /// found by name under the sample's folder so a package update that renames the version folder still finds them.
+        /// </summary>
+        [MenuItem("Window/TrainSudoku/XR/Assign Lesson Hand Models")]
+        static void AssignLessonHands()
+        {
+            var assets = EnsureBoardAssets();
+            var serialized = new SerializedObject(assets);
+            var left = FindHandModel(LeftHandModelName);
+            var right = FindHandModel(RightHandModelName);
+            if (left == null || right == null)
+            {
+                Debug.LogError($"[XR] No {LeftHandModelName}.fbx or {RightHandModelName}.fbx under {HandModelFolder}: import the XR Hands HandVisualizer sample.");
+                return;
+            }
+
+            serialized.FindProperty("leftHandModel").objectReferenceValue = left;
+            serialized.FindProperty("rightHandModel").objectReferenceValue = right;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[XR] {BoardAssetsPath} shows the board lesson with {AssetDatabase.GetAssetPath(left)} and {AssetDatabase.GetAssetPath(right)}.");
+        }
+
+        static GameObject FindHandModel(string name) =>
+            AssetDatabase.FindAssets($"{name} t:Model", new[] { HandModelFolder })
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .Where(path => System.IO.Path.GetFileNameWithoutExtension(path) == name)
+                .Select(AssetDatabase.LoadAssetAtPath<GameObject>)
+                .FirstOrDefault(model => model != null);
+
         const string GhostMaterialPath = GraphicsFolder + "/XRPlacementGhost.mat";
         const string PlaneMaterialPath = GraphicsFolder + "/XRDetectedPlane.mat";
         const string PrefabFolder = "Assets/04.Prefabs/XR";

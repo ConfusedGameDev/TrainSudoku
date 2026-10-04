@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using TrainSudoku.XR.Rules;
 using UnityEngine;
 
 namespace TrainSudoku.XR
@@ -205,6 +206,7 @@ namespace TrainSudoku.XR
             if (Time.unscaledTime - _lastPress < PressCooldown) return;
             _lastPress = Time.unscaledTime;
 
+            XRCuePlayer.Play(_selectable ? XRCue.MapSelect : XRCue.MapClosed, transform.position);
             if (!_selectable)
             {
                 if (_shake != null) StopCoroutine(_shake);

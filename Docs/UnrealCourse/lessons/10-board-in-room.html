@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 10 · The board in the room</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="10"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 10</p>
+  <h1>The board in the room</h1>
+  <p class="lede">The board stops floating at a fixed spot and takes its place on a real table. It comes back to the same place next session. Two hands on a rail move, turn and scale it. This is where the Unreal port differs most from the Unity one, because the room features come from Meta's plugin instead of AR Foundation.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd>A placement controller with first placement, anchor restore, a two-hand handle, a height nudge and "re-place board".</dd>
+    <dt>On the headset</dt><dd>A ghost platform slides over your table; a pinch places the board there; restart the app and it is still there.</dd>
+    <dt>Unity equivalent</dt><dd>Milestone XR5, "Board in the room".</dd>
+  </dl>
+
+  <h2>What placement does</h2>
+  <p>Placement is a precondition of the game, not a state in <code>GameFlow</code>. The flow only starts once the board is in the room.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Phase</th><th>What happens</th><th>Numbers from <code>XRBoardPlacement.cs</code></th></tr></thead>
+      <tbody>
+        <tr><td>Settle</td><td>Wait for tracking before reading any pose.</td><td>1 second</td></tr>
+        <tr><td>Restore</td><td>If an anchor id is saved, load it. Success puts the board back at its saved size and ends placement.</td><td>Cell size restored and clamped to 4–9 cm</td></tr>
+        <tr><td>Permission</td><td>Ask for spatial data. Refused is fine: the board will float.</td><td></td></tr>
+        <tr><td>Locate</td><td>A ghost platform follows where the hand points. Over a detected horizontal surface it sits on the surface; otherwise it floats ahead of and below the head. A small sign explains what to do.</td><td>Ghost 8×8 cells; float 0.6 m ahead, 0.5 m down; hint about space setup after 6 s with no surface</td></tr>
+        <tr><td>Place</td><td>A pinch or trigger places the board on the ghost, near edge towards the player.</td><td></td></tr>
+        <tr><td>Anchor</td><td>Create an anchor there, attach the board, save the anchor's id, forget the old one.</td><td></td></tr>
+        <tr><td>Move (later)</td><td>The handle lifts the board off its anchor, carries it, and on release settles it onto a surface it is close to, then anchors again.</td><td>Settles within 5 cm of a surface</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Unreal concepts</h2>
+
+  <h3>Scene data: the MR Utility Kit</h3>
+  <p>AR Foundation's plane manager streams planes as it finds them. Meta's approach in Unreal is different: the headset keeps a <strong>scene model</strong> of the room from Space Setup, with labelled anchors such as <code>TABLE</code>, <code>FLOOR</code> and <code>WALL_FACE</code>. The MR Utility Kit (MRUK), part of the Meta XR plugin, loads that model and gives you room and anchor actors to query.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Need</th><th>MRUK</th></tr></thead>
+      <tbody>
+        <tr><td>Load the room</td><td><code>LoadSceneFromDeviceAsync</code> on the MRUK subsystem; an event fires when it is loaded</td></tr>
+        <tr><td>The room and its surfaces</td><td><code>AMRUKRoom</code>, with <code>AMRUKAnchor</code> actors carrying semantic labels</td></tr>
+        <tr><td>What is under a ray</td><td><code>Raycast()</code> on the room, or <code>GetBestPoseFromRaycast()</code></td></tr>
+        <tr><td>A ray against live depth, with no Space Setup</td><td><code>RaycastEnvironment()</code></td></tr>
+        <tr><td>Colliders for real surfaces</td><td>Generate procedural meshes for anchors, with collision</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Enable <strong>Scene Support</strong> and <strong>Anchor Support</strong> beside <em>Passthrough Enabled</em> in the Meta XR settings. The app needs the runtime permission <code>com.oculus.permission.USE_SCENE</code>.</p>
+
+  <h3>Spatial anchors</h3>
+  <p>A spatial anchor is a pose the headset keeps fixed to the real world and corrects as its understanding of the room improves. In Meta's Unreal API an anchor is created <em>on an actor</em>: the plugin adds an anchor component and from then on keeps that actor's transform right. Anything attached to the actor follows. The anchor has a UUID you can save and later look up.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Operation</th><th>Blueprint node</th><th>C++</th></tr></thead>
+      <tbody>
+        <tr><td>Create</td><td>Create Spatial Anchor (latent)</td><td><code>FOculusXRAnchors::CreateSpatialAnchor</code></td></tr>
+        <tr><td>Persist</td><td>Save Anchors</td><td><code>FOculusXRAnchors::SaveAnchors</code></td></tr>
+        <tr><td>Find by UUID</td><td>Discover Anchors</td><td><code>FOculusXRAnchors::DiscoverAnchors</code> with a UUID filter</td></tr>
+        <tr><td>Remove</td><td>Erase Anchors</td><td><code>FOculusXRAnchors::EraseAnchors</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Asynchronous work without <code>await</code></h3>
+  <p>The Unity code is full of <code>await anchors.TryAddAnchorAsync(...)</code>. Unreal C++ has no equivalent keyword in everyday use. An asynchronous engine call takes a delegate and calls it later. In Blueprint the same call is a <strong>latent node</strong> with separate output pins for success and failure, which reads almost like the C#.</p>
+  <p>That makes this a good place for Blueprint. The anchor and scene calls are few, they are all asynchronous, and they belong to a plugin whose API changes between releases. Put them in a Blueprint subclass, behind a small C++ interface that the rest of the game talks to.</p>
+
+  <h3>Occlusion</h3>
+  <div class="trap">
+    <p><span class="tag">A real gap</span>The Unity edition hides the board behind your real hands and furniture using environment depth, through custom shaders. In Unreal, Meta's Depth API offers soft occlusion, and Meta's documentation says soft occlusion <strong>requires Meta's fork of the engine</strong>. Hard occlusion works on the launcher engine but is marked deprecated since 5.5.</p>
+  </div>
+  <p>You are on the launcher engine, so decide this with your lead before writing code. The options:</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Option</th><th>What the player sees</th><th>Cost</th></tr></thead>
+      <tbody>
+        <tr><td>No occlusion</td><td>The board draws over your hands. Reaching "into" the board looks wrong.</td><td>None</td></tr>
+        <tr><td>Hand masking</td><td>Your tracked hand mesh is drawn with a material that writes depth and no colour, so passthrough shows through in the shape of the hand. Furniture does not occlude.</td><td>Small. Works on the launcher engine. Controllers are not masked.</td></tr>
+        <tr><td>Hard occlusion via the Depth API</td><td>Hands and furniture occlude, with a rough edge.</td><td>Deprecated path; may be removed</td></tr>
+        <tr><td>Meta's engine fork, soft occlusion</td><td>What the Unity build has.</td><td>A source build of the engine for the whole team</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>This course recommends <strong>hand masking</strong> for the first shipped version. Hands over the board is the case players notice. Record the decision; lesson 17 is where you would revisit it.</p>
+
+  <h2>Read first</h2>
+  <ul class="files">
+    <li><code>Assets/01.Scripts/XR/Room/XRBoardPlacement.cs</code><span>506 lines. <code>Start</code>, <code>Update</code> (the ghost), <code>Place</code>, <code>AnchorHereAsync</code>, <code>BeginMove</code>/<code>MoveTo</code>/<code>EndMove</code>, <code>Nudge</code>.</span></li>
+    <li><code>Assets/01.Scripts/XR/Room/XRBoardHandle.cs</code><span>461 lines. <code>Rebase</code> and <code>Update</code> are the two-hand maths. The rest draws the rail.</span></li>
+    <li><code>Assets/01.Scripts/XR/Room/XRScenePermission.cs</code><span>Requesting the spatial-data permission.</span></li>
+    <li><code>Assets/01.Scripts/XR/Room/XRDepthOcclusion.cs</code>, <code>Assets/02.Graphics/XR/Shaders/</code><span>What the Unity build does for occlusion, for reference.</span></li>
+    <li><code>Docs/XR-PRD.md</code>, section 5<span>The intent: placement, the handle, sizing, shadows.</span></li>
+  </ul>
+
+  <h2>Steps</h2>
+  <ol class="steps">
+    <li>
+      <p><strong>Define what the game needs from the room.</strong> One small C++ class with events Blueprint can implement. Nothing outside it mentions Meta.</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiRoomProvider.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "UObject/Object.h"
+#include "TsugiRoomProvider.generated.h"
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FTsugiRoomReady, bool, bSurfacesAvailable);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FTsugiAnchorSaved, bool, bSuccess, const FString&, AnchorId);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FTsugiAnchorLoaded, bool, bSuccess, AActor*, AnchorActor);
+
+/**
+ * What the game needs from the real room: surfaces to rest on, and a place that persists.
+ * BP_MetaRoomProvider implements it with MR Utility Kit and spatial anchors. The base class is the
+ * editor fallback: no surfaces, no anchors, so the board floats, like Unity's floatWithoutHeadset.
+ */
+UCLASS(Blueprintable, BlueprintType)
+class TSUGIXR_API UTsugiRoomProvider : public UObject
+{
+    GENERATED_BODY()
+
+public:
+    /** Asks for the spatial-data permission and loads the room. Answers through OnRoomReady. */
+    UFUNCTION(BlueprintNativeEvent, Category = "Tsugi|Room")
+    void RequestRoom();
+
+    /** The first real, upward-facing surface along a ray. World space, centimetres. */
+    UFUNCTION(BlueprintNativeEvent, Category = "Tsugi|Room")
+    bool TryHitSurface(FVector Origin, FVector Direction, float MaxDistance, FVector& OutPoint);
+
+    /** Anchors Actor where it stands and persists the anchor. Answers through OnAnchorSaved with its id. */
+    UFUNCTION(BlueprintNativeEvent, Category = "Tsugi|Room")
+    void AnchorAndSave(AActor* Actor);
+
+    /** Finds a persisted anchor and spawns an actor bound to it. Answers through OnAnchorLoaded. */
+    UFUNCTION(BlueprintNativeEvent, Category = "Tsugi|Room")
+    void LoadAnchor(const FString& AnchorId);
+
+    /** Erases a persisted anchor. The actor it was on is the caller's to destroy. */
+    UFUNCTION(BlueprintNativeEvent, Category = "Tsugi|Room")
+    void EraseAnchor(const FString& AnchorId);
+
+    UPROPERTY(BlueprintAssignable, BlueprintCallable) FTsugiRoomReady OnRoomReady;
+    UPROPERTY(BlueprintAssignable, BlueprintCallable) FTsugiAnchorSaved OnAnchorSaved;
+    UPROPERTY(BlueprintAssignable, BlueprintCallable) FTsugiAnchorLoaded OnAnchorLoaded;
+};
+      </script>
+      <p>A <code>BlueprintNativeEvent</code> has a C++ default, written as <code>RequestRoom_Implementation</code>, that a Blueprint may override. The defaults here report "no surfaces" and "anchor failed" at once, so the game runs in the editor with no headset.</p>
+    </li>
+    <li>
+      <p><strong>Implement it in Blueprint.</strong> Create <code>BP_MetaRoomProvider</code> deriving from <code>UTsugiRoomProvider</code>.</p>
+      <ul>
+        <li><em>Request Room</em>: request the Android permission <code>com.oculus.permission.USE_SCENE</code>; when granted, call the MRUK subsystem's load-from-device function; on its loaded event, tell MRUK to generate collision meshes for the room's anchors and broadcast <code>OnRoomReady(true)</code>. On refusal or failure broadcast <code>false</code>.</li>
+        <li><em>Try Hit Surface</em>: raycast against the current room; accept the hit when its normal points up.</li>
+        <li><em>Anchor And Save</em>: <em>Create Spatial Anchor</em> on the actor, then <em>Save Anchors</em>, then broadcast the UUID as a string.</li>
+        <li><em>Load Anchor</em>: <em>Discover Anchors</em> filtered by the UUID; on a result, spawn an empty actor, bind the anchor to it, and broadcast it.</li>
+        <li><em>Erase Anchor</em>: <em>Erase Anchors</em> by UUID.</li>
+      </ul>
+      <div class="unverified">
+        <p><span class="tag">Not confirmed</span>The exact MRUK node names, the name of its loaded event, and how a discovered anchor is bound to a new actor were not checked node by node for plugin 207. Meta's MRUK and spatial-anchor sample projects show each of these flows; build from those.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>Write the placement controller in C++.</strong> It is a state machine over the provider. Make it an actor, <code>ATsugiBoardPlacement</code>, that owns the <strong>board root</strong>: an empty scene component the board, map, signboard and tray all hang from.</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiBoardPlacement.h (shape)">
+UCLASS()
+class TSUGIXR_API ATsugiBoardPlacement : public AActor
+{
+    GENERATED_BODY()
+
+public:
+    static constexpr float MinCellCm = 4.f;      // below this a piece is too small to pinch reliably
+    static constexpr float MaxCellCm = 9.f;
+
+    /** Scaled to the cell size. Its origin is the middle of the board's near edge, on the surface; +X points away from the player. */
+    USceneComponent* GetBoardRoot() const { return BoardRoot; }
+
+    bool IsPlaced() const { return Phase == EPhase::Placed || Phase == EPhase::Moving; }
+    bool IsMoving() const { return Phase == EPhase::Moving; }
+    bool IsOnSurface() const { return bOnSurface; }
+    float GetCellCm() const;
+
+    TMulticastDelegate<void()> OnPlaced;
+    TMulticastDelegate<void()> OnSurfaceChanged;
+
+    /** Forgets the saved spot and runs first placement again. */
+    void Replace();
+
+    // The handle and the height nudge.
+    void BeginMove();
+    void MoveTo(const FTransform& Pose, float CellCm);
+    void EndMove();
+    void Nudge(float Centimetres);
+
+    UPROPERTY(EditDefaultsOnly, Category = "Room") TSubclassOf<UTsugiRoomProvider> ProviderClass;
+    UPROPERTY(EditAnywhere, Category = "Room") float FloatDistanceCm = 60.f;
+    UPROPERTY(EditAnywhere, Category = "Room") float FloatDropCm = 50.f;
+
+protected:
+    virtual void BeginPlay() override;
+    virtual void Tick(float DeltaSeconds) override;
+
+private:
+    enum class EPhase : uint8 { Settling, Restoring, AwaitingRoom, Locating, Placed, Moving };
+
+    void BeginLocating();
+    void UpdateGhost();
+    void Place(const FTransform& Pose, bool bInOnSurface);
+    void AnchorHere();
+    void SettleOnSurface();
+
+    UFUNCTION() void HandleRoomReady(bool bSurfacesAvailable);
+    UFUNCTION() void HandleAnchorSaved(bool bSuccess, const FString& AnchorId);
+    UFUNCTION() void HandleAnchorLoaded(bool bSuccess, AActor* AnchorActor);
+
+    UPROPERTY() TObjectPtr<USceneComponent> BoardRoot;
+    UPROPERTY() TObjectPtr<UTsugiRoomProvider> Provider;
+    UPROPERTY() TObjectPtr<AActor> AnchorActor;          // what the board root is attached to while placed
+    UPROPERTY() TObjectPtr<AActor> PendingAnchorActor;   // being anchored; not yet attached
+
+    EPhase Phase = EPhase::Settling;
+    bool bSurfacesAllowed = false;
+    bool bOnSurface = false;
+    FString SavedAnchorId;
+};
+      </script>
+      <p>Functions bound to dynamic delegates must be <code>UFUNCTION</code>s. That is why the three handlers are marked.</p>
+    </li>
+    <li>
+      <p><strong>Port the ghost.</strong> Every frame while locating, aim from the hand, then fall back to floating. The platform's near edge is the one nearest the player.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="csharp" data-title="Unity: XRBoardPlacement.Update">
+// Floating at waist height unless a detected surface is under the ray (5.2).
+_aimOnSurface = false;
+var centre = head.position + Flat(head.forward) * floatDistance + Vector3.down * floatDrop;
+if (_surfacesAllowed && TryHitSurface(head, out var surfacePoint))
+{
+    centre = surfacePoint;
+    _aimOnSurface = true;
+}
+
+// The platform faces the player: its near edge is the one nearest them, and +Z runs away from them.
+var away = Flat(centre - head.position);
+var rotation = Quaternion.LookRotation(away, Vector3.up);
+var nearEdge = centre - rotation * Vector3.forward * (ghostCells.y * cellSize / 2f);
+_pose = new Pose(nearEdge, rotation);
+_ghost.SetPositionAndRotation(nearEdge, rotation);
+ShowSign(head, _aimOnSurface);
+if (SelectPressed()) Place(_pose, _aimOnSurface);
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="Unreal: ATsugiBoardPlacement::UpdateGhost">
+void ATsugiBoardPlacement::UpdateGhost()
+{
+    const FTransform Head = /* the pawn's camera, world space */;
+    const FVector HeadFlat = FVector(Head.GetUnitAxis(EAxis::X).X, Head.GetUnitAxis(EAxis::X).Y, 0.0).GetSafeNormal();
+
+    // Floating at waist height unless a detected surface is under the aim.
+    bool bAimOnSurface = false;
+    FVector Centre = Head.GetLocation() + HeadFlat * FloatDistanceCm - FVector::UpVector * FloatDropCm;
+
+    FVector Origin, Direction, SurfacePoint;
+    if (bSurfacesAllowed && GetAim(Origin, Direction) && Provider->TryHitSurface(Origin, Direction, 500.f, SurfacePoint))
+    {
+        Centre = SurfacePoint;
+        bAimOnSurface = true;
+    }
+
+    // The platform faces the player: its near edge is the one nearest them, and +X runs away from them.
+    FVector Away = Centre - Head.GetLocation();
+    Away.Z = 0.0;
+    const FRotator Rotation = Away.GetSafeNormal().Rotation();
+
+    const float CellCm = GetCellCm();
+    const FVector NearEdge = Centre - Rotation.Vector() * (GhostCells.Y * CellCm / 2.f);
+    const FTransform Pose(Rotation, NearEdge);
+
+    Ghost->SetWorldTransform(Pose);
+    ShowSign(Head, bAimOnSurface);
+
+    if (SelectPressedThisFrame()) Place(Pose, bAimOnSurface);
+}
+        </script>
+      </div>
+      <p><code>GetAim</code> tries the right hand, then the left, then the head, as the Unity code does. No ray is ever drawn. <code>SelectPressedThisFrame</code> is a pinch closing on either hand, or a trigger press; this is the one place the trigger is used.</p>
+    </li>
+    <li>
+      <p><strong>Anchor in the right order.</strong> When the board is re-anchored after a move, a new anchor actor is created while the old one still exists.</p>
+      <script type="text/plain" data-lang="cpp" data-title="Unreal: anchoring">
+void ATsugiBoardPlacement::AnchorHere()
+{
+    // A fresh actor where the board stands. The provider turns it into a spatial anchor and saves it.
+    PendingAnchorActor = GetWorld()->SpawnActor<AActor>(AActor::StaticClass(), BoardRoot->GetComponentTransform());
+    Provider->AnchorAndSave(PendingAnchorActor);
+}
+
+void ATsugiBoardPlacement::HandleAnchorSaved(bool bSuccess, const FString& AnchorId)
+{
+    AActor* NewAnchor = PendingAnchorActor;
+    PendingAnchorActor = nullptr;
+
+    if (!bSuccess || !NewAnchor)
+    {
+        UE_LOG(LogTsugiRoom, Warning, TEXT("Could not anchor the board; it will not come back next time."));
+        if (NewAnchor) NewAnchor->Destroy();
+        return;
+    }
+
+    // Picked up again before the anchor arrived: the next release anchors it instead.
+    if (Phase == EPhase::Moving)
+    {
+        Provider->EraseAnchor(AnchorId);
+        NewAnchor->Destroy();
+        return;
+    }
+
+    // Attach to the new anchor BEFORE removing the old one. Destroying an anchor's actor takes
+    // everything still attached to it along.
+    BoardRoot->AttachToComponent(NewAnchor->GetRootComponent(), FAttachmentTransformRules::KeepWorldTransform);
+
+    if (AnchorActor) AnchorActor->Destroy();
+    if (!SavedAnchorId.IsEmpty()) Provider->EraseAnchor(SavedAnchorId);
+
+    AnchorActor = NewAnchor;
+    SavedAnchorId = AnchorId;
+    // Persist AnchorId, the cell size and bOnSurface through the preference store (lesson 6).
+}
+      </script>
+      <p>The preference keys in Unity are <code>tsugi.xr.boardAnchor</code>, <code>tsugi.xr.boardCell</code> and <code>tsugi.xr.boardOnSurface</code>. They sit beside the wrist menu's settings, never in <code>save.json</code>.</p>
+    </li>
+    <li>
+      <p><strong>Port the handle's maths.</strong> One hand on the rail only lights it. With two, their midpoint carries the board, the line between them steers it, and their spread scales it. The board follows only once the hands leave a dead zone, which removed the false moves a single pinch kept causing.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="csharp" data-title="Unity: XRBoardHandle.Update">
+var a = GrabPoint(_holders[0]);
+var b = GrabPoint(_holders[1]);
+var grab = (a + b) / 2f;
+var span = Vector3.ProjectOnPlane(b - a, Vector3.up);
+var yaw = Vector3.SignedAngle(_startSpan, span, Vector3.up);
+var target = Mathf.Clamp(_startCell * (b - a).magnitude / _startSpread, MinCellSize, MaxCellSize);
+
+if (!_moving)
+{
+    if ((grab - _startGrab).magnitude < DeadZoneMetres && Mathf.Abs(yaw) < DeadZoneDegrees &&
+        Mathf.Abs(target / _startCell - 1f) < DeadZoneGrowth) return;
+    _moving = true;
+    _placement.BeginMove();
+}
+
+_cell = Mathf.Lerp(_cell, target, 1f - Mathf.Exp(-Time.deltaTime / ScaleEasing));
+var grow = _cell / _startCell;
+
+// Turn and scale about the grab, not the board's origin, so the rail stays where the hands are.
+var turn = Quaternion.Euler(0f, yaw, 0f);
+_placement.MoveTo(new Pose(grab + turn * ((_startBoard.position - _startGrab) * grow), turn * _startBoard.rotation), _cell);
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="Unreal: the same, in centimetres and Z-up">
+const FVector A = Hands->Get(ETsugiHand::Left).PinchPoint;
+const FVector B = Hands->Get(ETsugiHand::Right).PinchPoint;
+const FVector Grab = (A + B) * 0.5;
+const FVector Span = FVector(B.X - A.X, B.Y - A.Y, 0.0);
+
+// Signed yaw from the starting span to this one, about the up axis.
+const double Yaw = FMath::RadiansToDegrees(FMath::Atan2(
+    FVector::CrossProduct(StartSpan, Span).Z, FVector::DotProduct(StartSpan, Span)));
+
+const float Target = FMath::Clamp(StartCellCm * FVector::Dist(A, B) / StartSpread,
+    ATsugiBoardPlacement::MinCellCm, ATsugiBoardPlacement::MaxCellCm);
+
+if (!bMoving)
+{
+    const bool bInDeadZone =
+        FVector::Dist(Grab, StartGrab) < DeadZoneCm &&                 // 3 cm
+        FMath::Abs(Yaw) < DeadZoneDegrees &&                           // 12 degrees
+        FMath::Abs(Target / StartCellCm - 1.f) < DeadZoneGrowth;       // 8%
+    if (bInDeadZone) return;
+    bMoving = true;
+    Placement->BeginMove();
+}
+
+// Eased, because tracking jitter in the span is magnified at the far edge of a big board. Position is not eased.
+CellCm = FMath::Lerp(CellCm, Target, 1.f - FMath::Exp(-DeltaSeconds / ScaleEasingSeconds));   // 0.08 s
+const double Grow = CellCm / StartCellCm;
+
+// Turn and scale about the grab, not the board's origin, so the rail stays where the hands are.
+const FQuat Turn(FVector::UpVector, FMath::DegreesToRadians(Yaw));
+const FVector Position = Grab + Turn.RotateVector((StartBoard.GetLocation() - StartGrab) * Grow);
+Placement->MoveTo(FTransform(Turn * StartBoard.GetRotation(), Position), CellCm);
+        </script>
+      </div>
+      <p>Either hand letting go ends the move. If the pair never left the dead zone, nothing moved and nothing is re-anchored.</p>
+    </li>
+    <li>
+      <p><strong>Draw the rail.</strong> The Unity rail is a rounded tube wrapped round the near corner on the side away from the tray. When touched it lights and opens along the near edge and round the far corner, so there is an end for each hand, and folds back after 0.8 seconds alone. Build it as a procedural mesh, or as three static mesh segments you show and scale. A fingertip or pinch within about 2 cm of it counts as touching; it stops counting beyond 5 cm.</p>
+    </li>
+    <li>
+      <p><strong>Hand masking.</strong> If your team chose it: make an unlit, opaque material whose colour output is black with alpha zero in the framebuffer and which writes depth, and apply it to the hand meshes in <code>BP_TsugiPawn</code>. With passthrough as an underlay, pixels the hand covers show the real hand.</p>
+      <div class="unverified">
+        <p><span class="tag">Not confirmed</span>The exact material settings that leave a passthrough "hole" depend on how the mobile renderer handles alpha in your configuration. Meta's passthrough samples include a working masking material; start from it.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>The shadow catcher.</strong> A board resting on a real table should darken it. Add a plane just above the surface, three cells wider than the board on every side, with a material that outputs only shadow. Show it only when <code>IsOnSurface()</code> is true: a shadow under a floating board reads as a fault.</p>
+    </li>
+  </ol>
+
+  <h2>Your port</h2>
+  <ul>
+    <li>The rest of <code>ATsugiBoardPlacement</code>: the settle delay, restore, <code>Replace</code>, <code>Nudge</code> with its 0.6-second settle and its refusal to go below a surface, and <code>SettleOnSurface</code>.</li>
+    <li><code>ATsugiBoardHandle</code> or a component: touch detection, the two-hand carry, <code>Claims(point)</code> for lesson 11, <code>SetAvailable</code>, and the footprint that changes with the board's size.</li>
+    <li>The placement sign: a short line of text floating 0.8 m ahead of the eyes. Two messages: place on the surface, or no surface found.</li>
+    <li>Move the board, in the level, under the placement's board root. From now on the game starts when <code>OnPlaced</code> fires: that is when the subsystem's flow gets <code>ShowNetwork()</code>.</li>
+  </ul>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li>First run: a permission prompt appears, then a ghost follows my hand's aim across my table and sits flat on it.</li>
+    <li>With the permission refused, the ghost floats ahead of me at waist height and a pinch still places the board.</li>
+    <li>A pinch places the board with its near edge towards me.</li>
+    <li>Quitting and relaunching restores the board in the same place and at the same size, with no ghost.</li>
+    <li>In a different room, the saved anchor is not found and first placement runs again.</li>
+    <li>One hand on the rail lights it and moves nothing. Two hands move, turn and scale the board; cell size stays between 4 and 9 cm.</li>
+    <li>Released within 5 cm of the table, the board settles onto it. Released in the air, it stays there.</li>
+    <li>After a handle move, a relaunch restores the new place, and no second board or stale anchor appears.</li>
+    <li>My team's occlusion decision is written down, and what we chose works.</li>
+  </ul>
+
+  <h2>Pitfalls</h2>
+  <ul>
+    <li><strong>The scene permission can be lost in the manifest.</strong> The Unity build hit a package bug where one permission request overwrote another and plane detection never started, silently. If your room never loads, check the merged manifest in the APK for <code>USE_SCENE</code> before debugging code.</li>
+    <li><strong>No Space Setup, no scene.</strong> A headset that has never scanned the room returns an empty scene model. The Unity build shows a hint after 6 seconds without a surface. Keep that hint.</li>
+    <li><strong>A grab that detaches.</strong> In Unity, making the handle a grabbable object detached it from the board for the length of the grab and left it hanging in the air. Your handle moves the board in its own code; do not let any physics or attachment helper take ownership of it.</li>
+    <li><strong>Scale while detached.</strong> While the handle carries the board, the root is detached from its anchor, so its relative scale is its world scale. Re-attach with <em>keep world transform</em>.</li>
+    <li><strong>Keep the room's colliders.</strong> Hide the generated room meshes but leave their collision on. Thrown pieces bounce off the real table in lesson 11.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q">The board is re-anchored after a move. In what order?</p>
+    <ul>
+      <li>Destroy the old anchor, create the new one, attach the board.</li>
+      <li data-correct>Create the new anchor, attach the board to it, then destroy the old one.</li>
+      <li>Order does not matter.</li>
+    </ul>
+    <p class="why">Destroying an anchor's actor destroys what is attached to it. The Unity code documents the same rule after losing a board to it.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">Why are the Meta scene and anchor calls in a Blueprint behind a C++ base class?</p>
+    <ul>
+      <li>They cannot be called from C++.</li>
+      <li data-correct>They are asynchronous, few, and tied to a plugin whose API moves; isolating them keeps the game's C++ independent of the plugin and runnable in the editor without a headset.</li>
+      <li>Blueprint is faster for asynchronous code.</li>
+    </ul>
+    <p class="why">The C++ functions exist and are listed above. Using latent nodes is a choice about where change is cheapest.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">A player grabs the rail with one hand and pulls. What happens?</p>
+    <ul>
+      <li>The board follows the hand.</li>
+      <li data-correct>The rail lights and opens out; the board does not move.</li>
+      <li>The board scales.</li>
+    </ul>
+    <p class="why">Single-pinch moves were false positives in the headset checks. Moving needs both hands and a deliberate motion past the dead zone.</p>
+  </div>
+
+  <h2>Sources</h2>
+  <ul class="sources">
+    <li><a href="https://developers.meta.com/horizon/documentation/unreal/unreal-mr-utility-kit-overview/">Mixed Reality Utility Kit overview</a> and <a href="https://developers.meta.com/horizon/documentation/unreal/unreal-mr-utility-kit-gs/">getting started</a> (Meta)</li>
+    <li><a href="https://developers.meta.com/horizon/documentation/unreal/unreal-spatial-anchors-features/">Spatial anchors features</a> (Meta)</li>
+    <li><a href="https://developers.meta.com/horizon/documentation/unreal/unreal-depthapi-overview/">Depth API overview</a> and <a href="https://developers.meta.com/horizon/documentation/unreal/unreal-depthapi-occlusions-get-started">occlusions</a> (Meta): source of the fork requirement for soft occlusion</li>
+    <li><code>Docs/XR-Agent.md</code> on anchors, the handle and the manifest permission</li>
+  </ul>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+</body>
+</html>

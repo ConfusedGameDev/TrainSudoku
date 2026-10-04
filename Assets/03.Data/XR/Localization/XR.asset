@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5be51871efa6c3e4eae1703925c8f5ac, type: 3}
+  m_Name: XR
+  m_EditorClassIdentifier: Unity.Localization.Editor::UnityEditor.Localization.StringTableCollection
+  m_SharedTableData: {fileID: 11400000, guid: 86a4935ea0fa24643b3cb9114c118263, type: 2}
+  m_Tables:
+  - {fileID: 11400000, guid: 05f5622d0739bfd40ae2ed939d1044c0, type: 2}
+  - {fileID: 11400000, guid: ed389a1ccf2123a479d8337dde85836c, type: 2}
+  - {fileID: 11400000, guid: 6ed1530e0b077cb4b94730ebc056ade9, type: 2}
+  - {fileID: 11400000, guid: b7cf9a0b9fc95884ba3e6d2d2f13fa9b, type: 2}
+  m_Extensions: []
+  m_Group: String Table
+  references:
+    version: 2
+    RefIds: []

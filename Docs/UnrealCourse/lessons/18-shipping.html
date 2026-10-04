@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 18 · Shipping to Meta Standalone</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="18"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 18 · Terminus</p>
+  <h1>Shipping to Meta Standalone</h1>
+  <p class="lede">A build that runs on your desk is not a build the store accepts. This lesson turns the project into a signed, shipping-configuration APK, checks it against Meta's Virtual Reality Checks one by one, and uploads it to a release channel.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd>A signed Shipping APK on a Meta release channel, a completed checklist, and a build you can reproduce from a clean checkout.</dd>
+    <dt>On the headset</dt><dd>The game installed from the store's channel, not sideloaded.</dd>
+    <dt>Unity equivalent</dt><dd>Milestone XR11, not started. The Unity project's first APK produced a list of store findings; they are the starting point here.</dd>
+  </dl>
+
+  <h2>Unreal concepts</h2>
+
+  <h3>Build configurations</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Configuration</th><th>Contains</th><th>Use</th></tr></thead>
+      <tbody>
+        <tr><td>Development</td><td>Logging, console, checks, automation tests</td><td>Everything up to now</td></tr>
+        <tr><td>Shipping</td><td>None of those. <code>check</code> is compiled out; <code>ensure</code> no longer reports; console commands are gone</td><td>What you upload</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Two things follow. Any debug aid you relied on, such as <code>Tsugi.QuickRails</code> or unlock-all, cannot leak into a Shipping build through the console, but it can leak through a config file, so check the files. And a code path that only worked because a <code>check</code> stopped the bad case will now run the bad case. Play the Shipping build properly before you upload it.</p>
+
+  <h3>Signing</h3>
+  <p>Android installs an update only if it is signed with the same key as the installed app. The store requires APK signature scheme v2. You create one <strong>keystore</strong>, keep it and its passwords somewhere safe and backed up, and never commit it to source control. Lose it and you cannot update the app.</p>
+
+  <h3>The manifest</h3>
+  <p>Unreal generates <code>AndroidManifest.xml</code> from project settings and from each plugin's contribution. Plugins contribute through <strong>Unreal Plugin Language</strong> files: XML that says what to add to the manifest and the Gradle project. It is the counterpart of the Unity project's post-generate Gradle hook, and it is where you go when a setting has no checkbox.</p>
+
+  <h3>The Platform window</h3>
+  <p>The Meta XR plugin has a Platform window, opened from its settings page, that uploads a build to a release channel using your app's id and token. It wraps Meta's command-line upload tool.</p>
+
+  <h2>What the store checks</h2>
+  <p>Meta's Virtual Reality Checks are numbered requirements. These are the ones that apply to Tsugi, with what satisfies each. "Recommended" ones are not blockers but reviewers do read them.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Check</th><th>Requirement</th><th>In this project</th></tr></thead>
+      <tbody>
+        <tr><td>Packaging.1</td><td>The manifest conforms to release requirements</td><td>Step 4</td></tr>
+        <tr><td>Packaging.2</td><td>Signed with APK signature scheme v2</td><td>Step 2</td></tr>
+        <tr><td>Packaging.3</td><td>No unsupported Android features required</td><td>Read the merged manifest</td></tr>
+        <tr><td>Packaging.4</td><td>A supported SDK and engine version</td><td>Confirm 5.8 and plugin 207 are on Meta's supported list at upload time</td></tr>
+        <tr><td>Packaging.5</td><td>APK under 1 GB</td><td>Tsugi is small. Check anyway.</td></tr>
+        <tr><td>Packaging.6</td><td>64-bit only</td><td>arm64 only, lesson 1</td></tr>
+        <tr><td>Performance.1</td><td>An allowed refresh rate; at least 60 fps sustained</td><td>Lesson 17</td></tr>
+        <tr><td>Performance.3</td><td>Head-tracked graphics within 4 seconds, or a loading indicator</td><td>The splash screen</td></tr>
+        <tr><td>Performance.4</td><td>At least 85% render scale (recommended)</td><td>Lesson 17</td></tr>
+        <tr><td>Functional.1</td><td>No crashes, freezes or unresponsiveness</td><td>Play it through</td></tr>
+        <tr><td>Functional.2</td><td>Pause when the system asks</td><td>Lesson 14</td></tr>
+        <tr><td>Functional.3</td><td>The user cannot become stuck</td><td>Every state has a way out: wrist menu or sign</td></tr>
+        <tr><td>Functional.4</td><td>User data is preserved</td><td>Lesson 6. Test an update over an existing install.</td></tr>
+        <tr><td>Functional.10</td><td>No head-locked menus (recommended)</td><td>Every panel is world-locked</td></tr>
+        <tr><td>Functional.13</td><td>Default to the user's language or English (recommended)</td><td>Lesson 16</td></tr>
+        <tr><td>Functional.14</td><td>Passthrough apps show a passthrough loading screen</td><td>Lesson 9: system splash background set to passthrough</td></tr>
+        <tr><td>Security.1</td><td>Entitlement check within 10 seconds (recommended)</td><td>Step 5</td></tr>
+        <tr><td>Security.2</td><td>Only the permissions needed</td><td>Step 4</td></tr>
+        <tr><td>Tracking.1, .2</td><td>Submission metadata states play mode and input modes</td><td>Standing or sitting at a table; hands and controllers</td></tr>
+        <tr><td>Input.1</td><td>Menu button opens the menu (recommended)</td><td>Lesson 14</td></tr>
+        <tr><td>Input.2</td><td>Grip, not trigger, picks things up (recommended)</td><td>Lesson 9. The trigger only places the board.</td></tr>
+        <tr><td>Input.4</td><td>Focus-aware: hide hands and ignore input when unfocused</td><td>Step 6</td></tr>
+        <tr><td>Input.7</td><td>Respect switching between controllers and hands</td><td>Lesson 9</td></tr>
+        <tr><td>Input.8</td><td>The system gesture triggers nothing in the app</td><td>The wrist menu is on the back of the wrist, lesson 14</td></tr>
+        <tr><td>Audio.1</td><td>3D spatialised audio (recommended)</td><td>Lesson 16</td></tr>
+        <tr><td>Privacy.1 to .5</td><td>A privacy policy that matches what the app collects</td><td>The app uses scene data and stores nothing off the device. Your policy must say so.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="unverified">
+    <p><span class="tag">Read the live list</span>This table was taken from Meta's requirements page while the course was written. Requirements change. Before submitting, read the current page and treat it, not this table, as the authority.</p>
+  </div>
+
+  <h2>Steps</h2>
+  <ol class="steps">
+    <li>
+      <p><strong>Clean out the testing aids.</strong> Search the project and every file under <code>Config/</code>:</p>
+      <ul>
+        <li><code>bUnlockAll</code> in the Tsugi settings is false.</li>
+        <li><code>Tsugi.QuickRails</code> is 0 and is not set in any <code>.ini</code>.</li>
+        <li>Debug drawing of hands and panels is off by default.</li>
+        <li>No per-frame logging remains.</li>
+        <li>The benchmark command does nothing unless asked.</li>
+      </ul>
+      <p>Wrap debug-only code in <code>#if !UE_BUILD_SHIPPING</code> so it is not in the shipped binary at all.</p>
+    </li>
+    <li>
+      <p><strong>Create the keystore and sign.</strong> Generate a keystore with the JDK's <code>keytool</code>, with a validity of 25 years or more. Put it in <code>Build/Android/</code> in your working copy and add it to <code>.gitignore</code>. In <em>Project Settings &gt; Platforms &gt; Android &gt; Distribution Signing</em>, enter the keystore file name, the alias and the two passwords.</p>
+      <script type="text/plain" data-lang="bash" data-title="Terminal">
+keytool -genkey -v -keystore tsugi.keystore -alias tsugi -keyalg RSA -keysize 2048 -validity 10000
+      </script>
+      <p>Store the keystore and passwords in your team's secret store the same day. A build server injects them at build time; a developer's machine keeps a local copy outside the repository.</p>
+    </li>
+    <li>
+      <p><strong>Set the packaging options.</strong> In <em>Project Settings &gt; Packaging</em>:</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Setting</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td>Build Configuration</td><td>Shipping</td></tr>
+            <tr><td>For Distribution</td><td>On. This is what applies the distribution signing.</td></tr>
+            <tr><td>Use Pak File</td><td>On</td></tr>
+            <tr><td>List of maps to include</td><td><code>L_Tsugi</code> only</td></tr>
+            <tr><td>Localizations to Package</td><td>en, ja, es, fr</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>In the Android settings: package game data inside the APK, so there is one file and no separate expansion file. Set the final package name. During development you used <code>com.GorillaGonzalez.Tsugi.XR.UE</code> so both builds could sit on one headset; decide with your team what the shipped id is, because it can never change after release.</p>
+      <p>Set the version: <em>Store Version</em> is an integer that must rise with every upload; <em>Version Display Name</em> is what people see.</p>
+    </li>
+    <li>
+      <p><strong>Inspect the manifest you actually ship.</strong> Do not trust settings pages. Extract the manifest from the built APK and read it.</p>
+      <script type="text/plain" data-lang="bash" data-title="Terminal">
+# aapt2 ships with the Android build-tools
+aapt2 dump xmltree --file AndroidManifest.xml Tsugi-Android-Shipping-arm64.apk
+      </script>
+      <p>The Unity project's first APK had five manifest findings. Check each against yours:</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Item</th><th>Required</th><th>Unity's first APK</th></tr></thead>
+          <tbody>
+            <tr><td><code>android:installLocation</code></td><td><code>auto</code></td><td>Was <code>preferExternal</code></td></tr>
+            <tr><td><code>uses-feature android.hardware.vr.headtracking</code></td><td>Present, for an immersive app</td><td>Missing</td></tr>
+            <tr><td><code>com.oculus.supportedDevices</code></td><td>The devices you support</td><td>Written as <code>eureka|quest3s</code>; Meta documents <code>quest3</code>. Confirm what the store accepts.</td></tr>
+            <tr><td><code>excludeFromRecents</code> on the launch activity</td><td>Expected by Meta</td><td>Missing</td></tr>
+            <tr><td>Permissions</td><td>Only what is used: scene, and whatever anchors and hand tracking declare</td><td>Scene permission was once dropped by a package bug</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Meta's plugin writes most of these from its settings page. For anything it does not, add a small Unreal Plugin Language file to your game module and reference it from <code>TsugiXR.Build.cs</code>:</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="xml" data-title="Source/TsugiXR/Tsugi_UPL.xml">
+<?xml version="1.0" encoding="utf-8"?>
+<root xmlns:android="http://schemas.android.com/apk/res/android">
+  <androidManifestUpdates>
+    <!-- Only what the plugin's own settings do not already write. Check the built manifest first. -->
+    <addAttribute tag="manifest" name="android:installLocation" value="auto"/>
+  </androidManifestUpdates>
+</root>
+        </script>
+        <script type="text/plain" data-lang="csharp" data-title="TsugiXR.Build.cs">
+if (Target.Platform == UnrealTargetPlatform.Android)
+{
+    string PluginPath = Utils.MakePathRelativeTo(ModuleDirectory, Target.RelativeEnginePath);
+    AdditionalPropertiesForReceipt.Add("AndroidPlugin", System.IO.Path.Combine(PluginPath, "Tsugi_UPL.xml"));
+}
+        </script>
+      </div>
+      <div class="unverified">
+        <p><span class="tag">Not confirmed</span>Which of the five items plugin 207 already writes correctly was not checked. That is what reading the built manifest is for. The UPL snippet is the standard pattern; verify the element names against an engine plugin's own UPL file before relying on it.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>Add the entitlement check.</strong> An entitlement check asks Meta's platform whether this user owns the app. Meta recommends doing it within ten seconds of launch. Create the app in the Meta developer dashboard to get an app id, enter it in the Meta platform settings, and in <code>BP_TsugiGameMode</code>'s BeginPlay call the platform's verify-entitlement node. On failure, show a message on the signboard and stop the flow from starting.</p>
+      <p>A sideloaded build always fails this check. That is expected, and it is in the Unity project's log too. Test the success path with a build installed from a release channel.</p>
+    </li>
+    <li>
+      <p><strong>Be focus-aware.</strong> When the system menu is up, the app is still drawn behind it but must hide its hands and controllers and take no input. You already pause on focus loss. Add: hide the hand visuals and the wrist roundel, and set <code>bAcceptsGrabs</code> false, while unfocused; restore on return. Turn on <em>Focus Aware</em> in the Meta XR mobile settings.</p>
+    </li>
+    <li>
+      <p><strong>Build it from nothing.</strong> A release must not depend on your machine's leftovers. Clone the repository into an empty folder and package from the command line.</p>
+      <script type="text/plain" data-lang="bash" data-title="Terminal">
+"C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun ^
+  -project="C:\build\Tsugi\Tsugi.uproject" ^
+  -platform=Android -cookflavor=ASTC -clientconfig=Shipping ^
+  -build -cook -stage -pak -package -distribution ^
+  -archive -archivedirectory="C:\build\out" -nop4 -utf8output
+      </script>
+      <p>Put that in a script in the repository. It is the answer to the Unity project's note that it has no build script.</p>
+    </li>
+    <li>
+      <p><strong>Run the tests against the release branch.</strong> Every automation test from lessons 3 to 16, from the command line, on the commit you are about to ship. In particular the level test: 216 levels, one solution each, in the order of <code>network.json</code>.</p>
+    </li>
+    <li>
+      <p><strong>Play the Shipping build.</strong> Install the signed APK. With a fresh save: place the board, finish the tutorial, finish a line, unlock the next, quit mid-level and resume, change language, swap hands, take the headset off and on, re-place the board. Then install the next build over it and confirm the save survives.</p>
+    </li>
+    <li>
+      <p><strong>Upload.</strong> Open the Meta XR Platform window from the plugin's settings. Enter the app id and token, choose the <strong>ALPHA</strong> release channel, point it at the APK, and upload. Invite your team to the channel and have someone who did not build it install it from the store.</p>
+    </li>
+    <li>
+      <p><strong>Fill in the submission.</strong> The dashboard asks for play mode (sitting and standing), input (hands and controllers), a privacy policy URL, age rating answers, and store art. Art has its own checks: no headsets or controllers in images, cover art without extraneous text, a trailer under two minutes.</p>
+    </li>
+  </ol>
+
+  <h2>Your work</h2>
+  <ul>
+    <li>A release checklist in the repository, <code>RELEASE.md</code>, with one line per check in the table above and who verified it on which build.</li>
+    <li>The build script.</li>
+    <li>The focus-aware behaviour.</li>
+    <li>The entitlement check, with its failure message in all four languages.</li>
+    <li>A note of where the keystore lives, that names a person and not a path.</li>
+  </ul>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li>A clean clone builds a signed Shipping APK with one command.</li>
+    <li>The built APK's manifest has <code>installLocation</code> auto, the head-tracking feature, the right supported devices, and only the permissions the game uses.</li>
+    <li>The APK is arm64 only and well under 1 GB.</li>
+    <li>All automation tests pass on the release commit.</li>
+    <li>The Shipping build shows passthrough from the first frame, with no black flash, and head-tracked content within four seconds.</li>
+    <li>With the system menu open, hands and the roundel are hidden and nothing in the game responds.</li>
+    <li>An update installed over a played build keeps progress, the board's place and the settings.</li>
+    <li>No testing aid is reachable in the Shipping build: no unlock-all, no quick rails, no console.</li>
+    <li>The build is on a release channel and a teammate installed it from there.</li>
+    <li>The entitlement check passes for that teammate and fails, with a readable message, for a sideloaded copy.</li>
+    <li><code>RELEASE.md</code> has every applicable check signed off against this build.</li>
+    <li>The keystore is backed up somewhere that is not a developer's laptop, and is not in the repository.</li>
+  </ul>
+
+  <h2>Pitfalls</h2>
+  <ul>
+    <li><strong>The Shipping build is the first time <code>check</code> is gone.</strong> A bug it was hiding will show now. Allow time for it.</li>
+    <li><strong>Debug-signed and release-signed builds cannot update each other.</strong> Uninstall the development build before installing the signed one, or the install fails with a signature error that reads like a corrupt file.</li>
+    <li><strong>An asset missing only in Shipping.</strong> Usually something loaded by a path string that the cooker never saw. Lesson 4's cook rule covers the levels. Check the cue library, the string table and the fonts the same way: each must be referenced from something that is cooked.</li>
+    <li><strong>Unexplained log lines.</strong> The Unity build logs an OpenXR layer-limit error once at every session start, and runs on. If you see the same in Unreal, it is likely the runtime's, not yours. Note it; do not spend a week on it.</li>
+    <li><strong>Changing the package name after upload.</strong> You cannot. Decide it in step 3.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q">The cue library works in the editor and every cue is silent in the packaged build. What is the most likely reason?</p>
+    <ul>
+      <li>Shipping builds strip data assets.</li>
+      <li data-correct>Nothing that is cooked references the library, so it was left out of the package.</li>
+      <li>The signing step removed it.</li>
+    </ul>
+    <p class="why">The editor loads anything on disk. A package holds only what is reachable from the maps and the always-cook rules. An asset found by a path string, or assigned nowhere, is not reachable.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">Why read the manifest out of the built APK when the settings pages already show what you chose?</p>
+    <ul>
+      <li>The settings pages are often out of date.</li>
+      <li data-correct>The final manifest is merged from the engine, every plugin and your own additions, and any of them can override or drop an entry.</li>
+      <li>The store requires a copy of it.</li>
+    </ul>
+    <p class="why">The Unity build lost its scene permission exactly this way: three requests from one package overwrote each other during the merge.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">You lose the keystore after release. What can you still do?</p>
+    <ul>
+      <li>Generate a new one with the same alias and passwords.</li>
+      <li>Ask Android to reset it.</li>
+      <li data-correct>Nothing that updates the installed app. A new key is a different signer.</li>
+    </ul>
+    <p class="why">A keystore's identity is its private key, not its name. This is why it is backed up on day one.</p>
+  </div>
+
+  <h2>The end of the line</h2>
+  <p>You have ported a rules engine with its tests, built a data pipeline, learned the game framework, put actors and components in a room, written your own hand interaction, drawn UI in the world, localised it, measured it and shipped it. That is most of what day-to-day Unreal work is.</p>
+  <p>Two things to do before you close this course. Go back through the yellow boxes: each is a place where this course could not confirm something and you now know the answer. Send those answers, and every snippet you had to fix, to whoever maintains the course. And tell the owners of the Unity edition what you found on the headset for the tutorial and for sound and language, which they had not yet verified. You are now the team that has.</p>
+
+  <h2>Sources</h2>
+  <ul class="sources">
+    <li><a href="https://developers.meta.com/horizon/resources/publish-quest-req">Virtual Reality Check guidelines for Quest</a> (Meta)</li>
+    <li><a href="https://developers.meta.com/horizon/documentation/unreal/unreal-plugin-settings/">Meta XR plugin settings</a> (Meta): Platform window, Focus Aware</li>
+    <li><code>Docs/XR-Agent.md</code>, "Store items for XR11"</li>
+  </ul>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+</body>
+</html>

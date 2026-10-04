@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 12 · Signage and maps</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="12"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 12</p>
+  <h1>Signage and maps</h1>
+  <p class="lede">The game's interface is two physical things: a signboard standing behind the platform, and a map printed on the platform itself with raised roundels you press. You build both, and the fingertip press that works them, which the Unity edition had to write by hand after the toolkit's own failed.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd>A world-space UMG signboard with six views, a platform map with pressable roundels, and one tested press detector shared by every panel.</dd>
+    <dt>On the headset</dt><dd>The network printed on your table. Press a line's roundel, then a station's, and the board appears.</dd>
+    <dt>Unity equivalent</dt><dd>The display half of milestone XR7.</dd>
+  </dl>
+
+  <h2>What is on show in each state</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>State</th><th>On the platform</th><th>On the signboard</th></tr></thead>
+      <tbody>
+        <tr><td>Network</td><td>The network map: each open line as a coloured stroke with a raised roundel, plus the first closed line with a padlock</td><td>Masthead: TSUGI, NEXT STATION, total stars</td></tr>
+        <tr><td>LevelSelect</td><td>One line's map: a roundel at every station, its name beside it, stars earned, a marker on the next unfinished one</td><td>The line's name, stations cleared, stars on the line</td></tr>
+        <tr><td>Play</td><td>The board and the tray</td><td>Station name, clock, the star targets still in reach. On the tutorial, three briefing cards first</td></tr>
+        <tr><td>Pause</td><td>The board, dimmed</td><td>"Paused", with a RESUME button</td></tr>
+        <tr><td>TrainRun</td><td>The train</td><td>Hidden</td></tr>
+        <tr><td>Win</td><td>The solved board</td><td>Arrival: time, stars, a verdict stamp, and NEXT / RETRY / LINE MAP</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The ways back from play and from a line map are on the wrist menu, in lesson 14. The sign keeps RESUME for a return from a focus loss, when the wrist menu is closed.</p>
+
+  <h2>Unreal concepts</h2>
+
+  <h3>UMG and Slate</h3>
+  <p><strong>Slate</strong> is Unreal's C++ UI framework; the editor itself is written in it. <strong>UMG</strong> wraps Slate in <code>UObject</code>s so widgets can be laid out in a visual designer and driven from Blueprint. You work in UMG.</p>
+  <p>The pattern that keeps layout in the designer and logic in C++: write a C++ class deriving from <code>UUserWidget</code>, declare the widgets you need as properties marked <code>meta = (BindWidget)</code>, then make a Widget Blueprint that derives from it. The designer must contain widgets with those exact names, and the pointers are filled in for you.</p>
+
+  <h3>Widgets in the world</h3>
+  <p>A <code>UWidgetComponent</code> renders a widget to a texture and draws it on a quad in the level. Its <em>draw size</em> is the widget's size in UI pixels. One pixel is one local unit, so you scale the component to get a real size.</p>
+  <p>By default it redraws every frame. A sign that changes once a second does not need that. Turn on manual redraw and ask for an update when something changes. On a mobile GPU this matters.</p>
+
+  <h3>Runtime procedural meshes</h3>
+  <p>The map's strokes depend on which lines are open, so they cannot be baked. A <code>UProceduralMeshComponent</code> takes arrays of vertices, triangles, normals and UVs for a <em>section</em> and draws them. It is the simplest runtime mesh tool, and the map is rebuilt only when the player arrives at it.</p>
+
+  <h2>The press, and why it is hand-written</h2>
+  <p>Unity's toolkit poke never pressed a button on the headset, and rays were removed. So <code>XRPanelTouch</code> reads fingertip positions and decides for itself. Its rules are worth understanding before you port them, because each one fixed a specific misfire.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Rule</th><th>Value</th><th>The misfire it prevents</th></tr></thead>
+      <tbody>
+        <tr><td>A fingertip becomes <em>ready</em> only in front of the panel, between two distances, and over it</td><td>2 cm to 15 cm; within 2 cm of the panel's edge</td><td>A hand arriving from the side or from behind pressing whatever it passes</td></tr>
+        <tr><td>A ready fingertip that reaches the face over a button presses it, once</td><td>Within 6 mm of the face</td><td>One touch counted many times</td></tr>
+        <tr><td>Reaching the face anywhere else is a touch-down; it must draw back before it can press</td><td></td><td>A finger sliding across the panel onto a button</td></tr>
+        <tr><td>A second press on the same panel is ignored for a moment</td><td>0.35 s</td><td>Tracking jitter at the face</td></tr>
+        <tr><td>A fingertip presses a button it is slightly outside</td><td>3 mm</td><td>Tracking is good to about a centimetre</td></tr>
+        <tr><td>Of the buttons in reach, the nearest wins</td><td></td><td>The first button in the list taking every press</td></tr>
+        <tr><td>A panel can ignore one hand</td><td></td><td>The wrist menu being pressed by the wrist it is worn on</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="trap">
+    <p><span class="tag">The bug to avoid</span>The first Unity version compared a fingertip position with button rectangles that were in a different coordinate space, and measured its tolerance in the wrong unit. On the headset every press went to the first button on the page. Everything must be compared in one space: the panel's own UI pixels.</p>
+  </div>
+  <p>In Unity this logic lives in the engine-bound assembly, mixed with UI calls, and has no tests. In your port, pull the decision out into <code>TsugiCore</code> and test it. This is one place where the port can be better than the original.</p>
+
+  <h2>Read first</h2>
+  <ul class="files">
+    <li><code>Assets/01.Scripts/XR/Signboard/XRPanelTouch.cs</code><span>200 lines. <code>Update</code> and <code>ButtonAt</code>.</span></li>
+    <li><code>Assets/01.Scripts/XR/Signboard/XRSignboard.cs</code><span>508 lines. One method per view. The constants at the top give its size and place.</span></li>
+    <li><code>Assets/01.Scripts/XR/Signboard/XRSignageUi.cs</code><span>The shared blocks: card, button, LED strip, badge, stars.</span></li>
+    <li><code>Assets/01.Scripts/XR/Maps/XRPlatformMap.cs</code>, <code>XRMapRoundel.cs</code>, <code>XRMapMesh.cs</code><span>The card, the roundel's press heights, the flat stroke meshes.</span></li>
+    <li><code>Assets/01.Scripts/XR/Rules/MapFit.cs</code>, <code>MapStroke.cs</code>, <code>MapReveal.cs</code><span>Engine-free: fitting map space to the card, polylines for each line shape, which lines to show. Port with their three test fixtures.</span></li>
+    <li><code>Docs/UIDesign.MD</code>, section 6<span>The station-signage look the sign follows: paper card, ink type, amber LED strip.</span></li>
+  </ul>
+
+  <h2>Steps</h2>
+  <ol class="steps">
+    <li>
+      <p><strong>Write the press detector in <code>TsugiCore</code>.</strong> It knows nothing about widgets. Each frame it is given fingertips and button rectangles, all already in the panel's pixel space, and answers which button was pressed and which is hovered.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="cpp" data-title="TsugiPanelTouch.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "TsugiHand.h"
+
+/** A fingertip relative to a panel. Pixel is in the panel's own UI pixels: x from its left edge, y down from its top. */
+struct FTsugiPanelTip
+{
+    int32 Id = 0;                    // the same from frame to frame while that hand is tracked
+    ETsugiHand Hand = ETsugiHand::Left;
+    FVector2D Pixel = FVector2D::ZeroVector;
+    double GapCm = 0.0;              // in front of the face is positive
+};
+
+struct FTsugiPanelButton
+{
+    int32 Id = 0;
+    FBox2D Rect = FBox2D(ForceInit); // in the same pixel space as the tips
+    bool bEnabled = true;
+};
+
+struct FTsugiPanelTouchResult
+{
+    int32 Pressed = INDEX_NONE;
+    int32 Hovered = INDEX_NONE;
+    TOptional<ETsugiHand> PressedBy;
+};
+
+/** Fingertip presses on a flat panel's buttons. One instance per panel. */
+class TSUGICORE_API FTsugiPanelTouch
+{
+public:
+    static constexpr double ArmGapCm = 2.0;
+    static constexpr double ArmDepthCm = 15.0;
+    static constexpr double PressGapCm = 0.6;
+    static constexpr double HoverGapCm = 4.0;
+    static constexpr double PressCooldownSeconds = 0.35;
+
+    /** Slop: how far outside a button a fingertip still presses it. ArmMargin: how far outside the panel it still counts as over it. Both in pixels. */
+    FTsugiPanelTouch(double InSlopPixels, double InArmMarginPixels) : SlopPixels(InSlopPixels), ArmMarginPixels(InArmMarginPixels) {}
+
+    /** Fingertips of this hand press nothing here. */
+    TOptional<ETsugiHand> IgnoredHand;
+
+    /** The panel has just come into view: every fingertip must come at it afresh. */
+    void Disarm() { Armed.Reset(); }
+
+    FTsugiPanelTouchResult Update(TConstArrayView<FTsugiPanelTip> Tips, TConstArrayView<FTsugiPanelButton> Buttons,
+        FVector2D PanelSize, double NowSeconds, bool bCanPress = true);
+
+private:
+    int32 ButtonAt(TConstArrayView<FTsugiPanelButton> Buttons, FVector2D Point) const;
+
+    double SlopPixels;
+    double ArmMarginPixels;
+    TMap<int32, bool> Armed;
+    double LastPress = -1.0e9;
+};
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="TsugiPanelTouch.cpp">
+#include "TsugiPanelTouch.h"
+
+FTsugiPanelTouchResult FTsugiPanelTouch::Update(TConstArrayView<FTsugiPanelTip> Tips, TConstArrayView<FTsugiPanelButton> Buttons,
+    FVector2D PanelSize, double NowSeconds, bool bCanPress)
+{
+    FTsugiPanelTouchResult Result;
+
+    for (const FTsugiPanelTip& Tip : Tips)
+    {
+        if (IgnoredHand.IsSet() && IgnoredHand.GetValue() == Tip.Hand) continue;
+
+        const bool bOver =
+            Tip.Pixel.X >= -ArmMarginPixels && Tip.Pixel.X <= PanelSize.X + ArmMarginPixels &&
+            Tip.Pixel.Y >= -ArmMarginPixels && Tip.Pixel.Y <= PanelSize.Y + ArmMarginPixels;
+
+        const int32 Button = ButtonAt(Buttons, Tip.Pixel);
+        if (Button != INDEX_NONE && FMath::Abs(Tip.GapCm) < HoverGapCm) Result.Hovered = Button;
+
+        if (Tip.GapCm > ArmGapCm)
+        {
+            // Ready only over the panel and near it: not a hand off to one side, or across the room.
+            Armed.Add(Tip.Id, bOver && Tip.GapCm < ArmDepthCm);
+        }
+        else if (Tip.GapCm <= PressGapCm && Armed.FindRef(Tip.Id))
+        {
+            Armed.Add(Tip.Id, false);                         // touched down: must draw back before pressing again
+            if (Button == INDEX_NONE || !bCanPress) continue;
+            if (NowSeconds - LastPress < PressCooldownSeconds) continue;
+
+            LastPress = NowSeconds;
+            Result.Pressed = Button;
+            Result.PressedBy = Tip.Hand;
+            return Result;                                    // a press may rebuild the panel: nothing more this frame
+        }
+    }
+
+    // Forget fingertips that are no longer tracked.
+    for (auto It = Armed.CreateIterator(); It; ++It)
+    {
+        if (!Tips.ContainsByPredicate([&It](const FTsugiPanelTip& Tip) { return Tip.Id == It.Key(); })) It.RemoveCurrent();
+    }
+
+    return Result;
+}
+
+int32 FTsugiPanelTouch::ButtonAt(TConstArrayView<FTsugiPanelButton> Buttons, FVector2D Point) const
+{
+    int32 Best = INDEX_NONE;
+    double BestDistance = TNumericLimits<double>::Max();
+
+    for (const FTsugiPanelButton& Button : Buttons)
+    {
+        if (!Button.bEnabled || !Button.Rect.bIsValid) continue;
+        const FVector2D Size = Button.Rect.GetSize();
+        if (!(Size.X > 0.0) || !(Size.Y > 0.0)) continue;     // not laid out yet
+
+        const double Dx = FMath::Max3(0.0, Button.Rect.Min.X - Point.X, Point.X - Button.Rect.Max.X);
+        const double Dy = FMath::Max3(0.0, Button.Rect.Min.Y - Point.Y, Point.Y - Button.Rect.Max.Y);
+        if (Dx > SlopPixels || Dy > SlopPixels) continue;
+
+        const double Distance = Dx * Dx + Dy * Dy;
+        if (Distance < BestDistance) { BestDistance = Distance; Best = Button.Id; }
+    }
+    return Best;
+}
+        </script>
+      </div>
+      <p>Write tests for every row of the rules table above before you connect it to a widget. There is no Unity fixture to port; these are new. At minimum: a tip arriving from the side never presses; a slide across the face onto a button does not press; two overlapping-reach buttons give the nearest; the cooldown swallows a second press; the ignored hand presses nothing.</p>
+    </li>
+    <li>
+      <p><strong>Connect it to a widget component.</strong> A small component, <code>UTsugiPanelTouchComponent</code>, sits beside a <code>UWidgetComponent</code>. Each frame it converts fingertips into the panel's pixel space, collects button rectangles in the same space, runs the detector, and clicks.</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiPanelTouchComponent.cpp (the mapping)">
+void UTsugiPanelTouchComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+    if (!Panel || !Panel->IsVisible() || !Panel->GetUserWidgetObject()) return;
+
+    const FTransform ToWorld = Panel->GetComponentTransform();
+    const FVector2D Size = Panel->GetCurrentDrawSize();
+    const double CmPerPixel = ToWorld.GetScale3D().Y;           // one pixel is one local unit
+
+    // Fingertips into pixels. The component's own function does the pivot and the y flip.
+    TArray<FTsugiPanelTip, TInlineAllocator<2>> Tips;
+    for (const ETsugiHand Hand : { ETsugiHand::Left, ETsugiHand::Right })
+    {
+        const FTsugiHandState& State = Hands->Get(Hand);
+        if (!State.bTracked) continue;
+
+        FTsugiPanelTip Tip;
+        Tip.Id = static_cast<int32>(Hand);
+        Tip.Hand = Hand;
+        Panel->GetLocalHitLocation(State.Fingertip, Tip.Pixel);
+        // The widget faces the component's +X. Local units to centimetres through the component's scale.
+        Tip.GapCm = ToWorld.InverseTransformPosition(State.Fingertip).X * ToWorld.GetScale3D().X;
+        Tips.Add(Tip);
+    }
+
+    // Button rectangles, brought into the root widget's own space: the same pixels as the tips.
+    const FGeometry Root = Panel->GetUserWidgetObject()->GetCachedGeometry();
+    TArray<FTsugiPanelButton, TInlineAllocator<8>> Rects;
+    for (int32 Index = 0; Index < Buttons.Num(); ++Index)
+    {
+        const UButton* Button = Buttons[Index].Button.Get();
+        if (!Button) continue;
+        const FGeometry Geometry = Button->GetCachedGeometry();
+        const FVector2D TopLeft = Root.AbsoluteToLocal(Geometry.GetAbsolutePosition());
+        const FVector2D BottomRight = Root.AbsoluteToLocal(Geometry.GetAbsolutePosition() + Geometry.GetAbsoluteSize());
+
+        FTsugiPanelButton Rect;
+        Rect.Id = Index;
+        Rect.Rect = FBox2D(TopLeft, BottomRight);
+        Rect.bEnabled = Button->GetIsEnabled() && Button->IsVisible();
+        Rects.Add(Rect);
+    }
+
+    const FTsugiPanelTouchResult Result = Touch.Update(Tips, Rects, Size, GetWorld()->GetRealTimeSeconds(), bCanPress);
+
+    SetHovered(Result.Hovered);                                  // SetRenderScale(1.06) on the hovered button, 1 on the rest
+    if (Buttons.IsValidIndex(Result.Pressed))
+    {
+        OnPressed.Broadcast(Result.PressedBy);                   // sound and haptics, lesson 16
+        Buttons[Result.Pressed].Button->OnClicked.Broadcast();   // the same event a mouse click raises
+    }
+}
+      </script>
+      <p>Construct the detector with slop and margin converted to pixels: <code>0.3 / CmPerPixel</code> and <code>2.0 / CmPerPixel</code>. That conversion is exactly what the first Unity version got wrong.</p>
+      <div class="unverified">
+        <p><span class="tag">Verify on the device</span>Two things here were not confirmed: which way <code>GetLocalHitLocation</code> treats points off the widget's plane, and whether a button's cached geometry inside a widget component is in the same pixel space as the draw size. Draw a debug dot on the widget at each fingertip's computed pixel and outline each button's computed rectangle. Fix the mapping until the dot sits under your finger. Do this before anything else on the sign.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>Build the signboard widget.</strong> A C++ base class with the bound widgets and one function per view; the layout in <code>WBP_Signboard</code>.</p>
+      <script type="text/plain" data-lang="cpp" data-title="TsugiSignboardWidget.h (shape)">
+UCLASS(Abstract)
+class TSUGIXR_API UTsugiSignboardWidget : public UUserWidget
+{
+    GENERATED_BODY()
+
+public:
+    void ShowMasthead(int32 TotalStars);
+    void ShowLine(const UTsugiLineDefinition* Line, int32 Cleared, int32 Stations, int32 Stars);
+    void ShowStation(const UTsugiLevelDefinition* Level, const UTsugiLineDefinition* Line, int32 StationIndex);
+    void ShowBriefing(const UTsugiLineDefinition* Line, int32 Page, int32 Pages, const FText& Title, const FText& Body, const FText& ButtonLabel);
+    void ShowPaused(const UTsugiLevelDefinition* Level, const UTsugiLineDefinition* Line, int32 StationIndex);
+    void ShowArrival(const UTsugiLevelDefinition* Level, const UTsugiLineDefinition* Line, const FTsugiCompletionResult& Result, bool bLineComplete);
+    void UpdateClock(double ElapsedSeconds, int32 StarTier);
+
+    /** The view's buttons, for the press component to register after each Show. */
+    TArray<UButton*> GetLiveButtons() const;
+
+    TMulticastDelegate<void()> OnResume, OnNext, OnRetry, OnLineMap, OnBriefingNext;
+
+protected:
+    virtual void NativeConstruct() override;        // bind each button's OnClicked to one of the delegates above
+
+    // Names must match the widgets in WBP_Signboard exactly.
+    UPROPERTY(meta = (BindWidget)) TObjectPtr<UWidgetSwitcher> Views;
+    UPROPERTY(meta = (BindWidget)) TObjectPtr<UTextBlock> StationName;
+    UPROPERTY(meta = (BindWidget)) TObjectPtr<UTextBlock> Clock;
+    UPROPERTY(meta = (BindWidget)) TObjectPtr<UButton> ResumeButton;
+    UPROPERTY(meta = (BindWidget)) TObjectPtr<UButton> NextButton;
+    UPROPERTY(meta = (BindWidget)) TObjectPtr<UButton> RetryButton;
+    UPROPERTY(meta = (BindWidget)) TObjectPtr<UButton> LineMapButton;
+    // ...the rest: stars, LED strip text, the stamp image, the line badge.
+};
+      </script>
+      <p>Station and line names are invented proper nouns and are never translated: wrap them with <code>FText::AsCultureInvariant</code>. Everything else on the sign comes from the string table in lesson 16; use placeholder English until then.</p>
+    </li>
+    <li>
+      <p><strong>Stand the sign up.</strong> An actor, <code>ATsugiSignboard</code>, attached under the board root, with the widget component, two posts and the press component.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>From <code>XRSignboard.cs</code></th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td>Panel size in UI pixels</td><td>1260 × 720</td></tr>
+            <tr><td>Width in the room at a 6 cm cell</td><td>42 cm, so 24 cm tall. Sized in cells, so it scales with the board.</td></tr>
+            <tr><td>Pivot</td><td>Bottom centre</td></tr>
+            <tr><td>Bottom edge above the surface</td><td>1.1 cells</td></tr>
+            <tr><td>Behind the far edge of whatever is on show</td><td>0.5 cells</td></tr>
+            <tr><td>Turns to face the head</td><td>About the vertical; then leans back towards the eyes by up to 50°</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Set the widget component to manual redraw. Request a redraw when a view is shown, when the clock's displayed second changes, and while the arrival stamp animates.</p>
+    </li>
+    <li>
+      <p><strong>Port the map rules,</strong> then build the map actor. <code>MapFit</code> fits a line's map nodes onto the card. <code>MapStroke</code> turns a line's nodes into a polyline for its shape: a route, a loop or a stadium. <code>MapReveal</code> says which lines the network shows: the open ones, plus the first closed one. Because unlocking is a chain, exactly one padlock is ever on show.</p>
+    </li>
+    <li>
+      <p><strong>Print the map.</strong> The card is 9.6 cells square, about the footprint of an 8×8 board, with its near edge on the board root's origin. On it, flat coloured strokes and raised roundels.</p>
+      <script type="text/plain" data-lang="cpp" data-title="A flat stroke as a procedural mesh section">
+#include "ProceduralMeshComponent.h"
+
+/** A ribbon of the given width along a polyline, lying flat at Height. Points are in the card's frame, in cells. */
+void ATsugiPlatformMap::AddStroke(int32 Section, TConstArrayView<FTsugiGroundPoint> Points, double WidthCells, double HeightCells,
+    UMaterialInterface* Material)
+{
+    TArray<FVector> Vertices;
+    TArray<int32> Triangles;
+    TArray<FVector> Normals;
+
+    for (int32 Index = 0; Index < Points.Num(); ++Index)
+    {
+        // Direction along the line here: from the previous point to the next.
+        const FTsugiGroundPoint& A = Points[FMath::Max(Index - 1, 0)];
+        const FTsugiGroundPoint& B = Points[FMath::Min(Index + 1, Points.Num() - 1)];
+        const FVector2D Along = FVector2D(B.X - A.X, B.Z - A.Z).GetSafeNormal();
+        const FVector2D Side(Along.Y, -Along.X);                 // to the right of travel, in the (east, north) plane
+
+        const FVector2D Centre(Points[Index].X, Points[Index].Z);
+        const FVector2D Left = Centre - Side * (WidthCells / 2.0);
+        const FVector2D Right = Centre + Side * (WidthCells / 2.0);
+
+        Vertices.Add(Tsugi::ToLocal(Left.X, Left.Y, HeightCells));
+        Vertices.Add(Tsugi::ToLocal(Right.X, Right.Y, HeightCells));
+        Normals.Add(FVector::UpVector);
+        Normals.Add(FVector::UpVector);
+
+        if (Index > 0)
+        {
+            const int32 V = Index * 2;
+            // Two triangles per span. Use the winding your experiment in lesson 8 said faces up.
+            Triangles.Append({ V - 2, V - 1, V,   V - 1, V + 1, V });
+        }
+    }
+
+    Strokes->CreateMeshSection_LinearColor(Section, Vertices, Triangles, Normals, {}, {}, {}, /*bCreateCollision*/ false);
+    Strokes->SetMaterial(Section, Material);
+}
+      </script>
+      <div class="trap">
+        <p><span class="tag">From the headset checks</span>Printed layers that share a height fight for depth: a stroke flush with the paper showed only as broken dashes. Each layer floats 0.005 cells above the last, which is 0.3 mm at the standard size.</p>
+      </div>
+      <p>Stroke width is a <em>map</em> measurement scaled by the fit, not a fixed size, so lines stay in proportion from two lines to twenty-four. It has a floor of 0.1 cells so the full network's lines do not vanish.</p>
+    </li>
+    <li>
+      <p><strong>Make roundels pressable.</strong> A roundel is a raised disc, 0.12 cells proud of the card. It uses the same idea as the panel press, measured vertically:</p>
+      <ul>
+        <li>A fingertip more than 0.25 cells above the face is ready.</li>
+        <li>Coming down to 0.1 cells above the face, over the roundel, presses it once.</li>
+        <li>Coming down to that height off the roundel is a touch-down: it must lift before it can press.</li>
+        <li>Within 0.8 cells it lifts the roundel a little, to show which one you are over.</li>
+        <li>The touch area is 1.4 times the disc's width.</li>
+        <li>A closed roundel answers with a shake and does nothing.</li>
+      </ul>
+      <p>Reuse <code>FTsugiPanelTouch</code>: treat the card as a panel whose "pixels" are cells and whose "gap" is height above the roundel face, with each roundel a small square button. One tested detector for every press in the game.</p>
+    </li>
+  </ol>
+
+  <h2>Your port</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Unity file</th><th>Unreal</th><th>Module</th></tr></thead>
+      <tbody>
+        <tr><td><code>XRPanelTouch.cs</code></td><td><code>FTsugiPanelTouch</code> with new tests; <code>UTsugiPanelTouchComponent</code></td><td><code>TsugiCore</code>; <code>TsugiXR</code></td></tr>
+        <tr><td><code>XRSignboard.cs</code>, <code>XRSignageUi.cs</code></td><td><code>UTsugiSignboardWidget</code>, <code>WBP_Signboard</code>, <code>ATsugiSignboard</code></td><td><code>TsugiXR</code></td></tr>
+        <tr><td><code>MapFit.cs</code>, <code>MapStroke.cs</code>, <code>MapReveal.cs</code></td><td><code>FTsugiMapFit</code>, <code>FTsugiMapStroke</code>, <code>FTsugiMapReveal</code>, with their tests</td><td><code>TsugiCore</code></td></tr>
+        <tr><td><code>XRPlatformMap.cs</code>, <code>XRMapMesh.cs</code>, <code>XRMapRoundel.cs</code></td><td><code>ATsugiPlatformMap</code> with <code>ShowNetwork</code>, <code>ShowLine</code>, <code>Hide</code>, and events <code>OnLineChosen</code>, <code>OnStationChosen</code></td><td><code>TsugiXR</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Add <code>"UMG"</code>, <code>"Slate"</code>, <code>"SlateCore"</code> and <code>"ProceduralMeshComponent"</code> to <code>TsugiXR.Build.cs</code>, and enable the Procedural Mesh Component plugin.</p>
+  <p>The arrival's verdict stamp has exact timing in <code>XRSignboard.cs</code>: a 0.3 s wait, down from 2.4 times its size and 22° off square in 0.26 s, slightly under-size on impact, then a damped rattle to rest 4° off square. A UMG widget animation in the designer is the natural tool.</p>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li>My new <code>Tsugi.Core.PanelTouch</code> tests pass, one for each rule in the table.</li>
+    <li>With debug drawing on, the dot on the sign sits under my fingertip across the whole panel, and each button's outline matches the button.</li>
+    <li>Pressing a sign button with a fingertip works first time, nine times out of ten, with either hand and with a controller tip.</li>
+    <li>Sliding a finger across the sign's face does not press anything.</li>
+    <li>Reaching through the sign from behind does not press anything.</li>
+    <li>The network map shows only open lines plus one closed line with a padlock.</li>
+    <li>Pressing an open line's roundel opens its map; pressing a closed one shakes it.</li>
+    <li>Pressing an open station's roundel starts that station; the map goes and the board appears.</li>
+    <li>No part of the printed map flickers or shows as dashes.</li>
+    <li>The sign faces me from any side of the table and stays readable when I stand over it.</li>
+  </ul>
+
+  <h2>Pitfalls</h2>
+  <ul>
+    <li><strong>A button acts only in the state that drew it.</strong> Unity wraps every button action in <code>When(state, action)</code>: a double press must not hit the flow twice. Keep that guard. Your flow would <code>ensure</code> on the second call.</li>
+    <li><strong>A view just shown takes no press at once.</strong> When a panel appears under a hand that is already there, call <code>Disarm()</code> so the fingertip must come at it afresh.</li>
+    <li><strong>Widget components and the mobile renderer.</strong> A world widget is a translucent, textured quad. Keep the draw size as small as stays legible; 1260×720 is the Unity value, not a law.</li>
+    <li><strong>Text needs the right font.</strong> The game's face is Barlow. Import it as a font asset now. Japanese needs a second face added to the same composite font; lesson 16 does that.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q">A fingertip approaches the sign from the side, level with its face, and ends on RESUME. Is it a press?</p>
+    <ul>
+      <li>Yes, it is on the button at the face.</li>
+      <li data-correct>No. It was never ready: it did not pass through the space 2 to 15 cm in front of the panel while over it.</li>
+    </ul>
+    <p class="why">Arming requires coming at the panel from the front. This is what stops a hand working on the board from pressing the sign behind it.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">Why move the press decision into <code>TsugiCore</code> when Unity keeps it beside the UI code?</p>
+    <ul>
+      <li>UMG cannot run logic.</li>
+      <li data-correct>Given tips and rectangles as plain numbers, every rule can be tested without a headset; the space-mixing bug that reached the Unity headset would have failed a test.</li>
+      <li>It runs faster there.</li>
+    </ul>
+    <p class="why">The engine-bound part shrinks to "convert to pixels, call, click", which is small enough to check by eye with a debug overlay.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">The network has 24 lines and the player has opened 3. How many roundels with a padlock are on the map?</p>
+    <ul>
+      <li>21</li>
+      <li data-correct>1</li>
+      <li>0</li>
+    </ul>
+    <p class="why">The map shows the open lines plus the first closed one. The rest of the network is not drawn until it is earned.</p>
+  </div>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+</body>
+</html>

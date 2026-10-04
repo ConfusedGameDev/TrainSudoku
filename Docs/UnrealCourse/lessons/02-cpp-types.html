@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 02 · Unreal C++ through the basic types</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="2"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 02</p>
+  <h1>Unreal C++ through the basic types</h1>
+  <p class="lede">You port the five smallest types in the game. They are a few dozen lines each, which leaves room to learn what Unreal adds to C++: naming, reflection macros, containers and the three string types.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd><code>ETsugiDirection</code>, <code>ETsugiPieceKey</code>, <code>FTsugiPiece</code>, <code>FTsugiTunnel</code>, <code>FTsugiFixedPiece</code> and <code>FTsugiLevelData</code> compile in <code>TsugiCore</code>.</dd>
+    <dt>On the headset</dt><dd>Nothing new. This is library code.</dd>
+    <dt>Unity equivalent</dt><dd>The first files of milestone M0.</dd>
+  </dl>
+
+  <h2>Unreal concepts</h2>
+
+  <h3>Names carry a prefix</h3>
+  <p>The prefix is part of the type's name and the build tool checks it on reflected types.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Prefix</th><th>Means</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td><code>U</code></td><td>Derives from <code>UObject</code>: collected, reflected</td><td><code>UDataAsset</code></td></tr>
+        <tr><td><code>A</code></td><td>Derives from <code>AActor</code></td><td><code>APawn</code></td></tr>
+        <tr><td><code>F</code></td><td>A plain struct or class</td><td><code>FVector</code>, <code>FString</code></td></tr>
+        <tr><td><code>E</code></td><td>An enum</td><td><code>ETsugiDirection</code></td></tr>
+        <tr><td><code>T</code></td><td>A template</td><td><code>TArray&lt;int32&gt;</code></td></tr>
+        <tr><td><code>I</code></td><td>An interface class</td><td><code>ITsugiSaveStore</code></td></tr>
+        <tr><td><code>b</code></td><td>A <code>bool</code> variable</td><td><code>bIsFixed</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Reflected types cannot live in a C++ namespace, so this course gives every game type a <code>Tsugi</code> prefix. Free functions can live in a namespace, and that is where C#'s static classes and extension methods go.</p>
+
+  <h3>Reflection is opt-in</h3>
+  <p><code>UENUM()</code>, <code>USTRUCT()</code>, <code>UCLASS()</code>, <code>UPROPERTY()</code> and <code>UFUNCTION()</code> are markers. A tool called Unreal Header Tool reads them before the compiler runs and generates a <code>Something.generated.h</code> file that the header must include last.</p>
+  <p>Mark a type only when the editor, a saved asset or Blueprint has to see it. <code>ETsugiPieceKey</code> is stored in level assets, so it is a <code>UENUM</code>. A piece sitting on a board during play is never saved as an asset, so <code>FTsugiPiece</code> stays plain.</p>
+
+  <h3>Containers and strings</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>C#</th><th>Unreal C++</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td><code>int</code>, <code>long</code>, <code>double</code></td><td><code>int32</code>, <code>int64</code>, <code>double</code></td><td>Always the sized names.</td></tr>
+        <tr><td><code>List&lt;T&gt;</code>, <code>T[]</code></td><td><code>TArray&lt;T&gt;</code></td><td><code>Add</code>, <code>Num()</code>, <code>IsValidIndex</code>.</td></tr>
+        <tr><td><code>IReadOnlyList&lt;T&gt;</code></td><td><code>TConstArrayView&lt;T&gt;</code></td><td>A non-owning view. Cheap to pass.</td></tr>
+        <tr><td><code>Dictionary&lt;K, V&gt;</code></td><td><code>TMap&lt;K, V&gt;</code></td><td>The key needs <code>operator==</code> and <code>GetTypeHash</code>.</td></tr>
+        <tr><td><code>HashSet&lt;T&gt;</code></td><td><code>TSet&lt;T&gt;</code></td><td>Same requirement.</td></tr>
+        <tr><td><code>T?</code> (nullable struct)</td><td><code>TOptional&lt;T&gt;</code></td><td><code>IsSet()</code>, <code>GetValue()</code>, <code>Reset()</code>.</td></tr>
+        <tr><td><code>(int X, int Y)</code></td><td><code>FIntPoint</code></td><td>Already hashable.</td></tr>
+        <tr><td><code>string</code></td><td><code>FString</code></td><td>Mutable text you compute with. Literals are <code>TEXT("…")</code>.</td></tr>
+        <tr><td>An identifier used as a key</td><td><code>FName</code></td><td>Interned and case-insensitive. Fast to compare.</td></tr>
+        <tr><td>Text a player reads</td><td><code>FText</code></td><td>The only type that localises. Lesson 16.</td></tr>
+        <tr><td><code>throw new ArgumentException</code></td><td><code>check</code>, <code>ensure</code>, or a <code>bool</code> return</td><td>See below.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="trap">
+    <p><span class="tag">Trap</span>Level <code>id</code> strings are the save-file identity and they are case-sensitive in the Unity save. Keep them as <code>FString</code>. <code>FName</code> folds case, so two ids that differ only by case would collide.</p>
+  </div>
+
+  <h3>There are no exceptions</h3>
+  <p>Unreal game code is compiled without C++ exceptions on most platforms. Every <code>throw</code> in the C# becomes one of three things:</p>
+  <ul>
+    <li><code>check(Condition)</code>: a programmer error. It stops the program in development builds. Use it where the C# throws for an argument that could only be wrong through a bug, such as <code>PieceKeys.Other</code> asked about a side the key does not have.</li>
+    <li><code>ensure(Condition)</code>: logs a call stack once and carries on. Use it where you can refuse and continue.</li>
+    <li>A <code>bool</code> return with an out parameter: for anything a caller is expected to handle, which the C# already writes as <code>TryX</code>.</li>
+  </ul>
+
+  <h3>Exporting from a module</h3>
+  <p>A class or function that another module calls must be marked with the module's API macro, here <code>TSUGICORE_API</code>. Without it the code compiles and then fails to link from <code>TsugiXR</code>. Functions defined entirely in a header do not need it.</p>
+
+  <h2>Read first</h2>
+  <ul class="files">
+    <li><code>Assets/01.Scripts/Core/Direction.cs</code><span>Note the comment: North is y-1. Row 0 is the far row.</span></li>
+    <li><code>Assets/01.Scripts/Core/PieceKey.cs</code><span>Six keys, and the four helpers every other file uses: <code>Connections</code>, <code>Has</code>, <code>Other</code>, <code>TryFromDirections</code>.</span></li>
+    <li><code>Assets/01.Scripts/Core/Piece.cs</code>, <code>Tunnel.cs</code><span>Two value types with equality.</span></li>
+    <li><code>Assets/01.Scripts/Core/LevelData.cs</code><span><code>Validate</code> is the interesting part: six kinds of static mistake a level can have.</span></li>
+    <li><code>Assets/99.Test/EditMode/PieceKeyTests.cs</code><span>What these types are expected to do. You port the tests in lesson 3.</span></li>
+  </ul>
+
+  <h2>Steps</h2>
+  <ol class="steps">
+    <li>
+      <p><strong>Port <code>Direction</code>.</strong> The enum is reflected. The extension methods become <code>constexpr</code> free functions in a namespace.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="csharp" data-title="Unity: Direction.cs">
+public enum Direction { North = 0, East = 1, South = 2, West = 3 }
+
+public static class DirectionExtensions
+{
+    public static readonly Direction[] All = { Direction.North, Direction.East, Direction.South, Direction.West };
+
+    public static Direction Opposite(this Direction direction) => (Direction)(((int)direction + 2) % 4);
+
+    public static int Dx(this Direction direction)
+    {
+        switch (direction)
+        {
+            case Direction.East: return 1;
+            case Direction.West: return -1;
+            default: return 0;
+        }
+    }
+    // Dy: South +1, North -1.   IsVertical: North or South.
+}
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="Unreal: TsugiCore/Public/TsugiDirection.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "TsugiDirection.generated.h"   // always the last include
+
+/** A side of a cell. North is y-1 (towards the top row), South is y+1, East is x+1, West is x-1. */
+UENUM(BlueprintType)
+enum class ETsugiDirection : uint8
+{
+    North = 0,
+    East  = 1,
+    South = 2,
+    West  = 3,
+};
+
+namespace Tsugi
+{
+    inline constexpr ETsugiDirection AllDirections[] =
+    {
+        ETsugiDirection::North, ETsugiDirection::East, ETsugiDirection::South, ETsugiDirection::West,
+    };
+
+    constexpr ETsugiDirection Opposite(ETsugiDirection Direction)
+    {
+        return static_cast<ETsugiDirection>((static_cast<uint8>(Direction) + 2) % 4);
+    }
+
+    constexpr int32 Dx(ETsugiDirection Direction)
+    {
+        return Direction == ETsugiDirection::East ? 1 : Direction == ETsugiDirection::West ? -1 : 0;
+    }
+
+    constexpr int32 Dy(ETsugiDirection Direction)
+    {
+        return Direction == ETsugiDirection::South ? 1 : Direction == ETsugiDirection::North ? -1 : 0;
+    }
+
+    constexpr bool IsVertical(ETsugiDirection Direction)
+    {
+        return Direction == ETsugiDirection::North || Direction == ETsugiDirection::South;
+    }
+}
+        </script>
+      </div>
+      <p>Three things to notice. The enum has an explicit <code>uint8</code> base, which Blueprint requires. The numeric values are kept, because <code>BoardLayout.Yaw</code> multiplies them by 90 and the save format stores keys by name but the Unity level assets store them by number. And a call that read <code>direction.Opposite()</code> now reads <code>Tsugi::Opposite(Direction)</code>.</p>
+    </li>
+    <li>
+      <p><strong>Port <code>PieceKey</code>.</strong> C# returns a tuple from <code>Connections</code>. A two-field struct does the same job and supports structured bindings.</p>
+      <div class="tabs">
+        <script type="text/plain" data-lang="cpp" data-title="Unreal: TsugiPieceKey.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "TsugiDirection.h"
+#include "TsugiPieceKey.generated.h"
+
+/** The six track shapes. Each key names the two sides a piece connects. */
+UENUM(BlueprintType)
+enum class ETsugiPieceKey : uint8
+{
+    NS, EW, NW, NE, SW, SE,
+};
+
+struct FTsugiConnections
+{
+    ETsugiDirection A;
+    ETsugiDirection B;
+};
+
+namespace Tsugi
+{
+    inline constexpr ETsugiPieceKey AllPieceKeys[] =
+    {
+        ETsugiPieceKey::NS, ETsugiPieceKey::EW, ETsugiPieceKey::NW,
+        ETsugiPieceKey::NE, ETsugiPieceKey::SW, ETsugiPieceKey::SE,
+    };
+
+    TSUGICORE_API FTsugiConnections Connections(ETsugiPieceKey Key);
+    TSUGICORE_API bool Has(ETsugiPieceKey Key, ETsugiDirection Direction);
+
+    /** Given one connection of the piece, returns the other one. Asking about a side the key lacks is a bug. */
+    TSUGICORE_API ETsugiDirection Other(ETsugiPieceKey Key, ETsugiDirection Direction);
+
+    TSUGICORE_API bool TryFromDirections(ETsugiDirection A, ETsugiDirection B, ETsugiPieceKey& OutKey);
+    TSUGICORE_API bool TryParsePieceKey(const FString& Text, ETsugiPieceKey& OutKey);
+    TSUGICORE_API const TCHAR* ToString(ETsugiPieceKey Key);
+}
+        </script>
+        <script type="text/plain" data-lang="cpp" data-title="Unreal: TsugiPieceKey.cpp">
+#include "TsugiPieceKey.h"
+
+namespace Tsugi
+{
+    FTsugiConnections Connections(ETsugiPieceKey Key)
+    {
+        using D = ETsugiDirection;
+        switch (Key)
+        {
+            case ETsugiPieceKey::NS: return { D::North, D::South };
+            case ETsugiPieceKey::EW: return { D::East,  D::West  };
+            case ETsugiPieceKey::NW: return { D::North, D::West  };
+            case ETsugiPieceKey::NE: return { D::North, D::East  };
+            case ETsugiPieceKey::SW: return { D::South, D::West  };
+            case ETsugiPieceKey::SE: return { D::South, D::East  };
+        }
+        checkNoEntry();                       // C#: throw new ArgumentOutOfRangeException
+        return { D::North, D::South };
+    }
+
+    bool Has(ETsugiPieceKey Key, ETsugiDirection Direction)
+    {
+        const auto [A, B] = Connections(Key);
+        return A == Direction || B == Direction;
+    }
+
+    ETsugiDirection Other(ETsugiPieceKey Key, ETsugiDirection Direction)
+    {
+        const auto [A, B] = Connections(Key);
+        if (A == Direction) return B;
+        checkf(B == Direction, TEXT("%s has no connection towards that side."), ToString(Key));
+        return A;
+    }
+
+    const TCHAR* ToString(ETsugiPieceKey Key)
+    {
+        static const TCHAR* Names[] = { TEXT("NS"), TEXT("EW"), TEXT("NW"), TEXT("NE"), TEXT("SW"), TEXT("SE") };
+        return Names[static_cast<uint8>(Key)];
+    }
+
+    bool TryParsePieceKey(const FString& Text, ETsugiPieceKey& OutKey)
+    {
+        const FString Trimmed = Text.TrimStartAndEnd();
+        for (const ETsugiPieceKey Candidate : AllPieceKeys)
+        {
+            if (Trimmed.Equals(ToString(Candidate), ESearchCase::IgnoreCase))
+            {
+                OutKey = Candidate;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // TryFromDirections: yours. Loop AllPieceKeys and compare both orders, as the C# does.
+}
+        </script>
+      </div>
+      <p>The name table is written out by hand on purpose. You could ask reflection for an enum's name with <code>StaticEnum&lt;ETsugiPieceKey&gt;()</code>, but these six strings are written into every player's save file. A table that a test pins is safer than a name that changes if someone renames an enumerator.</p>
+    </li>
+    <li>
+      <p><strong>Port <code>Piece</code>.</strong> A plain struct. C#'s <code>IEquatable</code> and <code>GetHashCode</code> become <code>operator==</code> and a free function named <code>GetTypeHash</code>, which is what <code>TMap</code> and <code>TSet</code> look for.</p>
+      <script type="text/plain" data-lang="cpp" data-title="Unreal: TsugiPiece.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "TsugiPieceKey.h"
+
+/** A track piece sitting in a cell. Fixed pieces come from the level and cannot be erased. */
+struct FTsugiPiece
+{
+    ETsugiPieceKey Key = ETsugiPieceKey::NS;
+    bool bIsFixed = false;
+
+    FTsugiPiece() = default;
+    FTsugiPiece(ETsugiPieceKey InKey, bool bInIsFixed) : Key(InKey), bIsFixed(bInIsFixed) {}
+
+    bool Has(ETsugiDirection Direction) const { return Tsugi::Has(Key, Direction); }
+
+    friend bool operator==(const FTsugiPiece& L, const FTsugiPiece& R) { return L.Key == R.Key && L.bIsFixed == R.bIsFixed; }
+    friend uint32 GetTypeHash(const FTsugiPiece& Piece) { return (static_cast<uint32>(Piece.Key) << 1) | (Piece.bIsFixed ? 1u : 0u); }
+};
+      </script>
+      <p>Where the C# says <code>Piece?</code>, write <code>TOptional&lt;FTsugiPiece&gt;</code>. The board in lesson 3 stores a <code>TArray&lt;TOptional&lt;FTsugiPiece&gt;&gt;</code>.</p>
+    </li>
+    <li>
+      <p><strong>Port <code>Tunnel</code> and <code>FixedPiece</code> as reflected structs.</strong> Level assets store both, so the editor has to see their fields.</p>
+      <script type="text/plain" data-lang="cpp" data-title="Unreal: TsugiTunnel.h">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "TsugiDirection.h"
+#include "TsugiTunnel.generated.h"
+
+/**
+ * A tunnel mouth outside the grid. Side is the board edge it sits on and Index is the column (North/South)
+ * or row (East/West). The tunnel points into its adjacent perimeter cell from that side.
+ */
+USTRUCT(BlueprintType)
+struct TSUGICORE_API FTsugiTunnel
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tsugi")
+    ETsugiDirection Side = ETsugiDirection::West;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tsugi")
+    int32 Index = 0;
+
+    FTsugiTunnel() = default;
+    FTsugiTunnel(ETsugiDirection InSide, int32 InIndex) : Side(InSide), Index(InIndex) {}
+
+    /** Column of the cell this tunnel opens into. */
+    int32 CellX(int32 Width) const;
+    /** Row of the cell this tunnel opens into. */
+    int32 CellY(int32 Height) const;
+    bool IsOnPerimeter(int32 Width, int32 Height) const;
+
+    friend bool operator==(const FTsugiTunnel& L, const FTsugiTunnel& R) { return L.Side == R.Side && L.Index == R.Index; }
+    friend bool operator!=(const FTsugiTunnel& L, const FTsugiTunnel& R) { return !(L == R); }
+};
+      </script>
+      <p>Every <code>UPROPERTY</code> needs a default value in the struct. An uninitialised reflected field is a warning that becomes an error in some build configurations.</p>
+    </li>
+    <li>
+      <p><strong>Port <code>LevelData</code>.</strong> It is a plain class. The data asset in lesson 4 converts to and from it, exactly as <code>LevelDefinition.ToLevelData</code> does in Unity.</p>
+      <script type="text/plain" data-lang="cpp" data-title="Unreal: TsugiLevelData.h (skeleton)">
+#pragma once
+
+#include "CoreMinimal.h"
+#include "TsugiPieceKey.h"
+#include "TsugiTunnel.h"
+#include "TsugiFixedPiece.h"
+
+/** Plain description of a level: size, clues, fixed pieces and tunnels. Everything in TsugiCore works on it directly. */
+class TSUGICORE_API FTsugiLevelData
+{
+public:
+    FTsugiLevelData(int32 InWidth, int32 InHeight);
+
+    FString Name;
+    TArray<int32> ColumnClues;          // Num() == Width
+    TArray<int32> RowClues;             // Num() == Height
+    TArray<FTsugiFixedPiece> FixedPieces;
+    FTsugiTunnel Entrance;
+    FTsugiTunnel Exit;
+
+    int32 GetWidth() const { return Width; }
+    int32 GetHeight() const { return Height; }
+
+    bool InBounds(int32 X, int32 Y) const { return X >= 0 && X < Width && Y >= 0 && Y < Height; }
+    bool TryGetFixedPiece(int32 X, int32 Y, FTsugiFixedPiece& OutPiece) const;
+
+    bool HasTunnel(int32 X, int32 Y, ETsugiDirection Side) const { return IsEntrance(X, Y, Side) || IsExit(X, Y, Side); }
+    bool IsEntrance(int32 X, int32 Y, ETsugiDirection Side) const;
+    bool IsExit(int32 X, int32 Y, ETsugiDirection Side) const;
+
+    /** Static consistency problems. An empty array means the level is well formed, not that it is solvable. */
+    TArray<FString> Validate() const;
+
+private:
+    int32 Width;
+    int32 Height;
+};
+      </script>
+      <p>The C# constructor throws when width or height is below one. Use <code>check(InWidth &gt;= 1 &amp;&amp; InHeight &gt;= 1)</code>: no caller can recover from that. <code>Clone()</code> disappears, because copying a C++ value is the language's default.</p>
+    </li>
+  </ol>
+
+  <h2>Your port</h2>
+  <ul>
+    <li><code>Tsugi::TryFromDirections</code>.</li>
+    <li>The three <code>FTsugiTunnel</code> methods, in <code>TsugiTunnel.cpp</code>.</li>
+    <li><code>FTsugiFixedPiece</code>: a <code>USTRUCT</code> with <code>X</code>, <code>Y</code> and <code>Key</code>, equality and <code>GetTypeHash</code>.</li>
+    <li>All of <code>FTsugiLevelData</code>, including <code>Validate</code> with the same six checks and the same wording. The messages are shown to level authors, and a test in lesson 3 looks for some of them.</li>
+  </ul>
+  <p>Build messages with <code>FString::Printf(TEXT("Column %d clue %d is outside 0..%d."), X, ColumnClues[X], Height)</code> where the C# uses string interpolation.</p>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li>The project builds in <code>Development Editor</code> with no warnings from <code>TsugiCore</code>.</li>
+    <li>In the editor, a new Blueprint variable can be given the type <code>Tsugi Piece Key</code> and offers the six keys.</li>
+    <li><code>FTsugiLevelData::Validate</code> covers clue ranges, clue totals, tunnels on the perimeter, duplicate fixed pieces, fixed pieces pointing off the board or at a piece that does not point back, and fixed pieces exceeding a clue.</li>
+    <li>No file in <code>TsugiCore</code> includes an engine header beyond <code>CoreMinimal.h</code>.</li>
+    <li>I can explain why <code>FTsugiPiece</code> is not a <code>USTRUCT</code> and <code>FTsugiTunnel</code> is.</li>
+  </ul>
+
+  <h2>Pitfalls</h2>
+  <ul>
+    <li><strong>The generated include must be last.</strong> Any <code>#include</code> after <code>X.generated.h</code> is an error from Unreal Header Tool, and the message does not always say so clearly.</li>
+    <li><strong>Missing <code>TSUGICORE_API</code>.</strong> The symptom is an unresolved external when <code>TsugiXR</code> or a test links, never a compile error in <code>TsugiCore</code> itself.</li>
+    <li><strong>Header changes and Live Coding.</strong> You changed class layouts all lesson. Build from the IDE with the editor closed.</li>
+    <li><strong><code>TEXT()</code> around every literal.</strong> A bare <code>"NS"</code> is a narrow string; <code>FString</code> wants <code>TCHAR</code>.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q">Which of these must be a <code>UENUM</code> or <code>USTRUCT</code>?</p>
+    <ul>
+      <li><code>FTsugiPiece</code>, because the board stores it.</li>
+      <li data-correct><code>ETsugiPieceKey</code>, because level assets store it and the editor must display it.</li>
+      <li><code>FTsugiLevelData</code>, because it is passed between modules.</li>
+    </ul>
+    <p class="why">Reflection is for things the editor, the serializer or Blueprint must see. Crossing a module boundary needs the API macro, not reflection.</p>
+  </div>
+  <div class="quiz">
+    <p class="q"><code>PieceKeys.Other(key, direction)</code> throws in C# when the key has no connection towards <code>direction</code>. What is the right Unreal translation?</p>
+    <ul>
+      <li>Return <code>North</code> and log a warning.</li>
+      <li>A <code>bool</code> return with an out parameter.</li>
+      <li data-correct><code>checkf</code>: every caller guarantees the precondition, so reaching it is a bug.</li>
+    </ul>
+    <p class="why"><code>PathFinder</code> tests <code>piece.Has(from)</code> before it calls <code>Other</code>. A caller that skips that test is broken, and a silent default would hide the break.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">Why keep level ids as <code>FString</code> and not <code>FName</code>?</p>
+    <ul>
+      <li><code>FName</code> cannot contain hyphens.</li>
+      <li data-correct><code>FName</code> comparison ignores case, and the ids are keys in a save file written by case-sensitive code.</li>
+      <li><code>FString</code> is faster to compare.</li>
+    </ul>
+    <p class="why"><code>FName</code> is the faster one. It is wrong here because of what it does to case.</p>
+  </div>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+</body>
+</html>

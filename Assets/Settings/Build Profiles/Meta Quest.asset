@@ -246,7 +246,11 @@ BuildProfilePlayerSettings:
   visionOSBundleVersion: 1.0
   tvOSBundleVersion: 1.0
   bundleVersion: 0.1.0
-  preloadedAssets: []
+  preloadedAssets:
+  - {fileID: 11400000, guid: 30148f0976bb845999130569cd198e6d, type: 2}
+  - {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  - {fileID: 8818894078123717451, guid: 9c42410a24b61b14ea6a033672e55a6b, type: 2}
+  - {fileID: 6234984772448745811, guid: c9ef96bace5b37948be284205f79282a, type: 2}
   metroInputSource: 0
   wsaTransparentSwapchain: 0
   xboxOneDisableKinectGpuReservation: 1
@@ -1129,7 +1133,7 @@ MonoBehaviour:
         m_ExportAsGoogleAndroidProject: 0
         m_DebugSymbolLevel: 1
         m_DebugSymbolFormat: 5
-        m_CurrentDeploymentTargetId: __builtin__target_default
+        m_CurrentDeploymentTargetId: 2G0YC5ZF7P0652
         m_BuildType: 2
         m_LinkTimeOptimization: 0
         m_BuildAppBundle: 0

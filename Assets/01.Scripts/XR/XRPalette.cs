@@ -38,6 +38,9 @@ namespace TrainSudoku.XR
         /// <summary>Releasing here would send the piece back: <see cref="Stop"/>, translucent.</summary>
         public static readonly Color GhostIllegal = new Color(0.816f, 0.204f, 0.173f, 0.55f);
 
+        /// <summary>The board lesson's ghost hands (7): <see cref="Paper"/>, translucent, so they read as a suggestion and not as someone's hands.</summary>
+        public static readonly Color GhostHand = new Color(0.957f, 0.961f, 0.949f, 0.5f);
+
         /// <summary>Steam (X19): off-white, so a puff reads against a light table as well as a dark one.</summary>
         public static readonly Color Steam = new Color(0.94f, 0.95f, 0.93f, 0.85f);
 
@@ -45,5 +48,14 @@ namespace TrainSudoku.XR
 
         /// <summary>The face for the world-space <c>TextMesh</c> clue numerals, which need a legacy font.</summary>
         public static Font Font => _font != null ? _font : _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+
+        /// <summary>
+        /// The legacy face that draws Japanese, for <c>TextMesh</c> copy (the placement sign, the map's CONTINUE): the
+        /// board's Noto signage font, which <see cref="XRGame"/> hands over at start. Null leaves everything on <see cref="Font"/>.
+        /// </summary>
+        public static Font JapaneseFont { get; set; }
+
+        /// <summary>The legacy face for translated copy in the selected language. Digits and codes stay on <see cref="Font"/>.</summary>
+        public static Font CopyFont => XRText.IsJapanese && JapaneseFont != null ? JapaneseFont : Font;
     }
 }

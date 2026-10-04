@@ -390,5 +390,62 @@ namespace TrainSudoku.XR.Tests
                 Assert.AreEqual(landed ? GhostTint.Legal : GhostTint.Illegal, tint, $"{key} at ({x},{y}) released as {outcome}");
             }
         }
+
+        // The tutorial's gate (XR-PRD 7): a legal landing it refuses is steered back, not treated as an error.
+
+        [Test]
+        public void AGatedLandingIsSteeredBackToTheTray()
+        {
+            var drop = Corridor();
+            drop.Gate = (x, y, key) => x == 0 && y == 1;
+            Take(drop, Right, PieceKey.EW);
+            var result = drop.Release(Right, (1, 1), false);
+
+            AssertOutcome(DropOutcome.Returned, result);
+            Assert.IsTrue(result.Steered);
+            Assert.IsFalse(result.IllegalDrop);
+            Assert.IsFalse(result.BoardChanged);
+            AssertEmpty(drop.Board, 1, 1);
+        }
+
+        [Test]
+        public void TheGateNeverMakesAnIllegalDropLand()
+        {
+            var drop = Corridor();
+            drop.Gate = (x, y, key) => true;
+            Take(drop, Right, PieceKey.NS);
+            var result = drop.Release(Right, (0, 1), false);
+
+            AssertOutcome(DropOutcome.Returned, result);
+            Assert.IsTrue(result.IllegalDrop);
+            Assert.IsFalse(result.Steered);
+        }
+
+        [Test]
+        public void TheGateDoesNotStopAThrowOrARelease()
+        {
+            var drop = Corridor();
+            drop.Gate = (x, y, key) => false;
+            Take(drop, Right, PieceKey.EW);
+            AssertOutcome(DropOutcome.Thrown, drop.Release(Right, (1, 1), true));
+            Take(drop, Right, PieceKey.EW);
+            AssertOutcome(DropOutcome.Puffed, drop.Release(Right, null, false));
+        }
+
+        [Test]
+        public void GhostAgreesWithTheGatedRelease()
+        {
+            foreach (var key in PieceKeys.All)
+            for (var y = 0; y < 3; y++)
+            for (var x = 0; x < 3; x++)
+            {
+                var drop = Corridor();
+                drop.Gate = (gx, gy, gkey) => gx == 1 && gkey == PieceKey.EW;
+                Take(drop, Right, key);
+                var tint = drop.Hover(Right, (x, y));
+                var outcome = drop.Release(Right, (x, y), false).Outcome;
+                Assert.AreEqual(outcome == DropOutcome.Placed ? GhostTint.Legal : GhostTint.Illegal, tint, $"{key} at ({x},{y}) released as {outcome}");
+            }
+        }
     }
 }

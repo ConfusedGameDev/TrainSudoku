@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 00 · Orientation</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="0"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 00</p>
+  <h1>Orientation</h1>
+  <p class="lede">No code yet. You learn what is in the Unity project, which parts move across almost unchanged, and how Unreal's way of organising a game differs from Unity's.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd>You can point at any Unity file in the XR edition and say which Unreal module and which kind of Unreal class it becomes.</dd>
+    <dt>On the headset</dt><dd>Nothing. Lesson 1 gets a build onto it.</dd>
+    <dt>Time</dt><dd>Half a day of reading.</dd>
+  </dl>
+
+  <h2>What is in the Unity project</h2>
+  <p>The Unity project is split into assemblies, and the split is the most useful thing in it for a port. Two assemblies have no engine in them at all.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Unity assembly</th><th>Where</th><th>What it holds</th><th>Engine?</th></tr></thead>
+      <tbody>
+        <tr><td><code>TrainSudoku.Core</code></td><td><code>Assets/01.Scripts/Core/</code></td><td>Board, legality, win check, solver, flow state machine, timer, progress, save format, layout maths, track curves. 28 files, about 3,700 lines.</td><td>None. <code>noEngineReferences</code> is on.</td></tr>
+        <tr><td><code>TrainSudoku.XR.Rules</code></td><td><code>Assets/01.Scripts/XR/Rules/</code></td><td>Grab-and-drop rules, tray layout, throw detection, wrist-menu plan, the XR tutorial script, the cue table. 14 files, about 1,370 lines.</td><td>None.</td></tr>
+        <tr><td><code>TrainSudoku.XR</code></td><td><code>Assets/01.Scripts/XR/</code></td><td>Everything you see and touch on the headset: board display, placement in the room, grab input, signboard, maps, wrist menu, train, sound.</td><td>Unity, XRI, AR Foundation, XR Hands.</td></tr>
+        <tr><td><code>TrainSudoku.Game</code></td><td><code>Assets/01.Scripts/Game/</code></td><td>The phone game. XR uses only four data types from it: <code>LevelDefinition</code>, <code>LevelCollection</code>, <code>LineDefinition</code>, <code>NetworkDefinition</code>.</td><td>Unity.</td></tr>
+        <tr><td>Tests</td><td><code>Assets/99.Test/</code></td><td>About 390 NUnit cases for Core, 13 more fixtures for the XR rules.</td><td>None for the rules tests.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>That gives the port its shape. The first third of this course moves the engine-free code and its tests into Unreal C++. You learn the language and the build system on code whose behaviour is already pinned down. The rest rebuilds the engine-bound part, where Unreal really does work differently.</p>
+
+  <h3>The XR scene is nearly empty</h3>
+  <p><code>Assets/Scenes/XR.unity</code> holds a light, the AR session, the hands rig, a placement object and one <code>XRGame</code> object. The signboard, maps, tray, board and wrist menu are all created in code by <code>XRGame.Build</code>. Your Unreal level will be just as empty, and for the same reason: almost everything is spawned from C++.</p>
+
+  <h2>How Unreal organises a game</h2>
+
+  <h3>Actors and components</h3>
+  <p>In Unity a <code>GameObject</code> is an empty container, and behaviour comes from the <code>MonoBehaviour</code>s you attach. In Unreal the thing you place in a level is an <strong>actor</strong>, and an actor is a class you write. It owns <strong>components</strong>: a static mesh component draws a mesh, a scene component is a transform, a widget component draws UI in the world.</p>
+  <p>Two differences catch Unity developers:</p>
+  <ul>
+    <li><strong>An actor has no transform.</strong> Its root component does. Child objects in Unity become child <em>components</em> of one actor far more often than they become child actors.</li>
+    <li><strong>Logic usually lives on the actor.</strong> Unity's board display is one <code>MonoBehaviour</code> that creates dozens of child <code>GameObject</code>s. In Unreal it is one <code>ATsugiBoard</code> actor with dozens of components, or a handful of instanced mesh components.</li>
+  </ul>
+
+  <h3>UObject, reflection and garbage collection</h3>
+  <p>Unreal C++ is ordinary C++ with a reflection system bolted on by a code generator. Classes that derive from <code>UObject</code> and are marked <code>UCLASS()</code> are known to the engine: they can be saved, shown in the editor, used from Blueprint, and garbage collected.</p>
+  <p>The rule that matters on day one: <strong>a pointer to a <code>UObject</code> must be a <code>UPROPERTY</code>, or the collector does not know you are holding it</strong> and may delete the object under you. Plain C++ objects are not collected. You manage them with values, <code>TUniquePtr</code> and <code>TSharedPtr</code>.</p>
+  <p>This is why the rules code ports so cleanly. <code>Board</code>, <code>Solver</code> and <code>GameFlow</code> need none of that machinery, so they become plain C++ classes that only borrow the engine's containers.</p>
+
+  <h3>Blueprint</h3>
+  <p>A Blueprint is a class written as a graph. It can derive from a C++ class, which is the pattern this course uses throughout: C++ declares the class, its data and its heavy logic; a Blueprint subclass assigns meshes and sounds, tunes numbers, and wires events. That is the Unreal equivalent of a prefab with serialized fields, except the Blueprint is a real subclass.</p>
+
+  <h3>Modules</h3>
+  <p>A module is a folder of C++ with a <code>.Build.cs</code> file that lists what it depends on. It is the equivalent of an assembly definition. Unity's <code>noEngineReferences: true</code> becomes a module whose dependency list simply does not include <code>Engine</code>.</p>
+
+  <h3>The game framework</h3>
+  <p>Unreal ships with classes that expect to exist in every game. You will use four:</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Class</th><th>Lifetime</th><th>Tsugi uses it for</th></tr></thead>
+      <tbody>
+        <tr><td><code>UGameInstance</code> and its subsystems</td><td>The whole run of the app</td><td>Owning <code>GameFlow</code>, the save file and the preferences. This is what <code>XRGame</code> does in Unity.</td></tr>
+        <tr><td><code>AGameModeBase</code></td><td>One level</td><td>Choosing the pawn class. Little else.</td></tr>
+        <tr><td><code>APawn</code></td><td>One level</td><td>The player's head and hands: camera, two motion controllers, hand tracking.</td></tr>
+        <tr><td><code>APlayerController</code></td><td>One level</td><td>Input mapping and controller haptics.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Units and axes</h3>
+  <p>Unity works in metres with Y up. Unreal works in centimetres with Z up, X forward and Y to the right. Both are left-handed, so a point converts without mirroring:</p>
+  <script type="text/plain" data-lang="plaintext" data-title="The one conversion to memorise">
+Unity (x, y, z) in metres   ->   Unreal (X = z, Y = x, Z = y) x 100, in centimetres
+
+Unity  +Z  forward / north  ->   Unreal +X
+Unity  +X  right   / east   ->   Unreal +Y
+Unity  +Y  up               ->   Unreal +Z
+  </script>
+  <p>Every position in the game comes from <code>BoardLayout</code>, which works in cells, so you apply this conversion in exactly one function. Lesson 7 does it.</p>
+
+  <h2>The target architecture</h2>
+  <p>This is what you are building towards. The names are used for the rest of the course.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Unreal module</th><th>Depends on</th><th>Holds</th><th>From Unity</th></tr></thead>
+      <tbody>
+        <tr><td><code>TsugiCore</code></td><td><code>Core</code>, <code>CoreUObject</code>. Never <code>Engine</code>.</td><td>Plain C++ rules, flow, save format, layout and curve maths, the mesh bender's maths, and all their tests.</td><td><code>TrainSudoku.Core</code> and <code>TrainSudoku.XR.Rules</code></td></tr>
+        <tr><td><code>TsugiXR</code> (the primary game module)</td><td><code>TsugiCore</code>, <code>Engine</code>, <code>UMG</code>, <code>EnhancedInput</code>, <code>HeadMountedDisplay</code>, the Meta XR modules</td><td>Data assets, the game subsystem, the board actor, pawn, grab, signage, train, sound.</td><td><code>TrainSudoku.XR</code> and the four data types from <code>TrainSudoku.Game</code></td></tr>
+        <tr><td><code>TsugiEditor</code></td><td><code>TsugiXR</code>, <code>UnrealEd</code></td><td>The level importer and the track mesh baker.</td><td><code>TrainSudoku.XR.Editor</code>, in spirit</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">
+    <p><span class="tag">Why CoreUObject</span><code>TsugiCore</code> needs <code>CoreUObject</code> for one reason: enums and structs that data assets store, such as the piece key, must be marked <code>UENUM</code> and <code>USTRUCT</code> so the editor can show them. Everything else in the module is plain C++.</p>
+  </div>
+
+  <h2>Read first</h2>
+  <ul class="files">
+    <li><code>CLAUDE.md</code><span>The project's own summary. Read the conventions section twice; half of it is hard-won detail about why something is the way it is.</span></li>
+    <li><code>Docs/XR-PRD.md</code><span>The XR spec. Section 2 is the list of decisions X1 to X24, section 4 is how pieces are handled, section 6 is the flow.</span></li>
+    <li><code>Docs/XR-Agent.md</code><span>What was actually built, milestone by milestone, with every headset finding. This is where the pitfalls in this course come from.</span></li>
+    <li><code>Assets/01.Scripts/XR/XRGame.cs</code><span>The shell. 823 lines. Read <code>Start</code>, <code>BuildFlow</code>, <code>Build</code> and <code>Update</code>: that is the whole game wired together.</span></li>
+    <li><code>Assets/01.Scripts/Core/GameFlow.cs</code><span>The state machine. Seven states, and a method that throws for every transition the UI should never offer.</span></li>
+  </ul>
+
+  <h2>Steps</h2>
+  <ol class="steps">
+    <li>
+      <p><strong>Play the game.</strong> If a Quest build of the Unity edition is available, install it and finish the first station, Ashgate, which is the tutorial. If not, read section 4 of <code>Docs/XR-PRD.md</code> and play the rules demo in <a href="03-rules-tests.html">lesson 3</a>.</p>
+    </li>
+    <li>
+      <p><strong>Read <code>XRGame.cs</code> top to bottom.</strong> Write down every other class it creates. You should end with roughly this list: <code>XRBoardDisplay</code>, <code>XRPlatformMap</code>, <code>XRSignboard</code>, <code>XRWristMenu</code>, <code>XRPieceHands</code>, <code>XRTray</code>, <code>XRTutorialMarks</code>, <code>XRTutorialCallout</code>, <code>XRCuePlayer</code>, plus <code>XRBoardPlacement</code> and <code>XRIGrabInput</code> from the scene.</p>
+    </li>
+    <li>
+      <p><strong>Sort that list.</strong> For each class decide: is it an actor, a component on another actor, a widget, or plain C++? There is no single right answer. Compare with the table in each later lesson when you reach it.</p>
+    </li>
+    <li>
+      <p><strong>Find the seams.</strong> The Unity code has three places where engine-free code calls out to the engine through an interface or a delegate. Find them, because you will port each seam as it stands:</p>
+      <ul>
+        <li><code>ISaveStore</code>: where progress is kept.</li>
+        <li><code>IGrabInput</code>: how hands reach the game, whatever the hardware.</li>
+        <li><code>GameFlow.StarTimesForLevel</code>: a delegate, because Core cannot see a level asset.</li>
+      </ul>
+    </li>
+  </ol>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li>I can state the win condition's three parts without looking them up.</li>
+    <li>I have read <code>XRGame.cs</code> and listed the classes it creates.</li>
+    <li>I can say which Unreal module each of the five Unity assemblies maps to.</li>
+    <li>I can explain why a <code>UObject</code> pointer needs <code>UPROPERTY</code> and a plain C++ object does not.</li>
+    <li>I can convert a Unity position to an Unreal one on paper.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q">The Unity board display creates one child <code>GameObject</code> per tile. What is the usual Unreal shape for the same thing?</p>
+    <ul>
+      <li>One actor per tile, parented to a board actor.</li>
+      <li data-correct>One board actor that owns components, ideally one instanced mesh component for all the tiles.</li>
+      <li>One Blueprint per tile.</li>
+    </ul>
+    <p class="why">Actors are heavier than <code>GameObject</code>s and each ticks and replicates on its own. Thirty-six identical slabs are one instanced static mesh component, which is also one draw call. Lesson 7 builds it.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">A Unity position is <code>(2, 0.1, -3)</code> metres. What is it in Unreal?</p>
+    <ul>
+      <li><code>(200, 10, -300)</code></li>
+      <li><code>(2, -3, 0.1)</code></li>
+      <li data-correct><code>(-300, 200, 10)</code></li>
+    </ul>
+    <p class="why">Unity z becomes Unreal X, Unity x becomes Unreal Y, Unity y becomes Unreal Z, then metres become centimetres.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">Why can <code>GameFlow</code> be a plain C++ class instead of a <code>UObject</code>?</p>
+    <ul>
+      <li data-correct>It needs nothing the reflection system provides: it is not saved as an asset, not edited in the editor and not called from Blueprint directly.</li>
+      <li>Plain C++ classes run faster than <code>UObject</code>s.</li>
+      <li>State machines are not allowed to be <code>UObject</code>s.</li>
+    </ul>
+    <p class="why">A subsystem, which is a <code>UObject</code>, will own the flow and expose the few events Blueprint needs. Keeping the flow itself plain is what lets its 33 tests run without a world.</p>
+  </div>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+</body>
+</html>

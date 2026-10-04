@@ -1,0 +1,309 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9620f8c34305754d8cc9a7e49e852d9, type: 3}
+  m_Name: XR_en
+  m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Tables.StringTable
+  m_LocaleId:
+    m_Code: en
+  m_SharedData: {fileID: 11400000, guid: 86a4935ea0fa24643b3cb9114c118263, type: 2}
+  m_Metadata:
+    m_Items: []
+  m_TableData:
+  - m_Id: 3436908544
+    m_Localized: NETWORK
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3495628800
+    m_Localized: Choose a line on the platform
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017408
+    m_Localized: LINE MAP
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017409
+    m_Localized: '{0} / {1} CLEARED'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017410
+    m_Localized: Choose a station on the platform
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017411
+    m_Localized: CONTINUE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017412
+    m_Localized: PAUSED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017413
+    m_Localized: RESUME
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017414
+    m_Localized: Retry, the line map and settings are on the wrist menu
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017415
+    m_Localized: ARRIVAL
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017416
+    m_Localized: THIS RUN  {0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017417
+    m_Localized: BEST  {0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017418
+    m_Localized: NEW BEST
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017419
+    m_Localized: ON TIME
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017420
+    m_Localized: SLIGHT DELAY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017421
+    m_Localized: DELAYED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017422
+    m_Localized: LINE MAP
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017423
+    m_Localized: RUN AGAIN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017424
+    m_Localized: NEXT STATION
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017425
+    m_Localized: TO THE NETWORK
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017426
+    m_Localized: RESUME
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017427
+    m_Localized: RETRY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017428
+    m_Localized: LINE MAP
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017429
+    m_Localized: NETWORK
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017430
+    m_Localized: SETTINGS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017431
+    m_Localized: CLOSE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017432
+    m_Localized: HAND
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017433
+    m_Localized: LEFT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017434
+    m_Localized: RIGHT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017435
+    m_Localized: BOARD
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017436
+    m_Localized: LOWER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017437
+    m_Localized: RAISE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017438
+    m_Localized: RE-PLACE BOARD
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017439
+    m_Localized: LANGUAGE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017440
+    m_Localized: MUSIC
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017441
+    m_Localized: EFFECTS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017442
+    m_Localized: BACK
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017443
+    m_Localized: Pinch to put the board here
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017444
+    m_Localized: 'No table found. Pinch to place the board here,
+
+      or run Space Setup in the headset settings.'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017445
+    m_Localized: Look at a table
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017446
+    m_Localized: Pinch the lit piece in the tray and drop it on the ring. The next rail goes here.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017447
+    m_Localized: 'Next: the lit piece, onto the ring.'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017448
+    m_Localized: Now try the lit piece here. It does not join the rail beside it. Watch the ghost.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017449
+    m_Localized: 'It flew back: a rail next to track must join it. Now the lit one.'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017450
+    m_Localized: Each number counts rails. That line now holds exactly as many as it asks for.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017451
+    m_Localized: Now lay one in the wrong place on purpose. Find the piece that fits this square.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017452
+    m_Localized: 'That number has turned red: too many rails in its line. Pinch the rail to lift it off.'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017453
+    m_Localized: Throw it away, or let it go off the board.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017454
+    m_Localized: You have it. Follow the ring to the end of the line.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017455
+    m_Localized: Next rail here.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017456
+    m_Localized: This one first.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017457
+    m_Localized: Take the lit piece.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017458
+    m_Localized: That rail was laid before you arrived. Lift one of your own.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017459
+    m_Localized: That line holds more rails than its number allows. Lift one off.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017460
+    m_Localized: THE LINE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017461
+    m_Localized: Ashgate has no railway yet. Lay one piece of track per square so the line runs from the S tunnel to the E tunnel.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017462
+    m_Localized: THE NUMBERS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017463
+    m_Localized: 'Each number says how many pieces its row or column must hold. Exactly that many: it turns green when the count is right and red when it is over.'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017464
+    m_Localized: DEPARTURE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017465
+    m_Localized: "When the track joins S to E and every number is matched, the train runs. Take your time \u2014 the clock only decides your stars."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017466
+    m_Localized: NEXT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017467
+    m_Localized: START
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851079933952
+    m_Localized: You can move this board. Bring your hands to the rail.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237120
+    m_Localized: Pinch the rail with both hands.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237121
+    m_Localized: Move your hands to carry it. Spread or close them to resize it.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237122
+    m_Localized: THE BOARD
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237123
+    m_Localized: This board goes wherever you want it. Pinch its rail with both hands, one on each side, then carry it, turn it, or pull your hands apart to make it bigger.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237124
+    m_Localized: SKIP
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237125
+    m_Localized: PLACE IT AGAIN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237126
+    m_Localized: To place the board afresh at any time, press the button on the back of your wrist to pause, then choose SETTINGS and RE-PLACE BOARD.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237127
+    m_Localized: GOT IT
+    m_Metadata:
+      m_Items: []
+  references:
+    version: 2
+    RefIds: []

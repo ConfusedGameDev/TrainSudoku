@@ -60,6 +60,14 @@ namespace TrainSudoku.XR
         [Tooltip("The shadow-catcher material (shader TrainSudoku/XR/Shadow Catcher). Leave empty for no shadows on the real table.")]
         [SerializeField] private Material shadowCatcherMaterial = null;
 
+        [Header("Board lesson (7)")]
+        [Tooltip("The hands the board lesson shows at the rail: the XR Hands sample's LeftHand and RightHand models. Without them the lesson runs on its callouts alone.")]
+        [SerializeField] private GameObject leftHandModel = null;
+        [SerializeField] private GameObject rightHandModel = null;
+
+        public GameObject LeftHandModel => leftHandModel;
+        public GameObject RightHandModel => rightHandModel;
+
         public GameObject TunnelModel => tunnelModel;
         public float TunnelLength => tunnelLength;
         public Vector2 TunnelBore => tunnelBore;

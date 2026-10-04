@@ -1,0 +1,312 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b11a58205ec3474ca216360e9fa74a8, type: 3}
+  m_Name: XR Shared Data
+  m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Tables.SharedTableData
+  m_TableCollectionName: XR
+  m_TableCollectionNameGuidString: 86a4935ea0fa24643b3cb9114c118263
+  m_Entries:
+  - m_Id: 3436908544
+    m_Key: xr.masthead.network
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3495628800
+    m_Key: xr.masthead.hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017408
+    m_Key: xr.linemap.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017409
+    m_Key: xr.linemap.cleared
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017410
+    m_Key: xr.linemap.hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017411
+    m_Key: xr.map.continue
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017412
+    m_Key: xr.pause.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017413
+    m_Key: xr.pause.resume
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017414
+    m_Key: xr.pause.hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017415
+    m_Key: xr.arrival.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017416
+    m_Key: xr.arrival.this_run
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017417
+    m_Key: xr.arrival.best
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017418
+    m_Key: xr.arrival.new_best
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017419
+    m_Key: xr.arrival.on_time
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017420
+    m_Key: xr.arrival.slight_delay
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017421
+    m_Key: xr.arrival.delayed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017422
+    m_Key: xr.arrival.map
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017423
+    m_Key: xr.arrival.retry
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017424
+    m_Key: xr.arrival.next
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017425
+    m_Key: xr.arrival.to_network
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017426
+    m_Key: xr.wrist.resume
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017427
+    m_Key: xr.wrist.retry
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017428
+    m_Key: xr.wrist.line_map
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017429
+    m_Key: xr.wrist.network
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017430
+    m_Key: xr.wrist.settings
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017431
+    m_Key: xr.wrist.close
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017432
+    m_Key: xr.settings.hand
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017433
+    m_Key: xr.settings.left
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017434
+    m_Key: xr.settings.right
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017435
+    m_Key: xr.settings.board
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017436
+    m_Key: xr.settings.lower
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017437
+    m_Key: xr.settings.raise
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017438
+    m_Key: xr.settings.replace
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017439
+    m_Key: xr.settings.language
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017440
+    m_Key: xr.settings.music
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017441
+    m_Key: xr.settings.effects
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017442
+    m_Key: xr.settings.back
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017443
+    m_Key: xr.placement.pinch
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017444
+    m_Key: xr.placement.no_table
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017445
+    m_Key: xr.placement.look
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017446
+    m_Key: xr.tutorial.lay_first
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017447
+    m_Key: xr.tutorial.lay_next
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017448
+    m_Key: xr.tutorial.adjacency
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017449
+    m_Key: xr.tutorial.adjacency_done
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017450
+    m_Key: xr.tutorial.clue
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017451
+    m_Key: xr.tutorial.mistake
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017452
+    m_Key: xr.tutorial.erase
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017453
+    m_Key: xr.tutorial.discard
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017454
+    m_Key: xr.tutorial.unlocked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017455
+    m_Key: xr.tutorial.next
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017456
+    m_Key: xr.tutorial.note_steered
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017457
+    m_Key: xr.tutorial.note_wrong_piece
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017458
+    m_Key: xr.tutorial.note_fixed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017459
+    m_Key: xr.tutorial.note_overfull
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017460
+    m_Key: xr.brief.1_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017461
+    m_Key: xr.brief.1_body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017462
+    m_Key: xr.brief.2_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017463
+    m_Key: xr.brief.2_body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017464
+    m_Key: xr.brief.3_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017465
+    m_Key: xr.brief.3_body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017466
+    m_Key: xr.brief.next
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3504017467
+    m_Key: xr.brief.start
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851079933952
+    m_Key: xr.move.approach
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237120
+    m_Key: xr.move.pinch
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237121
+    m_Key: xr.move.carry
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237122
+    m_Key: xr.move.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237123
+    m_Key: xr.move.body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237124
+    m_Key: xr.move.skip
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237125
+    m_Key: xr.move.closing_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237126
+    m_Key: xr.move.closing_body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 318851151237127
+    m_Key: xr.move.done
+    m_Metadata:
+      m_Items: []
+  m_Metadata:
+    m_Items: []
+  m_KeyGenerator:
+    rid: 5675100707693789184
+  references:
+    version: 2
+    RefIds:
+    - rid: 5675100707693789184
+      type: {class: DistributedUIDGenerator, ns: UnityEngine.Localization.Tables, asm: Unity.Localization}
+      data:
+        m_CustomEpoch: 1790834090067

@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UE 17 · Performance on Quest</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div id="course" data-root="../" data-lesson="17"></div>
+
+<article class="lesson">
+  <p class="eyebrow">Station UE 17</p>
+  <h1>Performance on Quest</h1>
+  <p class="lede">A standalone headset is a phone strapped to your face, drawing every frame twice. This lesson has no Unity code to port: the Unity project left this work for a milestone it has not started. You set a target, measure against it, and learn what Unreal's mobile renderer costs and why.</p>
+
+  <dl class="plate">
+    <dt>At the end</dt><dd>A written frame budget, a repeatable measurement, and a build that holds its refresh rate on both target devices.</dd>
+    <dt>On the headset</dt><dd>90 Hz on Quest 3 and never under 72 on Quest 3S, through the busiest moment of the game.</dd>
+    <dt>Unity equivalent</dt><dd>Milestone XR11, not started. The targets come from <code>Docs/XR-PRD.md</code>.</dd>
+  </dl>
+
+  <h2>The target</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Refresh rate</th><th>Time per frame</th><th>Use</th></tr></thead>
+      <tbody>
+        <tr><td>72 Hz</td><td>13.9 ms</td><td>The default, and the floor on Quest 3S</td></tr>
+        <tr><td>90 Hz</td><td>11.1 ms</td><td>The target on Quest 3</td></tr>
+        <tr><td>120 Hz</td><td>8.3 ms</td><td>Not a goal for this game</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The store's rule, VRC.Quest.Performance.1: the app must run at an allowed refresh rate and hold a rendering rate of at least 60 frames per second. Meta tests by running the app for up to 45 minutes with the OVR Metrics Tool and looking for extended periods below that. Loading screens are exempt.</p>
+  <p>That floor is not your target. A missed frame in a headset is felt as a judder of the whole world, and in passthrough the real room keeps moving smoothly while your board stutters against it. Aim to render every frame at the display's rate.</p>
+
+  <h2>Unreal concepts</h2>
+
+  <h3>The mobile renderer</h3>
+  <p>On Android, Unreal uses a different renderer from desktop. The settings that matter for a headset:</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Shading path</td><td>Mobile forward</td><td>One pass per object with lighting computed in it. Required for MSAA.</td></tr>
+        <tr><td>Mobile HDR</td><td>Off</td><td>HDR adds a full-screen pass and disables hardware MSAA resolve. No post-processing with it off, which this game does not need.</td></tr>
+        <tr><td>Anti-aliasing</td><td>MSAA 4×</td><td>Nearly free on tile-based mobile GPUs, and thin rails need it.</td></tr>
+        <tr><td>Mobile Multi-View</td><td>On</td><td>Both eyes drawn in one pass. The equivalent of Unity's single-pass instanced.</td></tr>
+        <tr><td>Graphics API</td><td>Vulkan only</td><td>The supported API for Quest, and required for foveation.</td></tr>
+        <tr><td>Foveated rendering</td><td>Start at High, dynamic on</td><td>Fewer pixels shaded at the edge of the lens, where they are not seen clearly.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The Meta XR Project Setup Tool from lesson 1 set most of these. Open it again now and read each rule it lists, so you know what it changed.</p>
+
+  <h3>Where the time goes</h3>
+  <p>A frame has two budgets that run in parallel, and the slower one sets the frame rate.</p>
+  <ul>
+    <li><strong>CPU.</strong> The game thread runs your <code>Tick</code>s. The render thread turns visible objects into draw calls. The number of draw calls is usually what limits it.</li>
+    <li><strong>GPU.</strong> Vertices to transform, and pixels to shade. On mobile the pixel cost dominates, and anything translucent is the most expensive kind of pixel because it is shaded on top of what is already there.</li>
+  </ul>
+
+  <h3>The tools</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Tool</th><th>Answers</th><th>How</th></tr></thead>
+      <tbody>
+        <tr><td><code>stat unit</code></td><td>Is it the game thread, the render thread or the GPU?</td><td>Console command, shown in the headset</td></tr>
+        <tr><td><code>stat scenerendering</code>, <code>stat rhi</code></td><td>How many draw calls and triangles?</td><td>Console commands</td></tr>
+        <tr><td>OVR Metrics Tool</td><td>Frame rate, stale frames, CPU and GPU utilisation and level, over time</td><td>A Meta app on the headset, with an overlay and a log. It is what the store uses.</td></tr>
+        <tr><td>Unreal Insights</td><td>Which functions took the time, frame by frame</td><td>Launch with tracing on and connect from the PC</td></tr>
+        <tr><td>RenderDoc</td><td>What exactly was drawn, call by call</td><td>Meta distributes a build that works with Quest</td></tr>
+        <tr><td>Meta Quest Developer Hub</td><td>Performance graphs and device logs on the PC</td><td>The app from lesson 1</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>On a headset there is no keyboard. Send console commands from the PC:</p>
+  <script type="text/plain" data-lang="bash" data-title="Terminal">
+adb shell "am broadcast -a android.intent.action.RUN -e cmd 'stat unit'"
+  </script>
+  <div class="unverified">
+    <p><span class="tag">Not confirmed</span>That broadcast form is the long-standing way to send a console command to an Unreal app on Android. It was not tried against 5.8. If it does nothing, bind the commands you need to your own debug menu.</p>
+  </div>
+
+  <h2>Steps</h2>
+  <ol class="steps">
+    <li>
+      <p><strong>Write the budget down.</strong> Before measuring, state what you expect. Fill in this table for an 8×8 board with a full solution, during the train run, with both hands tracked and the wrist menu open. It is the worst case.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Thing</th><th>Count</th><th>Draw calls</th><th>Note</th></tr></thead>
+          <tbody>
+            <tr><td>Slabs</td><td>64</td><td>1</td><td>Instanced, lesson 7</td></tr>
+            <tr><td>Track pieces</td><td>up to about 40</td><td>one each, today</td><td>Candidates for instancing by key: six components</td></tr>
+            <tr><td>Clue signs</td><td>16 poles, 16 numerals</td><td>32</td><td>Poles can be instanced</td></tr>
+            <tr><td>Tunnels</td><td>2</td><td>a few</td><td></td></tr>
+            <tr><td>Train cars</td><td>8</td><td>8 or more</td><td>Depends on materials per car</td></tr>
+            <tr><td>Tray</td><td>6 pieces</td><td>6</td><td>Hidden during the train</td></tr>
+            <tr><td>Signboard, wrist panel, roundel</td><td>3 widgets</td><td>3</td><td>Translucent, and each is a render target</td></tr>
+            <tr><td>Hands</td><td>2</td><td>2</td><td></td></tr>
+            <tr><td>Handle, shadow catcher</td><td></td><td>2 or 3</td><td>Shadow catcher is large and translucent</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>A widely used working limit for Quest is a few hundred draw calls and several hundred thousand triangles per frame, with Quest 3 comfortably above Quest 3S. This game should sit far below both. If your measured numbers are several times your table, something is being drawn that you did not plan.</p>
+    </li>
+    <li>
+      <p><strong>Build a repeatable test.</strong> Performance work without a fixed scenario is guesswork. Add a console command, <code>Tsugi.Bench</code>, that loads the largest shipped board, fills it from the solver, and runs the train in a loop. Always measure a <strong>Development</strong> or <strong>Shipping</strong> build on the device, never the editor and never over Link.</p>
+    </li>
+    <li>
+      <p><strong>Take a baseline.</strong> Install OVR Metrics Tool. Run the benchmark for five minutes on each device at 72 Hz. Record average frame rate, stale frame count, and CPU and GPU utilisation. Save the log. Every later change is judged against this file.</p>
+    </li>
+    <li>
+      <p><strong>Set the refresh rate.</strong> The default is 72 Hz on every device. Ask for 90 on Quest 3 only.</p>
+      <p>Meta's plugin provides three Blueprint nodes: <em>Get Available Display Frequencies</em>, <em>Get Current Display Frequency</em> and <em>Set Display Frequency</em>. Call them from <code>BP_TsugiPawn</code> at start, after reading the device type: if the device is a Quest 3 and 90 is in the available list, set 90; otherwise leave 72. The supported devices in the Meta XR settings must be listed for non-default rates to be offered.</p>
+      <div class="note">
+        <p><span class="tag">From the Unity build</span>Quest 3's device codename is <code>eureka</code>. A check for the string "quest3" misses it. Use the plugin's device-type enum, not a name match.</p>
+      </div>
+    </li>
+    <li>
+      <p><strong>Set foveation.</strong> In <em>Project Settings &gt; Plugins &gt; Meta XR &gt; Mobile</em>: <em>Foveated Rendering Level</em> to High and <em>Dynamic Foveated Rendering</em> on. Dynamic means the system raises foveation only when the GPU is busy, up to your maximum.</p>
+      <div class="trap">
+        <p><span class="tag">Known issue</span>Meta's release notes for plugin 207 list: "Changing Fixed Foveated Rendering settings at runtime is not supported on UE 5.7+". Set it in project settings and do not build a feature that changes it during play. The same notes say Dynamic Resolution is only available on Meta's engine fork.</p>
+      </div>
+      <p>Look at the board's far edge and the signboard text with foveation at High. If text at the edge of your view shimmers, drop to Medium.</p>
+    </li>
+    <li>
+      <p><strong>Check render scale.</strong> The Unity build renders at 0.8 scale, which nobody recorded in its docs. The store recommends at least 85% render scaling for most of the experience (VRC.Quest.Performance.4). Start at 1.0. Lower it only if you cannot hold frame rate any other way, and not below 0.85.</p>
+    </li>
+    <li>
+      <p><strong>Find the real cost.</strong> Run the benchmark at the target rate with <code>stat unit</code>. Then act on what it says, and only that:</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>What is slow</th><th>Look at</th><th>Likely fixes in this game</th></tr></thead>
+          <tbody>
+            <tr><td>Game thread</td><td>Unreal Insights, your <code>Tick</code> functions</td><td>Signs facing the head every frame for all 16 clue signs; the grab component measuring distance to 64 volumes per hand. Do the first only when the head has moved; narrow the second to the cells near the hand.</td></tr>
+            <tr><td>Render thread</td><td><code>stat scenerendering</code>: draw calls</td><td>Instance track pieces by key. Instance clue poles. Merge the train's materials.</td></tr>
+            <tr><td>GPU</td><td>RenderDoc; turn things off one at a time</td><td>The shadow catcher and widget panels are large translucent surfaces. Shadows from a movable light are costly: the Unity build uses one cascade, 2.5 m range. Widget components redrawing every frame: make sure manual redraw from lesson 12 is on.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Change one thing, run the benchmark, compare with the baseline log, and keep or revert. Write each result down, including the ones that made no difference.</p>
+    </li>
+    <li>
+      <p><strong>Watch the heat.</strong> A headset that runs hot lowers its own clock speed after some minutes, and a game that held 90 at minute one drops frames at minute twenty. In the Meta XR settings, the suggested CPU and GPU performance levels default to sustained levels; leave them there. Run the benchmark for the full 45 minutes at least once.</p>
+    </li>
+    <li>
+      <p><strong>Revisit occlusion.</strong> If your team chose hand masking in lesson 10, measure it now: it should be nearly free. If the team wants depth-based occlusion, this is the lesson to price it, with the benchmark, before anyone commits to an engine fork.</p>
+    </li>
+  </ol>
+
+  <h2>Your work</h2>
+  <ul>
+    <li>The <code>Tsugi.Bench</code> command.</li>
+    <li>A short <code>PERFORMANCE.md</code>: the budget table with your measured numbers beside the expected ones, the baseline, each change and its effect, and the final figures for both devices.</li>
+    <li>Refresh rate selection per device.</li>
+    <li>Whatever the measurements say needs fixing, and nothing they do not.</li>
+  </ul>
+
+  <h2>Acceptance checks</h2>
+  <ul class="checks">
+    <li><code>PERFORMANCE.md</code> has a budget, a baseline and a final measurement for Quest 3 and for Quest 3S.</li>
+    <li>On Quest 3 the benchmark holds 90 frames per second for five minutes with no more than a handful of stale frames.</li>
+    <li>On Quest 3S the benchmark holds 72 with the same.</li>
+    <li>A 45-minute run on one device shows no extended period below 60 in the OVR Metrics log.</li>
+    <li>Loading a level causes no visible hitch: track meshes are baked, not generated.</li>
+    <li>Render scale is 0.85 or higher.</li>
+    <li>Signboard text is sharp where I look at it, with foveation on.</li>
+    <li>I can name the single most expensive thing in the frame and how I know.</li>
+  </ul>
+
+  <h2>Pitfalls</h2>
+  <ul>
+    <li><strong>Optimising in the editor.</strong> The desktop renderer and a desktop GPU tell you nothing about a mobile tile-based GPU. Only the device counts.</li>
+    <li><strong>Development builds are slower.</strong> They carry logging and checks. Compare like with like, and take the final numbers from a Shipping build.</li>
+    <li><strong>Per-frame logging.</strong> A log line every frame costs real time on Android, and floods the buffer you read logs from. Remove them before measuring.</li>
+    <li><strong>Garbage collection hitches.</strong> Creating and destroying components every time a piece is placed produces garbage. If you see a periodic spike, pool the held piece, the ghost and the falling pieces.</li>
+    <li><strong>Fixing what is not slow.</strong> Instancing forty track pieces is satisfying and may change nothing if the GPU is the limit. Measure first.</li>
+  </ul>
+
+  <h2>Knowledge check</h2>
+  <div class="quiz">
+    <p class="q"><code>stat unit</code> shows Game 4 ms, Draw 5 ms, GPU 15 ms at a 90 Hz target. Where do you look first?</p>
+    <ul>
+      <li>Your <code>Tick</code> functions.</li>
+      <li>The number of draw calls.</li>
+      <li data-correct>What the GPU is shading: translucent surfaces, shadows, resolution.</li>
+    </ul>
+    <p class="why">The budget is 11.1 ms. Only the GPU is over it. Reducing draw calls helps the render thread, which is already within budget.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">Why is 4× MSAA affordable on Quest when it is expensive on a desktop deferred renderer?</p>
+    <ul>
+      <li data-correct>Mobile GPUs render in tiles and can resolve multisampling inside the tile before writing to memory, and the forward renderer supports it directly.</li>
+      <li>Quest has a faster GPU than a desktop.</li>
+      <li>It is not affordable; it should be off.</li>
+    </ul>
+    <p class="why">It is also why Mobile HDR stays off: an HDR target changes how the resolve happens and takes the cheap path away.</p>
+  </div>
+  <div class="quiz">
+    <p class="q">The game holds 90 Hz for ten minutes, then drops frames. Nothing in the scene changed. What is the likely cause?</p>
+    <ul>
+      <li>A memory leak.</li>
+      <li data-correct>Thermal throttling: the device lowered its clock speed as it warmed up.</li>
+      <li>The refresh rate was reset by the system.</li>
+    </ul>
+    <p class="why">This is why the store tests for 45 minutes and why you should too. The fix is headroom: a frame that takes 9 ms cold has room to slow down.</p>
+  </div>
+
+  <h2>Sources</h2>
+  <ul class="sources">
+    <li><a href="https://developers.meta.com/horizon/resources/vrc-quest-performance-1/">VRC.Quest.Performance.1</a> (Meta)</li>
+    <li><a href="https://developers.meta.com/horizon/documentation/unreal/unreal-change-display-refresh-rate/">Changing the display refresh rate</a> (Meta)</li>
+    <li><a href="https://developers.meta.com/horizon/documentation/unreal/unreal-ffr/">Fixed foveated rendering in Unreal</a> (Meta)</li>
+    <li><a href="https://developers.meta.com/horizon/downloads/package/unreal-engine-5-integration/">Meta XR plugin 207 release notes</a>: known issues</li>
+    <li><code>Docs/XR-PRD.md</code>, performance targets; <code>Assets/02.Graphics/XR/XR_RPAsset.asset</code> for the Unity build's settings</li>
+  </ul>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="../assets/course.js"></script>
+</body>
+</html>

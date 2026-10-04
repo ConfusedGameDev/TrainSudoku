@@ -53,6 +53,12 @@ namespace TrainSudoku.XR
 
         public bool IsHolding => _drop != null && (_drop.IsHolding(Hand.Left) || _drop.IsHolding(Hand.Right));
 
+        /// <summary>
+        /// The tutorial's gate (<see cref="PieceDrop.Gate"/>): which landings it is asking for, as (x, y, key). Null in a
+        /// normal level. Read on every release, so setting it takes effect at once.
+        /// </summary>
+        public Func<int, int, PieceKey, bool> Gate { get; set; }
+
         /// <summary>Every grab and release, as <see cref="PieceDrop"/> answered it: the clock, the coach and the log read these.</summary>
         public event Action<DropResult> Acted;
 
@@ -105,7 +111,7 @@ namespace TrainSudoku.XR
             End();
             _display = display;
             _tray = tray;
-            _drop = new PieceDrop(display.Board);
+            _drop = new PieceDrop(display.Board) { Gate = (x, y, key) => Gate == null || Gate(x, y, key) };
             for (var y = 0; y < display.Level.Height; y++)
             for (var x = 0; x < display.Level.Width; x++)
             {
@@ -150,6 +156,9 @@ namespace TrainSudoku.XR
                     break;
             }
 
+            // A piece cue sounds from the piece: the slot it came out of, or the cell it was lifted from.
+            var from = target.IsTray && _tray != null ? _tray.SlotWorldPosition(target.Key) : _display.CellWorldPosition(target.X, target.Y);
+            XRCuePlayer.Play(XRCueMap.For(result), from, hand);
             Acted?.Invoke(result);
         }
 
@@ -162,8 +171,12 @@ namespace TrainSudoku.XR
             var result = _drop.Release(hand, held.Cell, thrown);
 
             var piece = held.Piece;
+            var at = result.Cell is { } aimed && _display.Board != null && _display.Board.InBounds(aimed.X, aimed.Y)
+                ? _display.CellWorldPosition(aimed.X, aimed.Y)
+                : piece != null ? piece.transform.position : _display.transform.position;
             held.Piece = null;
             Discard(held);
+            XRCuePlayer.Play(XRCueMap.For(result), at, hand);
             if (result.BoardChanged) _display.Sync(true);
             if (piece != null) Play(result, piece, new Vector3((float)vx, (float)vy, (float)vz));
             if (result.BoardChanged) BoardChanged?.Invoke();
@@ -182,20 +195,32 @@ namespace TrainSudoku.XR
                     break;
                 case DropOutcome.Replaced:
                     Destroy(piece);
-                    if (result.Cell is { } cell && _steam != null) _steam.Puff(_display.CellWorldPosition(cell.X, cell.Y));
+                    if (result.Cell is { } cell)
+                    {
+                        var at = _display.CellWorldPosition(cell.X, cell.Y);
+                        if (_steam != null) _steam.Puff(at);
+                        XRCuePlayer.Play(XRCue.Puff, at);
+                    }
+
                     break;
                 case DropOutcome.Returned when result.Origin.HasValue:
                     // Back into the cell it was lifted from: the display already shows it there, so hide that until it lands.
                     var origin = result.Origin.Value;
                     var board = _display.Board;
                     _display.SetPieceVisible(origin.X, origin.Y, false);
-                    XRPieceFlight.Arc(piece, _display.CellWorldPosition(origin.X, origin.Y), ReturnSeconds, ReturnArc, () =>
+                    var home = _display.CellWorldPosition(origin.X, origin.Y);
+                    XRPieceFlight.Arc(piece, home, ReturnSeconds, ReturnArc, () =>
                     {
                         if (_display != null && _display.Board == board) _display.SetPieceVisible(origin.X, origin.Y, true);
+                        XRCuePlayer.Play(XRCue.ReturnLand, home);
                     });
                     break;
                 case DropOutcome.Returned:
-                    if (_tray != null) XRPieceFlight.Arc(piece, _tray.SlotWorldPosition(result.Key), ReturnSeconds, ReturnArc, null);
+                    if (_tray != null)
+                    {
+                        var slot = _tray.SlotWorldPosition(result.Key);
+                        XRPieceFlight.Arc(piece, slot, ReturnSeconds, ReturnArc, () => XRCuePlayer.Play(XRCue.ReturnLand, slot));
+                    }
                     else Destroy(piece);
                     break;
                 case DropOutcome.Thrown:
@@ -218,6 +243,14 @@ namespace TrainSudoku.XR
             var board = _display == null ? null : _display.transform.parent != null ? _display.transform.parent : _display.transform;
             XRPieceFlight.Fall(piece, velocity, FallSeconds, board, at =>
             {
+                // A throw bursts into steam with a whistle; a piece let go ends in a small puff (X19).
+                if (thrown)
+                {
+                    XRCuePlayer.Play(XRCue.Burst, at);
+                    XRCuePlayer.Play(XRCue.Whistle, at);
+                }
+                else XRCuePlayer.Play(XRCue.Puff, at);
+
                 if (steam == null) return;
                 if (thrown) steam.Burst(at);
                 else steam.Puff(at);

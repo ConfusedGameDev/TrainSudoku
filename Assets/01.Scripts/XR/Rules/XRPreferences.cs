@@ -36,8 +36,10 @@ namespace TrainSudoku.XR.Rules
         public const string MusicKey = "tsugi.xr.musicVolume";
         public const string EffectsKey = "tsugi.xr.effectsVolume";
         public const string LocaleKey = "tsugi.xr.locale";
+        public const string BoardLessonKey = "tsugi.xr.boardLessonDone";
 
         private readonly IPreferenceStore _store;
+        private bool _boardLessonDone;
         private Hand _dominantHand;
         private int _music;
         private int _effects;
@@ -51,6 +53,18 @@ namespace TrainSudoku.XR.Rules
             _music = Clamp(store.GetInt(MusicKey, VolumeSteps));
             _effects = Clamp(store.GetInt(EffectsKey, VolumeSteps));
             _locale = store.GetString(LocaleKey, "") ?? "";
+            _boardLessonDone = store.GetInt(BoardLessonKey, 0) != 0;
+        }
+
+        /// <summary>The lesson in moving the board has been seen to its end, or skipped (7): it shows once per headset.</summary>
+        public bool BoardLessonDone
+        {
+            get => _boardLessonDone;
+            set
+            {
+                _boardLessonDone = value;
+                _store.SetInt(BoardLessonKey, value ? 1 : 0);
+            }
         }
 
         /// <summary>The hand that grabs: the tray docks on its side (4.1).</summary>

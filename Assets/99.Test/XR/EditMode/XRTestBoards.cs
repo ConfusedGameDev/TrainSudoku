@@ -20,6 +20,22 @@ namespace TrainSudoku.XR.Tests
             ". . . . . . 0\n";
 
         /// <summary>
+        /// Ashgate, the tutorial station (<c>Assets/03.Data/Levels/simple.asset</c>), copied as text so the coach tests
+        /// stay engine-free. Fixed SW at (0,0), NE at (1,3), NW at (3,4) and SE at (5,4); S west of row 0, E east of row 4.
+        /// </summary>
+        private const string AshgateText =
+            "name: Ashgate\n" +
+            "  3 4 3 3 1 2\n" +
+            "S SW . . . . . 1\n" +
+            ". . . . . . 1\n" +
+            ". . . . . . 2\n" +
+            ". NE . . . . 3\n" +
+            ". . . NW . SE 4 E\n" +
+            ". . . . . . 5\n";
+
+        public static LevelData AshgateLevel() => LevelText.Parse(AshgateText);
+
+        /// <summary>
         /// 3x3 board, entrance west of (0,1), exit east of (2,1), all clues zero (legality ignores clues). On the empty
         /// board every key is legal at (1,1); (0,1) must connect west to the entrance; the corner (0,0) takes only SE.
         /// </summary>

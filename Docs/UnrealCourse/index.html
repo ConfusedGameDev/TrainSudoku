@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tsugi Unreal Course</title>
+<link rel="stylesheet" href="assets/course.css">
+</head>
+<body>
+<div id="course" data-root=""></div>
+
+<article class="lesson">
+  <div class="mast">
+    <div class="roundel" aria-hidden="true"><span>TSUGI</span></div>
+    <p>Next station<br>Unreal Engine 5.8 · Meta Quest standalone</p>
+  </div>
+  <h1>Port Tsugi XR from Unity to Unreal</h1>
+  <p class="lede">Nineteen lessons. Each one teaches a piece of how Unreal Engine works, then has you rebuild one slice of the Quest edition of Tsugi from the Unity source. At the last station you hold a signed build for Meta Standalone.</p>
+
+  <dl class="plate">
+    <dt>You are given</dt><dd>The Unity project on branch <code>feat/MetaXR</code>: the engine-free rules, the XR edition, 216 levels, and about 390 unit tests.</dd>
+    <dt>You build</dt><dd>The same game in Unreal Engine 5.8: C++ for rules, saving and geometry, Blueprint for the pawn, tuning and wiring.</dd>
+    <dt>You ship</dt><dd>An APK for Quest 3 and Quest 3S that passes the store's Virtual Reality Checks.</dd>
+  </dl>
+
+  <div class="meter" aria-hidden="true"><i id="meter"></i></div>
+  <p class="verified" id="meter-label"></p>
+
+  <h2>The game, in one paragraph</h2>
+  <p>Tsugi is a track-laying puzzle. A board is a grid, 6×6 to 8×8. Every row and column carries a number: how many cells in that line must hold track. A train enters at <strong>S</strong> and must leave at <strong>E</strong>. A piece connects two sides of its cell, and a piece laid beside existing track must join it. You win when one continuous track runs from S to E and every number is met exactly.</p>
+  <p>The Quest edition puts that board on your real table in passthrough, six centimetres to a cell. You pinch pieces out of a tray and drop them on the platform. A green ghost says the drop is legal, a red one says it will fly back. Menus are pressed with a fingertip. There are no rays anywhere.</p>
+
+  <h2>How each lesson works</h2>
+  <ol>
+    <li><strong>Goal.</strong> What exists at the end, and what you can see on the headset.</li>
+    <li><strong>Unreal concepts.</strong> Explained for someone who already knows Unity.</li>
+    <li><strong>Read first.</strong> The Unity files for this slice. Read them before you write anything.</li>
+    <li><strong>Steps.</strong> Class skeletons, and the hard parts in full, with the Unity original beside the Unreal version.</li>
+    <li><strong>Your port.</strong> The exercise. You write the rest from the Unity source.</li>
+    <li><strong>Acceptance checks.</strong> Tick them only when you have seen them pass. The repo's own rule applies here too: nothing is done until a human has verified it.</li>
+    <li><strong>Pitfalls and a knowledge check.</strong> Several pitfalls were learned the hard way on the Unity headset checks and carry straight over.</li>
+  </ol>
+
+  <div class="unverified">
+    <p><span class="tag">Read this</span>The Unreal code in this course was written against Epic's and Meta's documentation. It has not been compiled, because the course was authored without an Unreal install. Treat every snippet as a careful first draft. When one does not compile or an API has moved in 5.8, the acceptance checks are where you will find out. Fix it, and tell whoever maintains this course.</p>
+    <p>Anything that could not be confirmed against a primary source carries a yellow box like this one.</p>
+  </div>
+
+  <h2>The line</h2>
+  <ul class="stations" id="stations"></ul>
+
+  <h2>Unity to Unreal, the short dictionary</h2>
+  <p>Lesson 0 walks through these. Keep this table open while you read Unity code.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Unity</th><th>Unreal</th><th>What changes</th></tr></thead>
+      <tbody>
+        <tr><td><code>GameObject</code> + <code>Transform</code></td><td><code>AActor</code> + root <code>USceneComponent</code></td><td>An actor has no transform of its own. Its root component does.</td></tr>
+        <tr><td><code>MonoBehaviour</code></td><td><code>UActorComponent</code>, or logic on the <code>AActor</code> subclass itself</td><td>Unreal favours fewer, larger actors over many small scripts.</td></tr>
+        <tr><td>Prefab</td><td>Blueprint class</td><td>A Blueprint is a class, not a saved instance. It can subclass your C++.</td></tr>
+        <tr><td><code>ScriptableObject</code></td><td><code>UDataAsset</code> / <code>UPrimaryDataAsset</code></td><td>Unreferenced assets are not cooked into a build.</td></tr>
+        <tr><td>Assembly definition (<code>.asmdef</code>)</td><td>Module (<code>.Build.cs</code>)</td><td>Dependencies are listed in C#, and they are enforced at link time.</td></tr>
+        <tr><td>Scene</td><td>Level (<code>.umap</code>)</td><td>The Unity XR scene holds six objects. So will yours.</td></tr>
+        <tr><td><code>[SerializeField]</code></td><td><code>UPROPERTY(EditAnywhere)</code></td><td>Also what keeps a <code>UObject</code> pointer alive for the garbage collector.</td></tr>
+        <tr><td><code>event Action&lt;T&gt;</code></td><td>Multicast delegate</td><td><code>DECLARE_MULTICAST_DELEGATE</code> for C++, the <code>DYNAMIC</code> kind for Blueprint.</td></tr>
+        <tr><td>Exceptions on bad calls</td><td><code>ensure</code>, <code>check</code>, a <code>bool</code> return</td><td>Unreal game code does not throw.</td></tr>
+        <tr><td><code>Update()</code></td><td><code>Tick(float DeltaSeconds)</code></td><td>Off by default on components. Turn it on only where needed.</td></tr>
+        <tr><td>Coroutine</td><td>Timer, timeline, latent action, or state in <code>Tick</code></td><td>No <code>yield</code>. Lesson 13 shows the patterns.</td></tr>
+        <tr><td>Metres, Y up</td><td>Centimetres, Z up</td><td>Both left-handed. Unity <code>(x, y, z)</code> becomes Unreal <code>(z, x, y)</code> × 100.</td></tr>
+        <tr><td>NUnit EditMode tests</td><td>Automation tests</td><td>Run from the Session Frontend or the command line.</td></tr>
+        <tr><td>XR Interaction Toolkit</td><td>Motion controller components, Enhanced Input, your own grab code</td><td>The game already hides XRI behind <code>IGrabInput</code>. You port the interface.</td></tr>
+        <tr><td>AR Foundation planes, anchors, occlusion</td><td>Meta XR plugin: MR Utility Kit, spatial anchors, Depth API</td><td>Occlusion is the one feature with a real gap. See lesson 10.</td></tr>
+        <tr><td>UI Toolkit in world space</td><td>UMG on a <code>UWidgetComponent</code></td><td>Lesson 12.</td></tr>
+        <tr><td><code>com.unity.localization</code></td><td><code>FText</code>, string tables, Localization Dashboard</td><td>No font atlas to bake for Japanese.</td></tr>
+        <tr><td><code>PlayerPrefs</code></td><td>Config (<code>GameUserSettings.ini</code>)</td><td>Lesson 6.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What you need before lesson 1</h2>
+  <ul>
+    <li>A Windows PC that can run Unreal Engine 5.8 and about 150 GB of free disk.</li>
+    <li>A Meta Quest 3 or 3S in developer mode, a USB-C cable, and a Meta developer account.</li>
+    <li>The Unity repository checked out on <code>feat/MetaXR</code>. You do not need Unity installed to read it, but lesson 4 exports the levels from the Unity Editor, so one person on the team does.</li>
+    <li>Working C# and a rough idea of C++. Lesson 2 covers what Unreal adds on top of the language.</li>
+  </ul>
+
+  <h2>The state of the Unity original</h2>
+  <p>The Unity edition is not finished, and you should not port a gap as if it were a feature.</p>
+  <ul>
+    <li><strong>XR9 (tutorial) and XR10 (sound, haptics, language) are committed but not yet verified on a headset.</strong> Their boxes in <code>Docs/XR-PRD.md</code> are unticked.</li>
+    <li><strong>There is no music.</strong> The volume setting is stored and drives nothing.</li>
+    <li><strong>Five cues have no clip:</strong> Puff, Burst, Whistle, TrainLoop, TrainHurry.</li>
+    <li><strong>XR11 (release readiness) has not started.</strong> No code sets the refresh rate or foveation. Lessons 17 and 18 are therefore new work, with no Unity answer to copy.</li>
+    <li><strong>The PRD has drifted from the code</strong> in places. Where they disagree, the code is the reference. Each lesson names code, never the PRD alone.</li>
+    <li><code>quickTestRails</code> is 3 in the Unity scene. It pre-lays all but three rails of every board, as a testing aid. Do not carry that default into your build.</li>
+  </ul>
+
+  <h2>Sources</h2>
+  <ul class="sources">
+    <li><a href="https://dev.epicgames.com/documentation/unreal-engine/unreal-engine-5-8-release-notes">Unreal Engine 5.8 release notes</a> (Epic)</li>
+    <li><a href="https://developers.meta.com/horizon/downloads/package/unreal-engine-5-integration/">Meta XR plugin, version 207.0</a> (Meta, 23 September 2026)</li>
+    <li><a href="https://developers.meta.com/horizon/documentation/unreal/">Meta's Unreal documentation</a></li>
+    <li><a href="https://developers.meta.com/horizon/resources/publish-quest-req">Virtual Reality Checks for Quest</a> (Meta)</li>
+    <li><code>Docs/XR-PRD.md</code> and <code>Docs/XR-Agent.md</code> in this repository</li>
+  </ul>
+</article>
+
+<script src="assets/course.js"></script>
+</body>
+</html>
