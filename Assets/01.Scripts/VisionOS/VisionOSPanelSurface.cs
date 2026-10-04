@@ -63,6 +63,15 @@ namespace TrainSudoku.VisionOS
         /// </summary>
         static readonly int k_BaseMap = Shader.PropertyToID("_BaseMap");
 
+        /// <summary>Documents whose surface stays hidden whatever they show: one replaced by a visionOS stand-in.</summary>
+        static readonly HashSet<UIDocument> s_Suppressed = new HashSet<UIDocument>();
+
+        /// <summary>Keeps <paramref name="document"/>'s surface off screen (VisionOSWristButton replaces the wrist roundel).</summary>
+        public static void Suppress(UIDocument document)
+        {
+            if (document != null) s_Suppressed.Add(document);
+        }
+
         static Material s_Template;
         static bool s_TemplateMissing;
         readonly HashSet<UIDocument> m_Converted = new HashSet<UIDocument>();
@@ -74,7 +83,11 @@ namespace TrainSudoku.VisionOS
         {
             public UIDocument Document;
             public MeshRenderer Renderer;
+            public MeshFilter Filter;
+            public PanelSettings Settings;
+            public Material Material;
             public RenderTexture Texture;
+            public Vector2 Pixels;
             public string Name;
             public float ProbeAt;
             public bool Probed;
@@ -139,8 +152,10 @@ namespace TrainSudoku.VisionOS
                 var root = surface.Document.rootVisualElement;
                 var shown = surface.Document.isActiveAndEnabled && root != null &&
                     root.resolvedStyle.visibility == Visibility.Visible &&
-                    root.resolvedStyle.display != DisplayStyle.None;
+                    root.resolvedStyle.display != DisplayStyle.None &&
+                    !s_Suppressed.Contains(surface.Document);
                 if (surface.Renderer.enabled != shown) surface.Renderer.enabled = shown;
+                if (surface.Document.worldSpaceSize != surface.Pixels) Resize(surface);
                 if (shown && !surface.Probed && Time.unscaledTime >= surface.ProbeAt) Probe(surface);
             }
         }
@@ -217,16 +232,7 @@ namespace TrainSudoku.VisionOS
                 return;
             }
 
-            // 24 bits of depth, not 0: that is what carries the stencil, and UI Toolkit clips with the stencil buffer.
-            // Without one, anything the card masks — a rounded corner, an `overflow: hidden` group — stops being cut.
-            var texture = new RenderTexture((int)pixels.x, (int)pixels.y, 24, RenderTextureFormat.ARGB32)
-            {
-                name = $"{document.name} Panel",
-                useMipMap = false,
-                autoGenerateMips = false,
-                filterMode = FilterMode.Bilinear,
-            };
-            texture.Create();
+            var texture = CreateTexture(document.name, pixels);
 
             // Its own copy: the PanelSettings asset is shared between the signboard and the wrist menu, and one
             // target texture between them would put both panels on the same surface. The asset on disk is untouched.
@@ -248,11 +254,9 @@ namespace TrainSudoku.VisionOS
 
             var surface = new GameObject(k_SurfaceName);
             surface.transform.SetParent(document.transform, false);
-            // The document's pivot is its bottom centre, so the quad's centre sits half its height above the origin.
             var size = pixels / perUnit;
-            surface.transform.localPosition = new Vector3(0f, size.y / 2f, 0f);
-
-            surface.AddComponent<MeshFilter>().sharedMesh = BuildQuad(size);
+            var filter = surface.AddComponent<MeshFilter>();
+            Fit(surface.transform, filter, size);
             var renderer = surface.AddComponent<MeshRenderer>();
             var material = new Material(s_Template) { name = $"{document.name} Panel Surface" };
             material.SetTexture(k_BaseMap, texture);
@@ -265,12 +269,73 @@ namespace TrainSudoku.VisionOS
             {
                 Document = document,
                 Renderer = renderer,
+                Filter = filter,
+                Settings = settings,
+                Material = material,
                 Texture = texture,
+                Pixels = pixels,
                 Name = document.name,
                 ProbeAt = Time.unscaledTime + 1f,
             });
             Debug.Log($"{k_Tag} {document.name}: panel moved onto a {pixels.x:F0}x{pixels.y:F0} surface, " +
                 $"{size.x:F2}x{size.y:F2} units.");
+        }
+
+        /// <summary>
+        /// 24 bits of depth, not 0: that is what carries the stencil, and UI Toolkit clips with the stencil buffer.
+        /// Without one, anything the card masks — a rounded corner, an `overflow: hidden` group — stops being cut.
+        /// </summary>
+        static RenderTexture CreateTexture(string name, Vector2 pixels)
+        {
+            var texture = new RenderTexture(Mathf.Max(1, (int)pixels.x), Mathf.Max(1, (int)pixels.y), 24, RenderTextureFormat.ARGB32)
+            {
+                name = $"{name} Panel",
+                useMipMap = false,
+                autoGenerateMips = false,
+                filterMode = FilterMode.Bilinear,
+            };
+            texture.Create();
+            return texture;
+        }
+
+        /// <summary>The document's pivot is its bottom centre, so the quad's centre sits half its height above the origin.</summary>
+        static void Fit(Transform quad, MeshFilter filter, Vector2 size)
+        {
+            quad.localPosition = new Vector3(0f, size.y / 2f, 0f);
+            if (filter.sharedMesh != null) Destroy(filter.sharedMesh);
+            filter.sharedMesh = BuildQuad(size);
+        }
+
+        /// <summary>
+        /// Follows a document that changes its size after it was converted.
+        /// </summary>
+        /// <remarks>
+        /// <b>The wrist menu does, on every page</b>: <c>XRWristMenu.Begin</c> sets <c>worldSpaceSize</c> to the
+        /// height of the page's rows — about 516 px for the pause entries, 804 px for Settings — on a panel first made
+        /// 640 px square. The texture was sized once, at conversion, so Settings came out cut off at the bottom and
+        /// shorter pages stretched (2026-10-04, "the wrist pause menu now its rendered incomplete"). On the Quest a
+        /// world-space panel simply takes the new size; here the texture, the panel it targets and the quad have to
+        /// be remade to match. The root then lays out at exactly the document's size again, which is also what
+        /// <c>XRPanelTouch</c> maps fingertips against.
+        /// </remarks>
+        void Resize(Surface surface)
+        {
+            var pixels = surface.Document.worldSpaceSize;
+            surface.Pixels = pixels;
+            if (pixels.x < 1f || pixels.y < 1f) return;
+
+            var texture = CreateTexture(surface.Document.name, pixels);
+            surface.Settings.targetTexture = texture;
+            surface.Material.SetTexture(k_BaseMap, texture);
+            if (surface.Texture != null)
+            {
+                surface.Texture.Release();
+                Destroy(surface.Texture);
+            }
+
+            surface.Texture = texture;
+            Fit(surface.Renderer.transform, surface.Filter, pixels / k_PixelsPerUnit);
+            Debug.Log($"{k_Tag} {surface.Name}: resized to {pixels.x:F0}x{pixels.y:F0}.");
         }
 
         /// <summary>

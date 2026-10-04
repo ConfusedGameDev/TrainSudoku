@@ -477,3 +477,27 @@ whether the surface is steady under reprojection (which is what the whole change
 `XRPanelTouch` still lands its presses now that the panel renders through a texture — it works off
 layout coordinates and the document transform rather than panel picking, so it should be untouched,
 but it has not been pressed on the headset since.
+
+### 2026-10-04 — UI confirmed; pause on the sign; wrist button beside the hand; icon; music
+
+**The panel surfaces work.** The headset showed the signboard and wrist menu reading correctly through
+`VisionOSPanelSurface`; checkpointed as `6ae32d1` (not the V1 milestone commit). The rest of the day's
+headset rounds, each fix a self-installing component under `Assets/01.Scripts/VisionOS/`:
+
+| Report | Cause | Fix |
+|---|---|---|
+| "The pause button gets occluded by the user hand" | `upperLimbVisibility` is on, so visionOS composites the real hands over the whole frame | **Tried and reverted:** `ZTest Always` plus pulling the wrist panels' depth 15 cm toward the eye along each eye's view ray (the images unchanged, only the depth moved). No difference on the headset — **the OS draws the hands over app content whatever depth it submits**, so nothing in a shader wins against them. Do not try it again |
+| "Add a pause button in the UI board" | — | `VisionOSSignPause` puts PAUSE in the station head while playing and, on the sign's pause view, replaces the "Retry, the line map…" hint with RETRY, LINE MAP and RE-PLACE BOARD (42 px, three fit). It re-attaches after every `XRSignboard.Begin`, which clears the card, and presses through its own `XRPanelTouch` |
+| "After resetting the board, resume automatically" | `XRGame.OnReplaceBoard` leaves the flow paused | `VisionOSResumeOnPlace` resumes on `XRBoardPlacement.Placed` while paused. `Placed` does not fire for a handle move |
+| "The wrist pause menu now renders incomplete" | `XRWristMenu.Begin` sets `worldSpaceSize` per page (516 px pause, 804 px settings) on a panel converted at 640 square, so the texture never followed | `VisionOSPanelSurface.Resize`: remakes the texture, the panel target and the quad whenever `worldSpaceSize` changes |
+| "Move [the wrist button] to the left or right of the hand" | The roundel is placed **and pressed** inside one `XRWristMenu.LateUpdate`, so it cannot be moved from outside | `VisionOSWristButton`: a second roundel shown exactly when the game's would be, 11 cm to the hand's **outer** side (right of the right hand, left of the left — the inner side was tried first and the pressing hand still clipped it), smoothed, faced to the eyes; it presses through `WristMenuPlan.Toggle` as `XRGame.OnWristToggled` does. The game's roundel is hidden through `VisionOSPanelSurface.Suppress` but still takes an unseen press where it was. `VisionOSWristPanelOffset` opens the panel 5 cm above the side button |
+| App icon | — | Three 1024 layers (`02.Graphics/VisionOS/Icon/`: ink back, green ring middle, つぎ front) split from the iOS 1024 by solving each pixel as a mix of the three colours, set on the visionOS `PlatformIcon` (front, middle, back order) |
+| "Background music (togglable) and a reach-station jingle, one per line, like the Yamanote melodies" | The XR edition played no music; the phone's slots are empty | `VisionOSMusicComposer` (Window > TrainSudoku > VisionOS > Compose Music) synthesises 24 original jingles in the 発車メロディ form — none transcribes a real one; they are copyrighted — and two seamless loops into `03.Data/VisionOS/Resources/VisionOSMusic/`. `VisionOSMusic` plays Concourse on menus and maps, Platform in play (half volume paused), the line's jingle from the solve through the train run, fading out at the results; loops follow wrist MUSIC (0 = off), the jingle follows EFFECTS |
+
+**Open:** one session logged `Failed to initialize localization, could not preload string tables`, not seen in
+earlier sessions; not yet investigated.
+
+**Deploying:** a `-destination 'generic/platform=visionOS'` `xcodebuild` needs no connected headset (it is already
+in the team profile), and `devicectl … install` refuses with `kAMDMobileImageMounterDeviceLocked` until the
+headset is worn and unlocked. Queuing the Unity build through `EditorApplication.delayCall` from the MCP bridge
+never ran in an unfocused Editor; calling `ExecuteMenuItem` directly does.
