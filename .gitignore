@@ -121,3 +121,14 @@ InitTestScene*.unity*
 
 # Simulator Xcode export (BuildScript -simulator). Build output, not source.
 /Builds-Simulator/
+
+# visionOS Xcode exports (VisionOSBuildScript). Separate folders because the export is a
+# Replace: sharing one would destroy the other. Build output, not source.
+/Builds-VisionOS/
+/Builds-VisionOS-Simulator/
+
+# IL2CPP leaves a sibling backup folder beside every Apple export.
+*_BackUpThisFolder_ButDontShipItWithYourGame/
+
+# What a build script writes its outcome to, because a build outlives the call that started it.
+/BuildResult.txt
