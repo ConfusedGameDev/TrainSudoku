@@ -129,16 +129,31 @@ namespace TrainSudoku.XR
 
         public void Hide() => gameObject.SetActive(false);
 
+        /// <summary>
+        /// Whether the sign keeps turning to face the player every frame (the Quest), or turns once each time it shows
+        /// a view and then holds still. A card that follows the head moves under a fingertip reaching for it, which
+        /// on the Vision Pro made its buttons hard to press (2026-10-05).
+        /// </summary>
+        public static bool FollowsViewer { get; set; } = true;
+
+        /// <summary>Whether a sign that does not follow the viewer has turned to face them for the view on show.</summary>
+        private bool _faced;
+
         /// <summary>Turns about the vertical to face the player, so the sign reads from any edge, and leans the card back to the eyes.</summary>
         private void LateUpdate()
         {
             PressStamp();
             var head = Camera.main;
             if (head == null || transform.parent == null) return;
-            var up = transform.parent.up;
-            var away = Vector3.ProjectOnPlane(transform.position - head.transform.position, up);
-            if (away.sqrMagnitude > 1e-8f) transform.rotation = Quaternion.LookRotation(away, up);
-            Lean(head.transform.position, up);
+            if (FollowsViewer || !_faced)
+            {
+                var up = transform.parent.up;
+                var away = Vector3.ProjectOnPlane(transform.position - head.transform.position, up);
+                if (away.sqrMagnitude > 1e-8f) transform.rotation = Quaternion.LookRotation(away, up);
+                Lean(head.transform.position, up);
+                _faced = true;
+            }
+
             _touch.Update(_panel, _document);
         }
 
@@ -431,6 +446,8 @@ namespace TrainSudoku.XR
         private VisualElement Begin()
         {
             gameObject.SetActive(true);
+            // A new view faces the player afresh, where they stand now.
+            _faced = false;
             _clock = null;
             _clockText = null;
             _stamp = null;

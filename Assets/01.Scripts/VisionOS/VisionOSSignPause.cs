@@ -22,7 +22,9 @@ namespace TrainSudoku.VisionOS
     /// the pause, the sign already offers RESUME; under its LED strip this replaces the line "Retry, the line map and
     /// settings are on the wrist menu" with RETRY, LINE MAP and RE-PLACE BOARD — the wrist menu's pause entries, which
     /// the Quest opens together with the pause and a sign press does not (the headset report: "we are missing the
-    /// pause menu"). Settings and the height nudge stay on the wrist; nothing here removes anything from it.
+    /// pause menu"). Since the wrist roundel was dropped (VisionOSBoardMenu), PAUSE also opens the game's whole
+    /// menu beside the board, and the network and line-map cards get MENU, the only other way into it (Settings, and
+    /// the way back to the network).
     ///
     /// <b>How, without editing the sign.</b> <c>Assets/01.Scripts/XR/</c> is not edited on this branch (VisionOS-PRD
     /// 2). So this adds buttons to the card the sign has just built and presses them with its own
@@ -38,8 +40,6 @@ namespace TrainSudoku.VisionOS
         const string k_Tag = "[AVP pause]";
         const float k_PixelsPerUnit = 100f;   // XRSignboard.PixelsPerUnit, private there
 
-        /// <summary>The start of the sign's pause footer, which the menu's buttons replace.</summary>
-        const string k_WristHint = "Retry, the line map";
 
         XRGame m_Game;
         XRSignboard m_Sign;
@@ -68,7 +68,8 @@ namespace TrainSudoku.VisionOS
             if (!Find()) return;
 
             var state = m_Game.Flow != null ? m_Game.Flow.State : GameState.MainMenu;
-            var offered = (state == GameState.Play || state == GameState.Pause) && m_Sign.isActiveAndEnabled;
+            var offered = (state == GameState.Play || state == GameState.Pause || state == GameState.Network ||
+                           state == GameState.LevelSelect) && m_Sign.isActiveAndEnabled;
             if (!offered)
             {
                 m_Touch.Disarm();
@@ -106,17 +107,29 @@ namespace TrainSudoku.VisionOS
             var card = root[0];
             if (card.childCount == 0) return;
 
+            // Not localised, either of them: the XR String Table has no PAUSE or MENU row, and adding one is a
+            // Quest-side change.
             if (state == GameState.Play)
             {
                 var head = card[0];
                 head.Add(Spacer());
-                head.Add(Add("PAUSE", Pause));
+                head.Add(Add("PAUSE", Toggle));
+                return;
+            }
+
+            if (state == GameState.Network || state == GameState.LevelSelect)
+            {
+                // The masthead's and the line card's top row (ShowMasthead, ShowLine): the mark or badge and the words.
+                var top = card[0];
+                top.Add(Spacer());
+                top.Add(Add("MENU", Toggle));
                 return;
             }
 
             // The pause view: swap the wrist hint for the menu itself.
             var last = card[card.childCount - 1];
-            if (last is Label hint && hint.text != null && hint.text.StartsWith(k_WristHint, StringComparison.Ordinal))
+            // The footer is localised (XRKeys.PauseHint, since XR10), so it is matched in whatever language is showing.
+            if (last is Label hint && hint.text == XRText.Get(XRKeys.PauseHint))
                 card.Remove(hint);
 
             var row = new VisualElement { pickingMode = PickingMode.Ignore };
@@ -125,9 +138,10 @@ namespace TrainSudoku.VisionOS
             row.style.justifyContent = Justify.Center;
             row.style.marginTop = 22f;
             card.Add(row);
-            row.Add(Add("RETRY", Retry));
-            row.Add(Add("LINE MAP", LineMap));
-            if (m_Placement != null) row.Add(Add("RE-PLACE BOARD", Replace));
+            // The wrist menu's own wording for the same three entries, in the player's language.
+            row.Add(Add(XRText.Get(XRKeys.WristRetry), Retry));
+            row.Add(Add(XRText.Get(XRKeys.WristLineMap), LineMap));
+            if (m_Placement != null) row.Add(Add(XRText.Get(XRKeys.SettingsReplace), Replace));
             // A size down from the sign's 50 px buttons: three of those overrun the card's 1164 px inside width.
             foreach (var child in row.Children()) child.style.fontSize = 42f;
             // The sign's own buttons carry a left margin for the gap between them; the first in a centred row does not need it.
@@ -151,7 +165,12 @@ namespace TrainSudoku.VisionOS
 
         // ------------------------------------------------------------------ what XRGame runs for the wrist entries
 
-        void Pause() => When(GameState.Play, "Paused", flow => flow.PauseGame());
+        /// <summary>The wrist roundel's job, now the sign's: pause and open the menu in play, open or close it on the maps.</summary>
+        void Toggle()
+        {
+            Debug.Log($"{k_Tag} Menu from the signboard.");
+            VisionOSBoardMenu.Toggle();
+        }
 
         void Retry() => When(GameState.Pause, "Retry", flow => flow.Retry());
 

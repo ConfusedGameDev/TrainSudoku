@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace TrainSudoku.XR
@@ -27,6 +28,13 @@ namespace TrainSudoku.XR
 
             /// <summary>Coming down onto the rail and pinching it, in a loop.</summary>
             Pinching,
+
+            /// <summary>
+            /// One hand taking a piece: down onto it, pinch, carry it to its cell, let go, in a loop (<see cref="ShowCarry"/>).
+            /// The lesson for a player who has never pinched anything in a headset: watching a hand do it, at the real
+            /// size and in the real place, says it better than any line of text.
+            /// </summary>
+            Carrying,
         }
 
         /// <summary>How far above the rail a waiting hand's pinch point hovers, in metres, and how far it bobs.</summary>
@@ -76,6 +84,46 @@ namespace TrainSudoku.XR
         /// <summary>The rail the hands show how to take.</summary>
         public XRBoardHandle Handle { get; set; }
 
+        /// <summary>One carry, in seconds, and its beats as fractions of it: slow on purpose, for a first-time player.</summary>
+        private const float CarrySeconds = 4.2f;
+        private const float CarryDownUntil = 0.12f;
+        private const float CarryClosedAt = 0.24f;
+        private const float CarryArrivedAt = 0.62f;
+        private const float CarryOpenAt = 0.72f;
+        private const float CarryGoneAt = 0.9f;
+
+        /// <summary>How high the carried piece arcs between the tray and its cell, in metres.</summary>
+        private const float CarryArc = 0.06f;
+
+        private Func<Vector3> _from;
+        private Func<Vector3> _to;
+        private Func<Quaternion> _facing;
+        private Func<bool> _resting;
+        private float _carrySide = 1f;
+
+        /// <summary>
+        /// Shows one hand, <paramref name="side"/> −1 the left and +1 the right, taking a piece from <paramref name="from"/>
+        /// to <paramref name="to"/> on a loop, turned by <paramref name="facing"/> (the board's rotation). The points are
+        /// read every frame, so the tray and the board can move under it. While <paramref name="resting"/> answers true —
+        /// the player is holding a piece already — the hand steps aside and the loop starts over when it is put down.
+        /// </summary>
+        public void ShowCarry(Func<Vector3> from, Func<Vector3> to, Func<Quaternion> facing, float side, Func<bool> resting)
+        {
+            _from = from;
+            _to = to;
+            _facing = facing;
+            _resting = resting;
+            var changed = _mode != Mode.Carrying || side != _carrySide;
+            _carrySide = side;
+            if (changed)
+            {
+                _mode = Mode.Carrying;
+                _since = Time.unscaledTime;
+            }
+
+            gameObject.SetActive(true);
+        }
+
         public static XRGhostHands Create(XRBoardAssets assets)
         {
             var go = new GameObject("Ghost Hands");
@@ -96,6 +144,14 @@ namespace TrainSudoku.XR
             _mode = mode;
             _since = Time.unscaledTime;
             gameObject.SetActive(mode != Mode.Hidden);
+            // Both hands again after a carry, which shows only one.
+            Visible(_left, true);
+            Visible(_right, true);
+        }
+
+        private static void Visible(GhostHand hand, bool visible)
+        {
+            if (hand != null && hand.Root.gameObject.activeSelf != visible) hand.Root.gameObject.SetActive(visible);
         }
 
         private static GhostHand Build(Transform parent, GameObject model, float side)
@@ -154,6 +210,12 @@ namespace TrainSudoku.XR
 
         private void LateUpdate()
         {
+            if (_mode == Mode.Carrying)
+            {
+                Carry();
+                return;
+            }
+
             if (_mode == Mode.Hidden || Handle == null) return;
             var elapsed = Time.unscaledTime - _since;
             float pinch, lift;
@@ -184,6 +246,61 @@ namespace TrainSudoku.XR
             var board = Handle.transform;
             Place(_left, left + board.up * lift, board.rotation, pinch);
             Place(_right, right + board.up * lift, board.rotation, pinch);
+        }
+
+        /// <summary>One beat of the carry loop: hover, down, pinch, arc over to the cell, open, lift away, and round again.</summary>
+        private void Carry()
+        {
+            var hand = _carrySide < 0f ? _left : _right;
+            Visible(_carrySide < 0f ? _right : _left, false);
+            if (hand == null || _from == null || _to == null) return;
+
+            if (_resting != null && _resting())
+            {
+                // The player has a piece in hand: out of the way, and from the top once they let go.
+                Visible(hand, false);
+                _since = Time.unscaledTime;
+                return;
+            }
+
+            var t = Mathf.Repeat((Time.unscaledTime - _since) / CarrySeconds, 1f);
+            var from = _from();
+            var to = _to();
+            var facing = _facing != null ? _facing() : Quaternion.identity;
+            var up = facing * Vector3.up;
+
+            Vector3 at;
+            float pinch;
+            if (t < CarryDownUntil)
+            {
+                at = from + up * (Hover * (1f - Mathf.SmoothStep(0f, 1f, t / CarryDownUntil)));
+                pinch = 0f;
+            }
+            else if (t < CarryClosedAt)
+            {
+                at = from;
+                pinch = Mathf.SmoothStep(0f, 1f, (t - CarryDownUntil) / (CarryClosedAt - CarryDownUntil));
+            }
+            else if (t < CarryArrivedAt)
+            {
+                var s = Mathf.SmoothStep(0f, 1f, (t - CarryClosedAt) / (CarryArrivedAt - CarryClosedAt));
+                at = Vector3.Lerp(from, to, s) + up * (CarryArc * Mathf.Sin(s * Mathf.PI));
+                pinch = 1f;
+            }
+            else if (t < CarryOpenAt)
+            {
+                at = to;
+                pinch = 1f - Mathf.SmoothStep(0f, 1f, (t - CarryArrivedAt) / (CarryOpenAt - CarryArrivedAt));
+            }
+            else
+            {
+                at = to + up * (Hover * Mathf.SmoothStep(0f, 1f, (t - CarryOpenAt) / (CarryGoneAt - CarryOpenAt)));
+                pinch = 0f;
+            }
+
+            // Gone for the last beat, so the jump back to the tray is never seen.
+            Visible(hand, t < CarryGoneAt);
+            Place(hand, at, facing, pinch);
         }
 
         /// <summary>Poses the hand, then stands it so the point between its thumb and index tips is on <paramref name="target"/>.</summary>

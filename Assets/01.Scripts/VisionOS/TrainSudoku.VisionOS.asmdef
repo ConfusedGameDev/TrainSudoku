@@ -11,7 +11,9 @@
         "Unity.XR.Interaction.Toolkit",
         "Unity.XR.Hands",
         "Unity.XR.VisionOS",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "Unity.Localization",
+        "Unity.ResourceManager"
     ],
     "includePlatforms": [
         "Editor",

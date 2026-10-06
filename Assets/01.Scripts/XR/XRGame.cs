@@ -631,8 +631,11 @@ namespace TrainSudoku.XR
             if (_ghostHands != null)
             {
                 _ghostHands.Handle = placement != null ? placement.Handle : null;
-                _ghostHands.Show(state != GameState.Play || !_lesson.HandsShown ? XRGhostHands.Mode.Hidden
-                    : _lesson.HandsPinching ? XRGhostHands.Mode.Pinching : XRGhostHands.Mode.Waiting);
+                // The hands stay up through the carry, still pinching, so a first-time player can copy them while
+                // they try it (2026-10-05, the Vision Pro check: "keep showing the hands models").
+                var carrying = _lesson.Step == XRBoardLessonStep.Carry;
+                _ghostHands.Show(state != GameState.Play || !(_lesson.HandsShown || carrying) ? XRGhostHands.Mode.Hidden
+                    : _lesson.HandsPinching || carrying ? XRGhostHands.Mode.Pinching : XRGhostHands.Mode.Waiting);
             }
 
             if (key == null || key == _spokenKey) return;
@@ -652,8 +655,8 @@ namespace TrainSudoku.XR
                 return;
             }
 
-            if (_ghostHands != null) _ghostHands.Show(XRGhostHands.Mode.Hidden);
             var guide = _coach.Guide;
+            ShowCarry(state, guide);
             if (!_teaching || state != GameState.Play || _display.Board == null || !guide.Active)
             {
                 _marks.Show(XRTutorialGuide.None);
@@ -669,6 +672,31 @@ namespace TrainSudoku.XR
                 _spokenKey = _coach.Key;
                 XRCuePlayer.Play(XRCue.TutorialNote, _display.CellWorldPosition(guide.X, guide.Y));
             }
+        }
+
+        /// <summary>
+        /// While the coach points at a rail to lay from the tray, a ghost hand shows the whole move in the dominant hand:
+        /// down onto the right piece, pinch, carry it to the cell, let go. It steps aside while the player holds a
+        /// piece. For a player who has never used hand tracking, the pinch is the one thing no callout can explain.
+        /// </summary>
+        private void ShowCarry(GameState state, XRTutorialGuide guide)
+        {
+            if (_ghostHands == null) return;
+            if (!_teaching || state != GameState.Play || _display.Board == null || _tray == null || !guide.Active || !guide.Slot.HasValue)
+            {
+                _ghostHands.Show(XRGhostHands.Mode.Hidden);
+                return;
+            }
+
+            var slot = guide.Slot.Value;
+            var x = guide.X;
+            var y = guide.Y;
+            _ghostHands.ShowCarry(
+                () => _tray.SlotWorldPosition(slot),
+                () => _display.CellWorldPosition(x, y),
+                () => _display.transform.rotation,
+                _preferences.DominantHand == Hand.Left ? -1f : 1f,
+                () => _tray.Holding);
         }
 
         /// <summary>The tutorial line last shown, so its chime sounds once per new line.</summary>
