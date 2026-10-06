@@ -131,6 +131,8 @@ namespace TrainSudoku.XR
             XRCuePlayer.Create(cues, _preferences).transform.SetParent(transform, false);
             if (placement != null) placement.Placed += () => XRCuePlayer.Play(XRCue.BoardPlaced, placement.BoardRoot.position);
             BuildFlow();
+            // From here on, so the placement has the maps' loop under it.
+            XRMusic.Create(Flow, _preferences).transform.SetParent(transform, false);
 
             Transform root;
             if (UsePlacement)

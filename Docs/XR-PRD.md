@@ -318,6 +318,7 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 | Save / Continue | Shared `SaveJson`, `FileSaveStore` and `LevelProgress`: the same `save.json` format, local to each device. **No sync between phone and headset**, but the shared format keeps that possible later |
 | Localisation | **XR's own** `XR` String Table in the project's existing `com.unity.localization` setup, same four locales (X24). Station and line names come from the shared assets. XR gets its own Japanese atlas bake covering its table plus those names |
 | Audio | XR's own cue set, **spatialised**: piece cues from the piece, board cues from the board, UI cues from the signboard or wrist |
+| Music (added 2026-10-06) | XR's own, **not spatialised**: one loop over the placement and the maps, another in play (turned down in the pause), and **a jingle per line** from the solve through the train run, fading out as the results show. The loops follow the MUSIC volume (0 is off) and the jingle follows EFFECTS. The phone's music layer is untouched |
 | Haptics | Controller haptics from XR's own cue-to-feel table. Bare hands feel nothing, so **nothing may depend on haptics alone** |
 
 ---
