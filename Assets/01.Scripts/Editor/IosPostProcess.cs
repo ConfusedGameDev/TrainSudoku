@@ -25,6 +25,9 @@ namespace TrainSudoku.Editor
     /// </remarks>
     public static class IosPostProcess
     {
+        /// <summary>The languages the game ships, as the App Store should list them.</summary>
+        static readonly string[] StoreLanguages = { "en", "ja", "es", "fr" };
+
         /// <summary>
         /// Runs after Unity has written the Xcode project. The callback order is above Unity's own (0) so the plist
         /// this edits is the finished one rather than a copy Unity is about to overwrite.
@@ -48,9 +51,18 @@ namespace TrainSudoku.Editor
                 var plist = new PlistDocument();
                 plist.ReadFromFile(plistPath);
                 plist.root.SetBoolean("ITSAppUsesNonExemptEncryption", false);
+
+                // The App Store's "Languages" row is read from CFBundleLocalizations, not from the store listing.
+                // Unity writes none, so without this the page says "English" only, whatever the game can speak.
+                // Keep this list in step with the locales under 03.Data/Localization/Locales.
+                plist.root.SetString("CFBundleDevelopmentRegion", "en");
+                var languages = plist.root.CreateArray("CFBundleLocalizations");
+                foreach (var code in StoreLanguages) languages.AddString(code);
+
                 plist.WriteToFile(plistPath);
 
-                Debug.Log("IosPostProcess: ITSAppUsesNonExemptEncryption=false written to Info.plist.");
+                Debug.Log("IosPostProcess: ITSAppUsesNonExemptEncryption=false and CFBundleLocalizations=" +
+                          string.Join(",", StoreLanguages) + " written to Info.plist.");
             }
         }
     }

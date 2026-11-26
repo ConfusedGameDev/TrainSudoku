@@ -32,8 +32,8 @@ Because the Xcode export is Universal (`targetDevice: 2`), the iPad set is not o
 |---|---|---|---|
 | iPhone 6.9" | **1320 × 2868** | Yes | **Your iPhone 16 Pro Max screenshots are natively exactly this.** Nothing to scale. |
 | iPad 13" | **2064 × 2752** | Yes — the app runs on iPad | Unity Editor Game view (below), or the iPad simulator |
-| Google Play phone | 1080 × 1920 min, 9:16 | 2 min, 4+ for recommendation eligibility | Downscale the 1320 × 2868 set |
-| Google Play feature graphic | **1024 × 500**, no alpha | Yes, Play won't publish without it | Composed from the logo + a board render |
+| Google Play phone | 1080 × 1920 min, 9:16 | 2 min, 4+ for recommendation eligibility | **Done:** `Screenshots/store-play-phone/`, the 6.9" frames on a captioned 9:16 card (a plain downscale would be 1:2.17, which Play refuses) |
+| Google Play feature graphic | **1024 × 500**, no alpha | Yes, Play won't publish without it | **Done:** `Screenshots/store-play-feature/feature-graphic-1024x500.png` |
 | App icon | 1024 × 1024 (Apple), 512 × 512 (Play) | Yes | Already in `Assets/02.Graphics/Ui/Icon/` |
 
 > **This time "wrong dimensions" meant exactly that.** If App Store Connect lists the accepted sizes
@@ -157,7 +157,7 @@ committing to an iPad build being good, and nobody has looked at one yet.
       `ITSAppUsesNonExemptEncryption = false` into the generated Info.plist on every iOS export. It
       has to live there rather than in Xcode, because `BuildScript` is deliberately a Replace and
       drops by-hand project edits on the next export.
-- [ ] **Version and build number.** `bundleVersion` is `1.0.0`, `buildNumber` is `9`. Build number
+- [ ] **Version and build number.** `bundleVersion` is `1.0.0`, `buildNumber` is `14`. Build number
       must strictly increase per upload; 1.0.0 is right for the first release. The build script takes
       `-buildNumber` and `-bundleVersion`, so bump via the command line, not by hand.
 - [ ] **Orientation** is already Portrait (`defaultScreenOrientation: 0`) and `BuildScript` re-asserts
@@ -302,3 +302,10 @@ rejected apps for a policy that contradicts the app's declared behaviour.
 - [ ] Android: `AndroidBundleVersionCode: 1`, bundle ID was still the URP template default until the
       rename; confirm it is `com.GorillaGonzalez.Tsugi` before the first Play upload, since it is
       equally permanent there.
+- [x] ~~App Store "Languages" row~~ — `IosPostProcess` now also writes `CFBundleLocalizations`
+      (`en`, `ja`, `es`, `fr`). Without it the product page lists English only. **Written without a
+      compile**: confirm the next iOS export logs the line and that Info.plist carries the array.
+- [x] ~~Every remaining store form~~ — `Docs/StoreListing.md` sections 6 to 9: app record, age
+      rating, App Privacy, pricing, DSA, review notes, and the Play Console declarations, IARC
+      answers, Data safety and release setup. Section 9 lists what only a human can supply.
+- [ ] **Android has no build path yet.** No keystore is configured and `BuildScript` is iOS-only.

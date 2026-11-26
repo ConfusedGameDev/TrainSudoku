@@ -375,6 +375,13 @@ straight into the full-description field in each language; only these fields are
 Tsugi: Railway Puzzle
 ```
 
+| Locale (Play name) | Title | Chars |
+|---|---|---|
+| en-US (default) | `Tsugi: Railway Puzzle` | 21 |
+| ja-JP | `Tsugi：線路をつなぐパズル` | 15 |
+| es-ES and es-419 | `Tsugi: Puzzle Ferroviario` | 25 |
+| fr-FR | `Tsugi : Puzzle Ferroviaire` | 26 |
+
 ### Short Description — max 80 characters
 
 | Locale | String | Chars |
@@ -407,7 +414,278 @@ policy forbids fake urgency or a claim of ranking, neither of which appears abov
 
 ---
 
-## 6 · The one-liners, for everything else
+## 6 · App Store Connect — every other form
+
+The fields below are the ones outside the version page. Values marked **YOU** are personal or legal
+facts nobody else can supply; section 9 collects them in one list.
+
+### New App record (created once)
+
+| Field | Value |
+|---|---|
+| Platforms | iOS |
+| Name | `Tsugi: Railway Puzzle` |
+| Primary Language | English (U.S.) |
+| Bundle ID | `com.GorillaGonzalez.Tsugi` (register it under Certificates, Identifiers & Profiles first; no capabilities need ticking) |
+| SKU | `TSUGI-IOS-001` (private, never shown, cannot be changed) |
+| User Access | Full Access |
+
+### Localisations to add on the version page
+
+English (U.S.) is the primary. Add **Japanese**, **Spanish (Spain)**, **Spanish (Mexico)** and
+**French**; sections 2 to 4 hold the copy, and the two Spanish entries take the same text. The Support,
+Marketing and Privacy URLs are the same in every language. The screenshots are English-only: leave the
+other languages' screenshot slots empty and they inherit the primary set.
+
+### App Information
+
+| Field | Value |
+|---|---|
+| Content Rights | **No**, it does not contain, show or access third-party content. (The 3D model kit and the Barlow and Noto fonts are licensed assets built into the app, which is not what this question asks; do confirm each licence allows commercial use.) |
+| Age Rating | see the questionnaire below |
+| License Agreement | Apple's standard EULA |
+| Category | Primary **Games**, subcategories **Puzzle** and **Board**. Secondary: leave empty |
+
+### Age rating questionnaire
+
+Every answer is **None** or **No**. Apple reworded this form in 2025, so the labels may not match
+word for word, but there is no question on it that Tsugi answers yes to.
+
+| Group | Answer |
+|---|---|
+| In-app controls: parental controls, age assurance | No |
+| Capabilities: unrestricted web access, user-generated content, messaging and chat, advertising | No to all four |
+| Mature themes, profanity, horror, alcohol/tobacco/drugs | None |
+| Medical or wellness topics | None |
+| Sexuality or nudity | None |
+| Violence (cartoon, realistic, graphic), guns and weapons | None |
+| Gambling, simulated gambling, contests, loot boxes | None / No |
+| Resulting rating | **4+** |
+
+The share card does not count as messaging or user-generated content: it hands plain text to the
+system share sheet and the app never shows another player's content.
+
+### App Privacy
+
+| Field | Value |
+|---|---|
+| Privacy Policy URL | `https://tsugi-flax.vercel.app/privacy` |
+| User Privacy Choices URL | leave empty |
+| Do you or your third-party partners collect data from this app? | **No, we do not collect data from this app** |
+
+That single answer publishes the "Data Not Collected" label. No tracking, so no App Tracking
+Transparency prompt and no `NSUserTrackingUsageDescription`.
+
+### Pricing and Availability
+
+| Field | Value |
+|---|---|
+| Price | **USD 0.99**, base country United States, let Apple equalise the other storefronts |
+| Availability | All countries and regions |
+| Pre-order | No |
+| Tax category | App Store software (the default) |
+| Apple Silicon Mac availability | **Untick** "Make this app available on Mac": nobody has run it there |
+| Apple Vision Pro availability | **Untick** for the same reason |
+| Distribution method | Public |
+
+A paid app cannot be submitted until the **Paid Apps Agreement** is active under Business, which
+needs bank details and tax forms (**YOU**). Do this first; it can take days to clear.
+
+### Digital Services Act (EU)
+
+Selling a paid app in the EU makes you a **trader**. Apple then requires an address, phone number
+and email, verifies them, and **prints them on the product page in EU storefronts** (**YOU**).
+Declaring non-trader status is only for people not acting commercially and does not fit a paid
+app. If a home address on a public page is a problem, the alternatives are a business address or
+leaving the 27 EU countries out of Availability.
+
+### Version page, below the text fields
+
+| Field | Value |
+|---|---|
+| Build | the uploaded build; `bundleVersion` 1.0.0, build number currently 14 |
+| Game Center | off |
+| App Clip, iMessage app, Apple Watch | none |
+| Routing App Coverage File | none |
+| Version Release | **Manually release this version**, so launch day is your choice |
+| Phased release | not applicable to a first version |
+| Export compliance | answered by the build (`ITSAppUsesNonExemptEncryption = false`) |
+| Content rights, advertising identifier (IDFA) | No / does not use IDFA |
+
+### App Review Information
+
+| Field | Value |
+|---|---|
+| Sign-in required | **No** (untick; there are no accounts) |
+| Contact first name, last name, phone, email | **YOU**: seen by Apple only, never published |
+| Attachment | none |
+
+Notes for the reviewer, ready to paste:
+
+```
+Tsugi is a single-player offline logic puzzle. There is no account, no sign-in, no network access, no in-app purchase and no advertising, so nothing needs to be configured to review it.
+
+To see the whole loop in about two minutes: tap BOARD NOW on the first screen. The first station, Ashgate, is a guided tutorial that points at each cell to tap. When the track joins the two tunnels and every row and column number is green, a train runs the route and the result card appears.
+
+The SHARE button on the result card opens the standard iOS share sheet with a plain-text description of the puzzle. Nothing is uploaded by the app.
+
+The Japanese characters in the logo and on the platform edge are decorative. The interface is available in English, Japanese, Spanish and French and follows the device language.
+```
+
+---
+
+## 7 · Play Console — every other form
+
+### Create app
+
+| Field | Value |
+|---|---|
+| App name | `Tsugi: Railway Puzzle` |
+| Default language | English (United States) – en-US |
+| App or game | Game |
+| Free or paid | **Paid**. On Play this is the one-way door: a paid app can be made free, but a free app can never become paid, and a paid app made free can never go back |
+| Declarations | accept the Developer Program Policies and US export laws |
+
+A paid app needs a **payments (merchant) profile** linked to the developer account before the price
+can be set (**YOU**).
+
+### Store settings
+
+| Field | Value |
+|---|---|
+| Category | Puzzle |
+| Tags | Puzzle, Logic, Brain games (pick from the list; the exact names vary) |
+| Email | `confusedgamedevsupport@gmail.com` (shown publicly) |
+| Phone | leave empty (optional, and public if filled) |
+| Website | `https://tsugi-flax.vercel.app` |
+| External marketing | on |
+
+### Main store listing
+
+Text is in section 5. Graphics:
+
+| Slot | File |
+|---|---|
+| App icon, 512 × 512 | `Assets/02.Graphics/Ui/Icon/android/play-store-512.png` |
+| Feature graphic, 1024 × 500 | `Screenshots/store-play-feature/feature-graphic-1024x500.png` |
+| Phone screenshots, 1080 × 1920 | the five files in `Screenshots/store-play-phone/`, in name order |
+| 7-inch and 10-inch tablet screenshots | optional; leave empty for v1 |
+| Video | none |
+
+The iPhone captures cannot go to Play as they are: Play wants 9:16 and they are 1:2.17. The Play set
+is the same five frames placed on a 1080 × 1920 card under a caption. The captions are English;
+other languages inherit the default graphics.
+
+### Pricing and distribution
+
+| Field | Value |
+|---|---|
+| Price | USD 0.99, let Play convert local prices |
+| Countries / regions | all available |
+| Device categories | Phone and tablet only. Do not opt in to Chromebook, Android TV, Wear OS, Android Auto or XR |
+| Google Play Pass, Play Games Services | no |
+
+### App content (Policy → App content)
+
+| Declaration | Answer |
+|---|---|
+| Privacy policy | `https://tsugi-flax.vercel.app/privacy` |
+| App access | **All functionality is available without special access** |
+| Ads | **No, my app does not contain ads** |
+| Content rating | questionnaire below → **Everyone / PEGI 3 / USK 0** |
+| Target audience and content | Age groups **13–15, 16–17, 18 and over**. Could it unintentionally appeal to children? **No** |
+| Data safety | see below |
+| Advertising ID | **No**, the app does not use an advertising ID |
+| Government apps | No |
+| Financial features | **My app doesn't provide any financial features** |
+| Health | **My app does not have any health features** |
+| News app | No |
+
+### Content rating questionnaire (IARC)
+
+| Question | Answer |
+|---|---|
+| Email address | `confusedgamedevsupport@gmail.com` |
+| Category | **Game** |
+| Violence, blood, fear | No |
+| Sexuality, nudity | No |
+| Language (profanity, crude humour) | No |
+| Controlled substances | No |
+| Gambling, simulated gambling, paid random items | No |
+| Users can interact or exchange content | **No** |
+| Shares the user's location with other users | No |
+| Allows purchase of digital goods | **No** |
+| Unrestricted internet access (a browser) | No |
+
+### Data safety
+
+| Question | Answer |
+|---|---|
+| Does your app collect or share any of the required user data types? | **No** |
+
+Answering No ends the form. The listing then shows "No data collected" and "No data shared with
+third parties". There are no accounts, so the account-deletion questions do not appear.
+
+**Check one thing in the first AAB before trusting this.** Play Console's bundle explorer lists the
+merged manifest's permissions. If `android.permission.INTERNET` is there, it comes from an engine
+module (the manifest still includes `unitywebrequest` and `unityanalytics`, and Localization pulls in
+Addressables), not from game code. It does not change the Data safety answer, since nothing is
+collected, but a reviewer or a player can see it beside the words "never connects to the internet".
+
+### Release setup
+
+| Item | Value |
+|---|---|
+| Format | **Android App Bundle (.aab)**, not APK: tick *Build App Bundle (Google Play)* in Build Profiles |
+| Play App Signing | accept; let Google generate the app signing key |
+| Upload key | a keystore you create in Unity's Publishing Settings and back up (**YOU**). `androidUseCustomKeystore` is still 0, so a build today would be debug-signed and refused |
+| Package name | `com.GorillaGonzalez.Tsugi`, permanent after the first upload |
+| Version | `versionName` 1.0.0, `versionCode` 1; the code must rise with every upload |
+| Architecture | ARM64 with IL2CPP, already set (`AndroidTargetArchitectures: 2`) |
+| Minimum SDK | API 26 (Android 8.0), already set |
+| Target SDK | set to "highest installed" (`0`). Play enforces a minimum target level that moves up every August, so confirm the installed SDK meets the level the console asks for when you upload |
+| Release name | `1.0.0 (1)` |
+| Release notes | the *What's New* text from sections 1 to 4, wrapped in `<en-US>`, `<ja-JP>`, `<es-ES>`, `<fr-FR>` tags |
+
+**Testing gate.** A *personal* developer account created after November 2023 cannot publish to
+production until a **closed test has run with at least 12 opted-in testers for 14 days in a row**.
+Organisation accounts are exempt. If this applies, start the closed test as early as possible:
+those 14 days are the longest fixed wait in the Android release.
+
+**Developer account details.** Play shows the developer name and, for an account that earns money,
+its **legal address** on the listing (**YOU**). Same consideration as Apple's trader details.
+
+---
+
+## 8 · Graphics inventory
+
+| Store slot | Size | Location | State |
+|---|---|---|---|
+| App Store icon | 1024 × 1024 | built into the app from `Assets/02.Graphics/Ui/Icon/ios/` | ready |
+| iPhone 6.9" | 1320 × 2868 | `Screenshots/store-iphone-6.9/ordered/` | 5 ready; the "cell selected" frame is still wanted at position 2 |
+| iPhone 6.5" | 1284 × 2778 | `Screenshots/store-iphone-6.5/` | 5 ready (optional slot) |
+| iPad 13" | 2064 × 2752 | `Screenshots/store-ipad-13/` | 5 ready; `03-arrival` predates the hint fix and should be re-shot |
+| Play icon | 512 × 512 | `Assets/02.Graphics/Ui/Icon/android/play-store-512.png` | ready |
+| Play feature graphic | 1024 × 500 | `Screenshots/store-play-feature/` | ready |
+| Play phone | 1080 × 1920 | `Screenshots/store-play-phone/` | 5 ready |
+
+---
+
+## 9 · What only you can supply
+
+| # | Item | Where it goes |
+|---|---|---|
+| 1 | Bank account and tax forms | App Store Connect → Business (Paid Apps Agreement); Play Console → payments profile |
+| 2 | Trader address and phone number, or a decision to skip the EU | App Store Connect → Business → Compliance; Play Console → account details |
+| 3 | Your name, phone and email for App Review | version page → App Review Information |
+| 4 | Apple Developer Team ID | Player Settings → iOS → Signing (`appleDeveloperTeamID` is empty) |
+| 5 | Android upload keystore and its passwords | Player Settings → Android → Publishing Settings. Never commit it |
+| 6 | The `confusedgamedevsupport@gmail.com` mailbox actually existing | it is already printed on the site and used in both stores |
+| 7 | 12 testers for 14 days, if the Play account is a new personal one | Play Console → Testing → Closed testing |
+
+---
+
+## 10 · The one-liners, for everything else
 
 Kept here so the same words appear on the site, in the press kit and in a tweet.
 
