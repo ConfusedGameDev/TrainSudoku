@@ -65,6 +65,13 @@ namespace TrainSudoku.XR.Editor
             [XRKeys.ArrivalNext] = new Row("NEXT STATION", "つぎの駅", "SIGUIENTE", "STATION SUIVANTE"),
             [XRKeys.ArrivalToNetwork] = new Row("TO THE NETWORK", "路線網へ", "A LA RED", "VERS LE RÉSEAU"),
 
+            // ---- Pip, on the signboard in play (the web edition's words)
+            [XRPipKeys.Start] = new Row("All aboard! Lay the rails.", "出発進行! 線路を つなごう。", "¡Todos a bordo! Coloca las vías.", "Tout le monde à bord ! Pose les voies."),
+            [XRPipKeys.RowClear] = new Row("Row {0} clear!", "{0}行 完了!", "¡Fila {0} completa!", "Ligne {0} complète !"),
+            [XRPipKeys.ColumnClear] = new Row("Column {0} clear!", "{0}列 完了!", "¡Columna {0} completa!", "Colonne {0} complète !"),
+            [XRPipKeys.RowOver] = new Row("Too many in row {0}!", "{0}行は 多すぎ!", "¡Demasiadas en la fila {0}!", "Trop de voies sur la ligne {0} !"),
+            [XRPipKeys.ColumnOver] = new Row("Too many in column {0}!", "{0}列は 多すぎ!", "¡Demasiadas en la columna {0}!", "Trop de voies sur la colonne {0} !"),
+
             // ---- The wrist menu
             [XRKeys.WristResume] = new Row("RESUME", "再開", "CONTINUAR", "REPRENDRE"),
             [XRKeys.WristRetry] = new Row("RETRY", "やり直す", "REINTENTAR", "RECOMMENCER"),
@@ -102,35 +109,16 @@ namespace TrainSudoku.XR.Editor
                 "Pince la pièce éclairée dans le bac et lâche-la sur le cercle. C'est là que va la voie suivante."),
             [XRTutorialKeys.LayNext] = new Row("Next: the lit piece, onto the ring.", "次は 光っている 線路を 輪の 上へ。",
                 "Ahora, la pieza iluminada sobre el círculo.", "Ensuite : la pièce éclairée, sur le cercle."),
-            [XRTutorialKeys.Adjacency] = new Row(
-                "Now try the lit piece here. It does not join the rail beside it. Watch the ghost.",
-                "今度は 光っている 線路を ここに 置いて みましょう。隣の 線路と つながりません。影の 色に 注目。",
-                "Ahora prueba aquí la pieza iluminada. No se une a la vía de al lado. Mira la silueta.",
-                "Essaie maintenant la pièce éclairée ici. Elle ne rejoint pas la voie d'à côté. Regarde l'aperçu."),
-            [XRTutorialKeys.AdjacencyDone] = new Row(
-                "It flew back: a rail next to track must join it. Now the lit one.",
-                "戻って きました。線路の 隣に 置く 線路は、必ず つながる 向きに します。次は 光っている 線路を。",
-                "Ha vuelto: una vía junto a otra debe unirse a ella. Ahora la iluminada.",
-                "Elle est revenue : une voie posée à côté d'une autre doit la rejoindre. Maintenant, celle qui est éclairée."),
             [XRTutorialKeys.Clue] = new Row(
                 "Each number counts rails. That line now holds exactly as many as it asks for.",
                 "数字は 線路の 本数です。この 列は ちょうど その数に なりました。",
                 "Cada número cuenta vías. Esa línea ya tiene justo las que pide.",
                 "Chaque nombre compte les voies. Cette ligne a maintenant exactement celles qu'elle demande."),
-            [XRTutorialKeys.Mistake] = new Row(
-                "Now lay one in the wrong place on purpose. Find the piece that fits this square.",
-                "わざと 間違えて みましょう。この マスに 合う 線路を 探して 置きます。",
-                "Ahora coloca una mal a propósito. Busca la pieza que encaja en esta casilla.",
-                "Pose-en une au mauvais endroit, exprès. Trouve la pièce qui va dans cette case."),
-            [XRTutorialKeys.Erase] = new Row(
-                "That number has turned red: too many rails in its line. Pinch the rail to lift it off.",
-                "数字が 赤に なりました。線路が 多すぎます。線路を つまんで 持ち上げましょう。",
-                "Ese número se ha puesto rojo: sobran vías en su línea. Pellizca la vía para levantarla.",
-                "Ce nombre est passé au rouge : trop de voies sur sa ligne. Pince la voie pour la retirer."),
-            [XRTutorialKeys.Discard] = new Row("Throw it away, or let it go off the board.", "投げ捨てるか、盤の 外で 離しましょう。",
-                "Tírala, o suéltala fuera del tablero.", "Jette-la, ou lâche-la hors du plateau."),
-            [XRTutorialKeys.Unlocked] = new Row("You have it. Follow the ring to the end of the line.", "その調子です。輪の 示す先を たどって 終点まで。",
-                "Ya lo tienes. Sigue el círculo hasta el final de la línea.", "Tu as compris. Suis le cercle jusqu'au terminus."),
+            [XRTutorialKeys.Unlocked] = new Row("You have it. The rest of the line is yours.", "その調子です。ここから 先は おまかせ します。",
+                "Ya lo tienes. El resto de la línea es tuyo.", "Tu as compris. Le reste de la ligne est à toi."),
+            [XRTutorialKeys.HintLift] = new Row("This rail is not on the line. Pinch it to lift it off.",
+                "この 線路は 路線に 入りません。つまんで 持ち上げましょう。",
+                "Esta vía no es de la línea. Pellízcala para levantarla.", "Cette voie n'est pas sur la ligne. Pince-la pour la retirer."),
             [XRTutorialKeys.Next] = new Row("Next rail here.", "次の 線路は ここ。", "La siguiente vía, aquí.", "La voie suivante, ici."),
             [XRTutorialKeys.NoteSteered] = new Row("This one first.", "まずは こちらから。", "Primero esta.", "Celle-ci d'abord."),
             [XRTutorialKeys.NoteWrongPiece] = new Row("Take the lit piece.", "光っている 線路を 取りましょう。", "Coge la pieza iluminada.", "Prends la pièce éclairée."),
@@ -145,10 +133,10 @@ namespace TrainSudoku.XR.Editor
             // ---- The rules briefing (the phone's words: nothing in them is about the hand)
             [XRTutorialKeys.Brief1Title] = new Row("THE LINE", "路線", "LA LÍNEA", "LA LIGNE"),
             [XRTutorialKeys.Brief1Body] = new Row(
-                "Ashgate has no railway yet. Lay one piece of track per square so the line runs from the S tunnel to the E tunnel.",
-                "Ashgate には まだ 線路が ありません。一マスに 一つずつ 置き、S の トンネルから E の トンネルまで つなぎます。",
-                "Ashgate aún no tiene ferrocarril. Coloca una pieza de vía por casilla para que la línea vaya del túnel S al túnel E.",
-                "Ashgate n'a pas encore de chemin de fer. Pose une pièce de voie par case pour relier le tunnel S au tunnel E."),
+                "This station has no railway yet. Lay one piece of track per square so the line runs from the S tunnel to the E tunnel.",
+                "この 駅には まだ 線路が ありません。一マスに 一つずつ 置き、S の トンネルから E の トンネルまで つなぎます。",
+                "Esta estación aún no tiene ferrocarril. Coloca una pieza de vía por casilla para que la línea vaya del túnel S al túnel E.",
+                "Cette gare n'a pas encore de chemin de fer. Pose une pièce de voie par case pour relier le tunnel S au tunnel E."),
             [XRTutorialKeys.Brief2Title] = new Row("THE NUMBERS", "数字", "LOS NÚMEROS", "LES NOMBRES"),
             [XRTutorialKeys.Brief2Body] = new Row(
                 "Each number says how many pieces its row or column must hold. Exactly that many: it turns green when the count is right and red when it is over.",

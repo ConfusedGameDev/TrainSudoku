@@ -186,32 +186,12 @@ MonoBehaviour:
     m_Localized: "Ahora, la pieza iluminada sobre el c\xEDrculo."
     m_Metadata:
       m_Items: []
-  - m_Id: 3504017448
-    m_Localized: "Ahora prueba aqu\xED la pieza iluminada. No se une a la v\xEDa de al lado. Mira la silueta."
-    m_Metadata:
-      m_Items: []
-  - m_Id: 3504017449
-    m_Localized: "Ha vuelto: una v\xEDa junto a otra debe unirse a ella. Ahora la iluminada."
-    m_Metadata:
-      m_Items: []
   - m_Id: 3504017450
     m_Localized: "Cada n\xFAmero cuenta v\xEDas. Esa l\xEDnea ya tiene justo las que pide."
     m_Metadata:
       m_Items: []
-  - m_Id: 3504017451
-    m_Localized: "Ahora coloca una mal a prop\xF3sito. Busca la pieza que encaja en esta casilla."
-    m_Metadata:
-      m_Items: []
-  - m_Id: 3504017452
-    m_Localized: "Ese n\xFAmero se ha puesto rojo: sobran v\xEDas en su l\xEDnea. Pellizca la v\xEDa para levantarla."
-    m_Metadata:
-      m_Items: []
-  - m_Id: 3504017453
-    m_Localized: "T\xEDrala, o su\xE9ltala fuera del tablero."
-    m_Metadata:
-      m_Items: []
   - m_Id: 3504017454
-    m_Localized: "Ya lo tienes. Sigue el c\xEDrculo hasta el final de la l\xEDnea."
+    m_Localized: "Ya lo tienes. El resto de la l\xEDnea es tuyo."
     m_Metadata:
       m_Items: []
   - m_Id: 3504017455
@@ -239,7 +219,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 3504017461
-    m_Localized: "Ashgate a\xFAn no tiene ferrocarril. Coloca una pieza de v\xEDa por casilla para que la l\xEDnea vaya del t\xFAnel S al t\xFAnel E."
+    m_Localized: "Esta estaci\xF3n a\xFAn no tiene ferrocarril. Coloca una pieza de v\xEDa por casilla para que la l\xEDnea vaya del t\xFAnel S al t\xFAnel E."
     m_Metadata:
       m_Items: []
   - m_Id: 3504017462
@@ -300,6 +280,30 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 318851151237127
     m_Localized: ENTENDIDO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443580411904
+    m_Localized: "\xA1Todos a bordo! Coloca las v\xEDas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046720
+    m_Localized: "\xA1Fila {0} completa!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046721
+    m_Localized: "\xA1Columna {0} completa!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046722
+    m_Localized: "\xA1Demasiadas en la fila {0}!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046723
+    m_Localized: "\xA1Demasiadas en la columna {0}!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20659413681610752
+    m_Localized: "Esta v\xEDa no es de la l\xEDnea. Pell\xEDzcala para levantarla."
     m_Metadata:
       m_Items: []
   references:

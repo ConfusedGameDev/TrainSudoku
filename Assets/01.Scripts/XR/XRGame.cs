@@ -79,6 +79,10 @@ namespace TrainSudoku.XR
         private int _landings;
 
         // The tutorial (XR-PRD 7): the coach, its rings and its sign, on the one station that teaches.
+        // Pip (the web edition's cat conductor): what she makes of the board, shown on the signboard in play.
+        private readonly XRPipReactions _pip = new XRPipReactions();
+        private XRConfetti _confetti;
+
         private readonly XRTutorialCoach _coach = new XRTutorialCoach();
         private XRTutorialMarks _marks;
         private XRTutorialCallout _callout;
@@ -153,6 +157,8 @@ namespace TrainSudoku.XR
             XRText.Changed += OnLocaleChanged;
             Flow.StateChanged += OnStateChanged;
             Flow.LevelStarted += OnLevelStarted;
+            // The board lesson is the first thing a new player sees, over the network map, once per headset (7).
+            if (!_preferences.BoardLessonDone && UsePlacement && placement.Handle != null) _lesson.Begin();
             // Straight to the network: XR has no Concourse (6.1).
             Flow.ShowNetwork();
         }
@@ -189,6 +195,9 @@ namespace TrainSudoku.XR
             _display = XRBoardDisplay.Create(root, assets);
             _map = XRPlatformMap.Create(root);
             _sign = XRSignboard.Create(root, signage);
+            _pip.Changed += PushPip;
+            // In the room, in metres, like the steam: it hangs from nothing under the board.
+            _confetti = XRConfetti.Create(null);
             _map.LineChosen += OnLineChosen;
             _map.StationChosen += OnStationChosen;
 
@@ -231,7 +240,7 @@ namespace TrainSudoku.XR
             _ghostHands = XRGhostHands.Create(assets);
         }
 
-        /// <summary>Without a placement: the board's near edge 0.36 m ahead of the head and 0.5 m below it, facing the gaze.</summary>
+        /// <summary>Without a placement: the board's near edge 0.36 m ahead of the head and 0.35 m below it, facing the gaze.</summary>
         private void FloatInFrontOfHead()
         {
             var head = Camera.main != null ? Camera.main.transform : null;
@@ -241,7 +250,7 @@ namespace TrainSudoku.XR
             {
                 var flat = Vector3.ProjectOnPlane(head.forward, Vector3.up);
                 if (flat.sqrMagnitude > 1e-4f) forward = flat.normalized;
-                position = head.position + forward * 0.36f + Vector3.down * 0.5f;
+                position = head.position + forward * 0.36f + Vector3.down * 0.35f;
             }
 
             transform.SetPositionAndRotation(position, Quaternion.LookRotation(forward, Vector3.up));
@@ -255,11 +264,16 @@ namespace TrainSudoku.XR
             if (Flow == null || _display == null) return;
             Flow.Tick(Time.deltaTime);
             var state = Flow.State;
+            // Pip's reactions run on the game's clock: the pause holds them where they were.
+            if (state == GameState.Play) _pip.Update(Time.deltaTime);
+            // The tutorial's idle hint, on the same clock: a pause and the briefing do not count.
+            if (state == GameState.Play && _teaching && _briefPage < 0 && _display.Board != null
+                && _coach.Tick(Time.deltaTime))
+                RefreshTutorial(state);
 
             // Pieces only in play, and never while the handle is carrying the board.
             var moving = placement != null && placement.IsMoving;
-            // The board lesson keeps the pieces locked until its closing card is put away.
-            if (grabInput != null) grabInput.AcceptsGrabs = state == GameState.Play && !moving && _display.Board != null && !_lesson.Active;
+            if (grabInput != null) grabInput.AcceptsGrabs = state == GameState.Play && !moving && _display.Board != null;
             if (_hands != null)
             {
                 _hands.HoverBand = hoverBand;
@@ -275,10 +289,10 @@ namespace TrainSudoku.XR
                 // The rail wraps the near corner away from the tray.
                 placement.Handle.DominantHand = hand;
                 // While the lesson is about the rail, it stays opened out, an end for each hand.
-                placement.Handle.HoldOpen = state == GameState.Play && _lesson.HandsShown;
+                placement.Handle.HoldOpen = state == GameState.Network && _lesson.HandsShown;
             }
 
-            if (state == GameState.Play && _lesson.Active) TickLesson();
+            if (state == GameState.Network && _lesson.Active) TickLesson();
 
             _menu.WristHand = _preferences.WristHand;
             _menu.Offered = WristMenuPlan.Offered(state);
@@ -289,6 +303,8 @@ namespace TrainSudoku.XR
         private void OnDestroy()
         {
             XRText.Changed -= OnLocaleChanged;
+            _pip.Changed -= PushPip;
+            if (_confetti != null) Destroy(_confetti.gameObject);
             if (Flow != null)
             {
                 Flow.StateChanged -= OnStateChanged;
@@ -361,6 +377,9 @@ namespace TrainSudoku.XR
         private void OnStateChanged(GameState previous, GameState current)
         {
             Debug.Log($"[XR flow] {previous} -> {current}");
+            // The button to press wears the colour of the line the player is on; the views below are drawn with it.
+            XRSignageUi.Accent = AccentFor(current);
+            if (current != GameState.Play && current != GameState.Pause) _pip.Stop();
             if (previous == GameState.Play && current == GameState.Pause) SaveProgress();
             if (previous == GameState.Play && current != GameState.Play && _hands != null) _hands.End();
             if (previous == GameState.Pause)
@@ -378,9 +397,10 @@ namespace TrainSudoku.XR
             {
                 _teaching = false;
                 _briefPage = -1;
-                // Left unfinished, the board lesson is still owed: it shows again the next time.
-                _lesson.End();
             }
+
+            // The board lesson belongs to the network map. Left unfinished, it is still owed: it shows again the next launch.
+            if (current != GameState.Network) _lesson.End();
 
             RefreshTutorial(current);
 
@@ -428,10 +448,41 @@ namespace TrainSudoku.XR
             }
         }
 
+        /// <summary>The line colour for the signs in <paramref name="state"/>: the line whose map is open, else the line last played.</summary>
+        private Color AccentFor(GameState state)
+        {
+            var line = network.Line(state == GameState.LevelSelect ? Flow.SelectedLineIndex : Flow.CurrentLineIndex);
+            return line != null ? line.Color : XRPalette.DefaultLine;
+        }
+
+        /// <summary>Pip's mood and her bubble go to the station view, which is the one that shows them; a redraw says them again.</summary>
+        private void PushPip()
+        {
+            if (Flow == null || _sign == null || Flow.State != GameState.Play) return;
+            // The briefing and the board lesson have the sign, and their own Pip.
+            if (_lesson.Active || _briefPage >= 0) return;
+            var key = _pip.BubbleKey;
+            _sign.SetPip(_pip.Mood, key == null ? null : _pip.BubbleNumber > 0 ? XRText.Get(key, _pip.BubbleNumber) : XRText.Get(key));
+        }
+
         private void ShowNetworkViews()
         {
             _map.ShowNetwork(network, Flow.IsLineUnlocked);
-            _sign.ShowMasthead(TotalStars());
+            if (_lesson.Active)
+            {
+                // Two cards in the masthead's place: the rail, with a way past it, then where Re-place board lives.
+                var closing = _lesson.Step == XRBoardLessonStep.Closing;
+                _sign.ShowBriefing(CurrentLine, closing ? 1 : 0, 2,
+                    XRText.Get(closing ? XRTutorialKeys.MoveClosingTitle : XRTutorialKeys.MoveTitle),
+                    XRText.Get(closing ? XRTutorialKeys.MoveClosingBody : XRTutorialKeys.MoveBody),
+                    XRText.Get(closing ? XRTutorialKeys.MoveDone : XRTutorialKeys.MoveSkip),
+                    () => When(GameState.Network, closing ? (Action)FinishLesson : SkipLesson));
+            }
+            else
+            {
+                _sign.ShowMasthead(TotalStars());
+            }
+
             _sign.PlaceBehind(XRPlatformMap.FarEdge);
         }
 
@@ -521,17 +572,13 @@ namespace TrainSudoku.XR
             // A resumed board comes back unlocked (the coach decides); the briefing shows once per session, before any rail.
             _coach.Begin(data, _display.Board, _teaching);
             _briefPage = -1;
-            _lesson.End();
-            _handNearRail = false;
-            if (_teaching && _display.Board.PieceCount == data.FixedPieces.Count)
-            {
-                // The board lesson comes first, once per headset, and needs the rail it is about; the briefing follows it.
-                if (!_preferences.BoardLessonDone && UsePlacement && placement.Handle != null) _lesson.Begin();
-                else OpenBriefing();
-            }
+            // The rules briefing, on the tutorial station with no rail laid yet.
+            if (_teaching && _display.Board.PieceCount == data.FixedPieces.Count) OpenBriefing();
 
             if (_marks != null) _marks.Refresh();
             RefreshTutorial(Flow.State);
+            // "All aboard": at once on a plain start, or once the briefing is put away (NextBriefingCard, OnActed).
+            if (_briefPage < 0) _pip.Begin();
             ShowStationSign();
             Debug.Log($"[XR game] {level.DisplayName} ({level.Width}x{level.Height})" +
                       (resume != null ? $", continuing at {ProgressTracker.FormatTime(resume.Elapsed)} with {resume.Pieces.Count} rails" : "") +
@@ -548,17 +595,7 @@ namespace TrainSudoku.XR
 
         private void ShowStationSign()
         {
-            if (_lesson.Active)
-            {
-                // Two cards: the rail, with a way past it, then where Re-place board lives.
-                var closing = _lesson.Step == XRBoardLessonStep.Closing;
-                _sign.ShowBriefing(CurrentLine, closing ? 1 : 0, 2,
-                    XRText.Get(closing ? XRTutorialKeys.MoveClosingTitle : XRTutorialKeys.MoveTitle),
-                    XRText.Get(closing ? XRTutorialKeys.MoveClosingBody : XRTutorialKeys.MoveBody),
-                    XRText.Get(closing ? XRTutorialKeys.MoveDone : XRTutorialKeys.MoveSkip),
-                    () => When(GameState.Play, closing ? (Action)FinishLesson : SkipLesson));
-            }
-            else if (_briefPage >= 0)
+            if (_briefPage >= 0)
             {
                 var (title, body) = BriefingCards[_briefPage];
                 var last = _briefPage == BriefingCards.Length - 1;
@@ -568,6 +605,7 @@ namespace TrainSudoku.XR
             else
             {
                 _sign.ShowStation(CurrentLevel, CurrentLine, Flow.CurrentStationIndex);
+                PushPip();
             }
 
             _sign.PlaceBehind(BoardFarEdge);
@@ -577,6 +615,7 @@ namespace TrainSudoku.XR
         {
             if (_briefPage < 0) return;
             _briefPage = _briefPage + 1 < BriefingCards.Length ? _briefPage + 1 : -1;
+            if (_briefPage < 0) _pip.Begin();
             ShowStationSign();
         }
 
@@ -598,7 +637,7 @@ namespace TrainSudoku.XR
 
             if (!_lesson.Observe(_handNearRail, handle.HeldCount, placement.IsMoving)) return;
             Debug.Log($"[XR lesson] {_lesson.Step}");
-            if (_lesson.Step == XRBoardLessonStep.Closing) ShowStationSign();
+            if (_lesson.Step == XRBoardLessonStep.Closing) ShowNetworkViews();
             RefreshTutorial(Flow.State);
         }
 
@@ -609,31 +648,30 @@ namespace TrainSudoku.XR
         {
             if (!_lesson.Skip()) return;
             Debug.Log("[XR lesson] Skipped");
-            ShowStationSign();
+            ShowNetworkViews();
             RefreshTutorial(Flow.State);
         }
 
-        /// <summary>The closing card is put away: the lesson is never owed again, and the station opens as it always did.</summary>
+        /// <summary>The closing card is put away: the lesson is never owed again, and the masthead takes the sign back.</summary>
         private void FinishLesson()
         {
             if (!_lesson.Acknowledge()) return;
             _preferences.BoardLessonDone = true;
-            OpenBriefing();
-            ShowStationSign();
+            ShowNetworkViews();
             RefreshTutorial(Flow.State);
         }
 
-        /// <summary>The lesson's line over the near edge and its ghost hands at the rail, in play only.</summary>
+        /// <summary>The lesson's line over the near edge and its ghost hands at the rail, over the network map only.</summary>
         private void ShowLesson(GameState state)
         {
-            var key = state == GameState.Play ? _lesson.Key : null;
+            var key = state == GameState.Network ? _lesson.Key : null;
             if (key != null) _callout.ShowAt(Vector3.zero, XRText.Get(key));
             else _callout.Hide();
 
             if (_ghostHands != null)
             {
                 _ghostHands.Handle = placement != null ? placement.Handle : null;
-                _ghostHands.Show(state != GameState.Play || !_lesson.HandsShown ? XRGhostHands.Mode.Hidden
+                _ghostHands.Show(state != GameState.Network || !_lesson.HandsShown ? XRGhostHands.Mode.Hidden
                     : _lesson.HandsPinching ? XRGhostHands.Mode.Pinching : XRGhostHands.Mode.Waiting);
             }
 
@@ -656,20 +694,28 @@ namespace TrainSudoku.XR
 
             if (_ghostHands != null) _ghostHands.Show(XRGhostHands.Mode.Hidden);
             var guide = _coach.Guide;
-            if (!_teaching || state != GameState.Play || _display.Board == null || !guide.Active)
+            var key = _coach.Key;
+            if (!_teaching || state != GameState.Play || _display.Board == null || (!guide.Active && key == null))
             {
                 _marks.Show(XRTutorialGuide.None);
                 _callout.Hide();
+                _spokenKey = null;
                 return;
             }
 
+            // After the two opening rails a line can stand without a ring: it sits over the near edge, as the lesson's do.
             _marks.Show(guide);
-            _callout.Show((guide.X, guide.Y), XRText.Get(_coach.Key));
+            if (key == null) _callout.Hide();
+            else if (guide.Active) _callout.Show((guide.X, guide.Y), XRText.Get(key));
+            else _callout.ShowAt(Vector3.zero, XRText.Get(key));
+
             // A soft chime when the tutorial has something new to say, from the cell it is about.
-            if (_coach.Key != _spokenKey)
+            if (key != _spokenKey)
             {
-                _spokenKey = _coach.Key;
-                XRCuePlayer.Play(XRCue.TutorialNote, _display.CellWorldPosition(guide.X, guide.Y));
+                _spokenKey = key;
+                if (key != null)
+                    XRCuePlayer.Play(XRCue.TutorialNote,
+                        guide.Active ? _display.CellWorldPosition(guide.X, guide.Y) : _callout.transform.position);
             }
         }
 
@@ -695,7 +741,11 @@ namespace TrainSudoku.XR
 
         private void OnTrainFinished()
         {
-            if (Flow.State == GameState.TrainRun) Flow.FinishTrainRun();
+            if (Flow.State != GameState.TrainRun) return;
+            // The train is in: confetti in the line's colours from the exit tunnel, as on the web edition.
+            if (_confetti != null)
+                _confetti.Burst(_display.ExitMouth, CurrentLine != null ? CurrentLine.Color : XRPalette.DefaultLine, _display.transform.lossyScale.x);
+            Flow.FinishTrainRun();
         }
 
         /// <summary>A button acts only in the state that drew it: a double press must not hit the flow twice.</summary>
@@ -791,6 +841,8 @@ namespace TrainSudoku.XR
 
         private void OnLineChosen(int line)
         {
+            // The map waits while the board lesson has the platform.
+            if (_lesson.Active) return;
             if (Flow.State == GameState.Network && Flow.IsLineUnlocked(line)) Flow.ShowLineMap(line);
         }
 
@@ -857,6 +909,7 @@ namespace TrainSudoku.XR
                     if (_briefPage >= 0 && Flow.State == GameState.Play)
                     {
                         _briefPage = -1;
+                        _pip.Begin();
                         ShowStationSign();
                     }
 
@@ -871,6 +924,13 @@ namespace TrainSudoku.XR
             // A row or column has just turned green: heard from the board.
             if (result.BoardChanged && _display.Board != null && _display.LineJustSatisfied && !_display.LastResult.IsWin)
                 XRCuePlayer.Play(XRCue.LineCleared, _display.transform.position);
+
+            // Pip cheers a line turned green and frets over one pushed past its clue; the later of the two wins.
+            if (result.BoardChanged && _display.Board != null && Flow.State == GameState.Play && !_display.LastResult.IsWin)
+            {
+                foreach (var (isRow, index) in _display.JustSatisfied) _pip.LineCleared(isRow, index);
+                foreach (var (isRow, index) in _display.JustExceeded) _pip.LineExceeded(isRow, index);
+            }
 
             if (_teaching && _display.Board != null)
             {

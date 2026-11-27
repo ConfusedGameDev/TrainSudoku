@@ -9,11 +9,11 @@ namespace TrainSudoku.XR
 {
     /// <summary>
     /// Puts the board in the room and keeps it there (XR-PRD 5.2, 5.3). A saved anchor brings it back where it was
-    /// left. Otherwise it asks for the spatial-data permission, slides a ghost platform over detected tables under the
-    /// hand or controller ray — or floats it at waist height when there is no surface — and places it on a pinch or
-    /// trigger, saving the spot as an anchor. The <see cref="XRBoardHandle"/> moves it afterwards, and letting go of
-    /// the handle anchors and saves the new spot. Board placement is a precondition held by the shell, not a GameFlow
-    /// state (6.1).
+    /// left. Otherwise the board simply appears in front of the player at chest height (revised 2026-11-27), and is
+    /// anchored there; the <see cref="XRBoardHandle"/> is how it gets anywhere else, and letting go of the handle
+    /// anchors and saves the new spot. The older first placement — a ghost platform slid over detected tables and put
+    /// down with a pinch — is still here behind <see cref="askForSpot"/>. Board placement is a precondition held by the
+    /// shell, not a GameFlow state (6.1).
     /// </summary>
     /// <remarks>
     /// <see cref="BoardRoot"/> is what the board hangs from: scaled to the cell size, its origin is the middle of the
@@ -62,9 +62,12 @@ namespace TrainSudoku.XR
         [Tooltip("The ghost's footprint in cells: a 6x6 board with its tunnel ring.")]
         [SerializeField] private Vector2 ghostCells = new Vector2(8f, 8f);
 
-        [Tooltip("Where a floating board goes: this far ahead of the head and this far below it, in metres.")]
+        [Tooltip("Where a floating board goes: its middle this far ahead of the head, and its top this far below the eyes, in metres.")]
         [SerializeField] private float floatDistance = 0.6f;
-        [SerializeField] private float floatDrop = 0.5f;
+        [SerializeField] private float floatDrop = 0.35f;
+
+        [Tooltip("Off: the board appears in front of the player. On: the player picks the spot with a ghost platform and a pinch.")]
+        [SerializeField] private bool askForSpot;
 
         private readonly List<NearFarInteractor> _interactors = new List<NearFarInteractor>();
         private readonly RaycastHit[] _hits = new RaycastHit[16];
@@ -122,11 +125,78 @@ namespace TrainSudoku.XR
             _surfacesAllowed = await RequestPermissionAsync();
             if (this == null) return;
             if (_surfacesAllowed && planes != null) planes.enabled = true;
-            Debug.Log($"[XR placement] Spatial data {(_surfacesAllowed ? "granted" : "refused")}; locating.");
-            BeginLocating();
+            Debug.Log($"[XR placement] Spatial data {(_surfacesAllowed ? "granted" : "refused")}; placing.");
+            await WaitForHeadAsync();
+            if (this == null) return;
+            PlaceAfresh();
         }
 
-        /// <summary>Forgets the saved spot and runs first placement again ("Re-place board", 5.3).</summary>
+        /// <summary>How long the headset must have been worn, tracked and in focus before its pose is trusted.</summary>
+        private const float HeadSteadySeconds = 0.75f;
+
+        /// <summary>How long to wait for a head device at all before giving up and using whatever the camera says.</summary>
+        private const float HeadDeviceTimeout = 5f;
+
+        /// <summary>
+        /// Waits until the head pose is the player's. The permission answer arrives on the very frame the app comes back
+        /// from the system dialog, before tracking has moved the camera again: the pose read then is the one from before
+        /// the dialog, which on a first launch is wherever the headset was lying when the app started. The first headset
+        /// check of the in-front placement put the board there.
+        /// </summary>
+        private async Awaitable WaitForHeadAsync()
+        {
+            var began = Time.unscaledTime;
+            var steadySince = Time.unscaledTime;
+            while (this != null)
+            {
+                await Awaitable.NextFrameAsync();
+                if (this == null) return;
+                var now = Time.unscaledTime;
+                var device = UnityEngine.XR.InputDevices.GetDeviceAtXRNode(UnityEngine.XR.XRNode.Head);
+                if (!device.isValid)
+                {
+                    // No headset at all (the Editor): nothing to wait for.
+                    if (now - began >= HeadDeviceTimeout) return;
+                    steadySince = now;
+                    continue;
+                }
+
+                var worn = !device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.userPresence, out var present) || present;
+                var tracked = !device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.isTracked, out var isTracked) || isTracked;
+                if (!Application.isFocused || !worn || !tracked)
+                {
+                    steadySince = now;
+                    continue;
+                }
+
+                if (now - steadySince >= HeadSteadySeconds) return;
+            }
+        }
+
+        /// <summary>First placement, and every "Re-place board": in front of the player, unless the scene asks them to choose.</summary>
+        private void PlaceAfresh()
+        {
+            if (askForSpot) BeginLocating();
+            else PlaceInFront();
+        }
+
+        /// <summary>
+        /// The board's middle <see cref="floatDistance"/> ahead of the head and <see cref="floatDrop"/> below the eyes,
+        /// about chest height, facing the way the player is looking. Never on a surface: the handle settles it onto one.
+        /// </summary>
+        private void PlaceInFront()
+        {
+            var head = Camera.main != null ? Camera.main.transform : null;
+            var forward = head != null ? Flat(head.forward) : Vector3.forward;
+            var eyes = head != null ? head.position : new Vector3(0f, 1.4f, 0f);
+            var centre = eyes + forward * floatDistance + Vector3.down * floatDrop;
+            var rotation = Quaternion.LookRotation(forward, Vector3.up);
+            var nearEdge = centre - rotation * Vector3.forward * (ghostCells.y * cellSize / 2f);
+            Debug.Log($"[XR placement] Board placed in front of the player, {floatDrop * 100f:F0} cm below the eyes (eyes {eyes}, facing {forward}, near edge {nearEdge}).");
+            Place(new Pose(nearEdge, rotation), false);
+        }
+
+        /// <summary>Forgets the saved spot and places the board again, in front of the player ("Re-place board", 5.3).</summary>
         public void Replace()
         {
             ForgetSavedAnchor();
@@ -139,7 +209,7 @@ namespace TrainSudoku.XR
             _nudging = false;
             // A board restored from its anchor never asked for surfaces itself, but switched them on if it could.
             _surfacesAllowed |= planes != null && planes.enabled;
-            BeginLocating();
+            PlaceAfresh();
         }
 
         // ------------------------------------------------------------------ moving (the handle and the height nudge)
@@ -291,8 +361,8 @@ namespace TrainSudoku.XR
         private async void Place(Pose pose, bool onSurface)
         {
             _locating = false;
-            _ghost.gameObject.SetActive(false);
-            _sign.gameObject.SetActive(false);
+            if (_ghost != null) _ghost.gameObject.SetActive(false);
+            if (_sign != null) _sign.gameObject.SetActive(false);
 
             BoardRoot.SetParent(null, false);
             BoardRoot.SetPositionAndRotation(pose.position, pose.rotation);

@@ -451,7 +451,7 @@ MonoBehaviour:
   hoverBand: 0.1
   throwThreshold: 1.2
   cellSize: 0.06
-  quickTestRails: 3
+  quickTestRails: 0
   unlockAllInEditor: 0
   floatWithoutHeadset: 1
 --- !u!1001 &1653127867
@@ -725,7 +725,8 @@ MonoBehaviour:
   cellSize: 0.06
   ghostCells: {x: 8, y: 8}
   floatDistance: 0.6
-  floatDrop: 0.5
+  floatDrop: 0.35
+  askForSpot: 0
 --- !u!4 &2147283167
 Transform:
   m_ObjectHideFlags: 0

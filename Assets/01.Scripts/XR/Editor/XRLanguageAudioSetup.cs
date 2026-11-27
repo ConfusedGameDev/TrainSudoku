@@ -387,7 +387,7 @@ namespace TrainSudoku.XR.Editor
 
         /// <summary>Every key constant the code reads the table with.</summary>
         public static IEnumerable<string> CodeKeys() =>
-            new[] { typeof(XRKeys), typeof(XRTutorialKeys) }
+            new[] { typeof(XRKeys), typeof(XRTutorialKeys), typeof(XRPipKeys) }
                 .SelectMany(type => type.GetFields(BindingFlags.Public | BindingFlags.Static))
                 .Where(field => field.IsLiteral && field.FieldType == typeof(string))
                 .Select(field => (string)field.GetRawConstantValue());

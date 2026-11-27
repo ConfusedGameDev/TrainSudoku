@@ -166,6 +166,8 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 - The whole board sits under one root scaled to the cell size: **0.06**, so one cell is 6 cm, unless the player has scaled it (5 to 9 cm, 5.3). No board code learns about metres, and `Core`'s layout maths is used unchanged.
 - Tunnels, clue signs, the train and every other board mesh inherit the scale.
 
+> **Revised 2026-11-27.** First placement no longer asks the player to choose a spot. With no saved anchor the board **appears in front of the player, 35 cm below the eyes** (about chest height), facing the way they look, and is anchored there. "Re-place board" does the same. The handle is how the board gets anywhere else, including onto a table. The ghost-and-pinch flow described below is still in the code behind `XRBoardPlacement.askForSpot`, off in the scene. X7's "snaps to detected surfaces" now applies only to a board let go of by the handle or the height nudge.
+
 ### 5.2 First placement
 
 1. The app opens in passthrough. The first time, it asks for the headset's scene/spatial permission. If refused, placement falls back to floating.
@@ -273,15 +275,16 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 
 ## 7. Tutorial (the first station of the first line)
 
-- **Same idea as the phone.** A walkthrough over the solved path: the target is the first empty cell in S-to-E order, and which lesson a step teaches is read off the board.
-- **Its own coach.** The phone's `TutorialCoach` (shared `Core`) is built around the tap flow: its guide kinds and actions are select, side, hold. So XR gets **its own coach** in the XR rules assembly (X22). It reuses the shared `Solver`, `PathFinder` and `Legality`, and the mistake-finding logic. If `TutorialCoach.TryFindMistake` must become public to be reused, that is a shared change under X25.
+- **The station is Kettleburn** (since 2026-11-27; it swapped places with Ashgate): a route of one row, one corner and one column, which a newcomer can finish without working anything out.
+- **Two rails, then the player's own board** (rewritten 2026-11-27; it used to walk the whole route with two staged mistakes). The coach still solves the level and reads everything off the board, but it only shows the first two rails.
+- **Its own coach.** The phone's `TutorialCoach` (shared `Core`) is built around the tap flow: its guide kinds and actions are select, side, hold. So XR gets **its own coach** in the XR rules assembly (X22). It reuses the shared `Solver`, `PathFinder` and `Legality`.
 - **Guide.**
-  - For the **first three rails** the guide highlights **both the tray slot and the target cell**. After that it highlights **the cell only**, and the player finds the key.
-  - The guide stays **locked** until the erase lesson is done. Grabbing a piece is always allowed, but a drop anywhere other than the target returns the piece with a note rather than the error cue.
-- **Staged mistakes.** Both stay, rewritten for XR:
-  1. **The adjacency rule.** The coach asks for a piece that is illegal at the target. The ghost goes red, and on release the piece flies back to the tray.
-  2. **Erasing.** The coach points at an overfill cell derived from the board, as on the phone. The player lays the piece, watches the clue sign turn red, and is then shown how to lift the piece and throw or release it.
+  - For the **first two rails** the guide highlights **both the tray slot and the target cell**, and the board is **locked** to them. Grabbing a piece is always allowed, but a drop anywhere other than the target returns the piece with a note rather than the error cue.
+  - After the second rail the ring goes, one line hands the board over, and nothing is refused.
+- **The idle hint.** If the player then goes **30 seconds** without a grab or a release, the coach points at the next move: a rail that is not the solution's is ringed in red to be lifted; otherwise the next empty cell of the route is ringed with its tray slot lit. The hint stays until the board changes, and then the clock starts again. Pause, the briefing and the board lesson do not count. This is the **one exception to "no hints" (X15)** and it exists only on the tutorial station.
+- **No staged mistakes.** The adjacency bounce and the overfill-then-erase detour are gone. A line pushed past its clue and a grab at a fixed rail still get their one-line notes.
 - **Callout.** The tutorial callout is a world-space sign beside the target.
+- **Where the board lesson runs (revised 2026-11-27).** It is now the **first thing on first launch**: as soon as the board has appeared, over the network map, in place of the masthead. The map takes no touches until the closing card is put away. The tutorial station opens straight on the rules briefing. The steps below are unchanged; read "the tutorial station opens with" as "the first launch opens with".
 - **The board lesson** (added 2026-10-02). Nothing on the platform says its rail carries and resizes it, so the tutorial station opens with a lesson in that, ahead of the rules briefing, **once per headset**.
   1. The rail stays opened out, and a pair of translucent **ghost hands** waits over its two sides. A callout over the near edge says the board can be moved.
   2. Once one of the player's hands comes within about 25 cm, the ghost hands come down and **pinch the rail, over and over**, and the callout asks for a pinch with both hands.
@@ -296,6 +299,7 @@ One table covers every outcome. "Origin" means the tray for a tray piece, or the
 ## 8. Presentation
 
 - **Visual language**: the same station signage as the phone. The colour tokens (`Paper`, `Ink`, `Led`, and the rest from `Docs/UIDesign.MD` section 6), the Barlow and Noto faces, roundels and the LED strip. The line colour tints the active line's markings.
+- **The rounded restyle and Pip** (added 2026-11-27, from the web edition): white cards with a heavier ink rule, rounder corners and a chunk under every card and button; the button to press wears the line's colour. Pip, the cat conductor, is on every signboard card and reacts to the board in play; the arrival pops its stars and bursts confetti from the exit tunnel. No hints (X15), so Pip's hint lines are not carried over. Details in `Docs/XR-Agent.md`.
 - **Re-implemented under XR's own paths.** It gets its own palette file as its single re-skin point, and its own style sheets and elements. Phone files may be copied as a starting point (X20).
 - **Board art**: the phone's train kit and track meshes, used in place, bent along `Core`'s `TrackCurve`, at the 0.06 board scale.
 - **Signage**: the signboard, wrist menu and placement sign are **world-space UI Toolkit panels**.

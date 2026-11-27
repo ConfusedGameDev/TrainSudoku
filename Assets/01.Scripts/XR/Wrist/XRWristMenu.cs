@@ -88,6 +88,10 @@ namespace TrainSudoku.XR
         private const float RowGap = 12f;
         private const float CaptionWidth = 190f;
 
+        /// <summary>The card's ink rule and the chunk under it, in UI pixels: the restyle's, at the panel's smaller scale.</summary>
+        private const float CardRule = 8f;
+        private const float CardDrop = 10f;
+
         /// <summary>One press of the height nudge, in metres.</summary>
         public const float NudgeStep = 0.01f;
 
@@ -530,12 +534,12 @@ namespace TrainSudoku.XR
         private VisualElement Begin(int lines)
         {
             _panelTouch.Clear();
-            _panel.worldSpaceSize = new Vector2(PanelWidth, Padding * 2f + HeaderHeight + lines * (RowHeight + RowGap));
+            _panel.worldSpaceSize = new Vector2(PanelWidth, Padding * 2f + HeaderHeight + lines * (RowHeight + RowGap) + CardRule * 2f + CardDrop);
             _open = true;
             SetVisible(_panel, ref _panelVisible, true);
             var root = _panel.rootVisualElement;
             root.Clear();
-            return Card(root, 8f, 28f, Padding, Padding);
+            return Card(root, CardRule, 36f, Padding, Padding, CardDrop);
         }
 
         private void Header(VisualElement card, string title)
@@ -568,6 +572,9 @@ namespace TrainSudoku.XR
             button.style.paddingTop = button.style.paddingBottom = 0f;
             button.style.paddingLeft = button.style.paddingRight = 12f;
             button.style.fontSize = 42f;
+            // A row is only 84 px tall: a finer rule and a shallower chunk than the signboard's buttons.
+            Rule(button, 6f, 8f, XRPalette.Ink);
+            Round(button, 22f);
             line.Add(button);
             _panelTouch.Add(button, clicked);
             return button;

@@ -20,6 +20,15 @@ namespace TrainSudoku.XR
         public static readonly Color Warn = new Color32(0xF2, 0xC2, 0x30, 0xFF);
         public static readonly Color Stop = new Color32(0xD0, 0x34, 0x2C, 0xFF);
 
+        // The rounded restyle (the web edition's tokens.css): cards and buttons are white on the paper, ruled in ink.
+        public static readonly Color White = new Color32(0xFF, 0xFF, 0xFF, 0xFF);
+
+        /// <summary>An earned star: a deeper gold than <see cref="Warn"/>, so it reads on a white card.</summary>
+        public static readonly Color Star = new Color32(0xE0, 0xA8, 0x00, 0xFF);
+
+        /// <summary>The line colour before any line has been chosen: the web edition's default livery.</summary>
+        public static readonly Color DefaultLine = new Color32(0x9A, 0xCD, 0x32, 0xFF);
+
         // The platform.
         public static readonly Color Concrete = new Color32(0xC4, 0xC8, 0xC0, 0xFF);
         public static readonly Color ConcreteAlt = new Color32(0xB6, 0xBB, 0xB3, 0xFF);

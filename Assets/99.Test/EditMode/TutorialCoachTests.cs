@@ -28,7 +28,6 @@ namespace TrainSudoku.Tests
         {
             var definition = AssetDatabase.LoadAssetAtPath<LevelDefinition>(TutorialPath);
             Assert.IsNotNull(definition, $"Missing {TutorialPath}");
-            Assert.IsTrue(definition.IsTutorial, "the tutorial station has lost its flag");
 
             _level = definition.ToLevelData();
             _board = new Board(_level);

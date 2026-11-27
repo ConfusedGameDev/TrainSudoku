@@ -28,7 +28,40 @@ namespace TrainSudoku.XR
                  "and line names. Window > TrainSudoku > XR > Rebuild XR ja Font Atlas writes and assigns it.")]
         [SerializeField] private FontAsset japaneseFont;
 
+        [Header("Pip, the cat conductor (02.Graphics/XR/Pip)")]
+        [Tooltip("One square texture per mood, all framed alike. Window > TrainSudoku > XR > Import Pip fills these.")]
+        [SerializeField] private Texture2D pipIdle;
+        [SerializeField] private Texture2D pipCheer;
+        [SerializeField] private Texture2D pipWorry;
+        [SerializeField] private Texture2D pipSleep;
+
+        [Tooltip("The wave pose without its paw: the paw is a separate layer so it can swing.")]
+        [SerializeField] private Texture2D pipWaveBase;
+
+        [Tooltip("The paw only, on the same canvas as the bodies, so it overlays 1:1.")]
+        [SerializeField] private Texture2D pipPaw;
+
+        [Tooltip("The paw's wrist as a fraction of the square canvas, from the top left. Change it only if the art changes.")]
+        [SerializeField] private Vector2 pipPawPivot = new Vector2(0.1984f, 0.8095f);
+
         public PanelSettings PanelSettings => panelSettings;
+
+        public Texture2D PipPaw => pipPaw;
+        public Vector2 PipPawPivot => pipPawPivot;
+
+        /// <summary>Pip's body for a mood; null until the art is imported, which draws no Pip at all.</summary>
+        public Texture2D PipBody(Rules.XRPipMood mood)
+        {
+            switch (mood)
+            {
+                case Rules.XRPipMood.Wave: return pipWaveBase;
+                case Rules.XRPipMood.Cheer: return pipCheer;
+                case Rules.XRPipMood.Worry: return pipWorry;
+                case Rules.XRPipMood.Sleep: return pipSleep;
+                default: return pipIdle;
+            }
+        }
+
         public Texture2D Mark => mark;
 
         /// <summary>Headings in the selected language: Barlow Condensed, or XR's Noto face in Japanese.</summary>

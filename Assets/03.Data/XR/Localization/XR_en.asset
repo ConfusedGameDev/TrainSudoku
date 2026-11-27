@@ -188,32 +188,12 @@ MonoBehaviour:
     m_Localized: 'Next: the lit piece, onto the ring.'
     m_Metadata:
       m_Items: []
-  - m_Id: 3504017448
-    m_Localized: Now try the lit piece here. It does not join the rail beside it. Watch the ghost.
-    m_Metadata:
-      m_Items: []
-  - m_Id: 3504017449
-    m_Localized: 'It flew back: a rail next to track must join it. Now the lit one.'
-    m_Metadata:
-      m_Items: []
   - m_Id: 3504017450
     m_Localized: Each number counts rails. That line now holds exactly as many as it asks for.
     m_Metadata:
       m_Items: []
-  - m_Id: 3504017451
-    m_Localized: Now lay one in the wrong place on purpose. Find the piece that fits this square.
-    m_Metadata:
-      m_Items: []
-  - m_Id: 3504017452
-    m_Localized: 'That number has turned red: too many rails in its line. Pinch the rail to lift it off.'
-    m_Metadata:
-      m_Items: []
-  - m_Id: 3504017453
-    m_Localized: Throw it away, or let it go off the board.
-    m_Metadata:
-      m_Items: []
   - m_Id: 3504017454
-    m_Localized: You have it. Follow the ring to the end of the line.
+    m_Localized: You have it. The rest of the line is yours.
     m_Metadata:
       m_Items: []
   - m_Id: 3504017455
@@ -241,7 +221,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 3504017461
-    m_Localized: Ashgate has no railway yet. Lay one piece of track per square so the line runs from the S tunnel to the E tunnel.
+    m_Localized: This station has no railway yet. Lay one piece of track per square so the line runs from the S tunnel to the E tunnel.
     m_Metadata:
       m_Items: []
   - m_Id: 3504017462
@@ -302,6 +282,30 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 318851151237127
     m_Localized: GOT IT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443580411904
+    m_Localized: All aboard! Lay the rails.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046720
+    m_Localized: Row {0} clear!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046721
+    m_Localized: Column {0} clear!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046722
+    m_Localized: Too many in row {0}!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046723
+    m_Localized: Too many in column {0}!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20659413681610752
+    m_Localized: This rail is not on the line. Pinch it to lift it off.
     m_Metadata:
       m_Items: []
   references:

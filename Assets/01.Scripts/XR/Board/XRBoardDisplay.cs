@@ -76,6 +76,10 @@ namespace TrainSudoku.XR
         private ClueSign[] _rowClues;
         private bool[] _columnSatisfied;
         private bool[] _rowSatisfied;
+        private bool[] _columnExceeded;
+        private bool[] _rowExceeded;
+        private readonly List<(bool IsRow, int Index)> _justSatisfied = new List<(bool IsRow, int Index)>();
+        private readonly List<(bool IsRow, int Index)> _justExceeded = new List<(bool IsRow, int Index)>();
         private GameObject _shadowCatcher;
         private bool _shadowCatcherVisible = true;
         private Mesh _tileMesh;
@@ -93,6 +97,21 @@ namespace TrainSudoku.XR
 
         /// <summary>The last <see cref="Sync"/> turned a row or column green that was not before: the tutorial's clue line reads it.</summary>
         public bool LineJustSatisfied { get; private set; }
+
+        /// <summary>The rows and columns the last <see cref="Sync"/> turned green, and those it pushed past their clue: what Pip reacts to.</summary>
+        public IReadOnlyList<(bool IsRow, int Index)> JustSatisfied => _justSatisfied;
+        public IReadOnlyList<(bool IsRow, int Index)> JustExceeded => _justExceeded;
+
+        /// <summary>Just above the exit tunnel, in the room: where the arrival's confetti bursts.</summary>
+        public Vector3 ExitMouth
+        {
+            get
+            {
+                if (Level == null) return transform.position;
+                var (wx, wz) = BoardLayout.TunnelCenter(Level.Exit, Level.Width, Level.Height);
+                return transform.TransformPoint(new Vector3((float)wx, 0.9f, (float)wz));
+            }
+        }
 
         /// <summary>The chamfered slab every tile is cut from, at unit size; the tray's tiles and the ghost share it.</summary>
         public Mesh TileMesh => _tileMesh;
@@ -305,6 +324,10 @@ namespace TrainSudoku.XR
             _rowClues = null;
             _columnSatisfied = null;
             _rowSatisfied = null;
+            _columnExceeded = null;
+            _rowExceeded = null;
+            _justSatisfied.Clear();
+            _justExceeded.Clear();
             Level = null;
             Board = null;
             LastResult = null;
@@ -335,6 +358,8 @@ namespace TrainSudoku.XR
         {
             LastResult = WinChecker.Evaluate(Board);
             LineJustSatisfied = false;
+            _justSatisfied.Clear();
+            _justExceeded.Clear();
             if (_columnClues == null) return;
             var overfull = false;
             for (var x = 0; x < _columnClues.Length; x++)
@@ -342,6 +367,9 @@ namespace TrainSudoku.XR
                 var exceeded = Board.ColumnCount(x) > Level.ColumnClues[x];
                 overfull |= exceeded;
                 LineJustSatisfied |= LastResult.ColumnSatisfied[x] && !_columnSatisfied[x];
+                if (LastResult.ColumnSatisfied[x] && !_columnSatisfied[x]) _justSatisfied.Add((false, x));
+                if (exceeded && !_columnExceeded[x]) _justExceeded.Add((false, x));
+                _columnExceeded[x] = exceeded;
                 _columnClues[x].Dress(LastResult.ColumnSatisfied[x], exceeded);
                 if (announce && LastResult.ColumnSatisfied[x] && !_columnSatisfied[x]) PopScale.Play(_columnClues[x].Face, CluePopScale, CluePopDuration);
                 _columnSatisfied[x] = LastResult.ColumnSatisfied[x];
@@ -352,6 +380,9 @@ namespace TrainSudoku.XR
                 var exceeded = Board.RowCount(y) > Level.RowClues[y];
                 overfull |= exceeded;
                 LineJustSatisfied |= LastResult.RowSatisfied[y] && !_rowSatisfied[y];
+                if (LastResult.RowSatisfied[y] && !_rowSatisfied[y]) _justSatisfied.Add((true, y));
+                if (exceeded && !_rowExceeded[y]) _justExceeded.Add((true, y));
+                _rowExceeded[y] = exceeded;
                 _rowClues[y].Dress(LastResult.RowSatisfied[y], exceeded);
                 if (announce && LastResult.RowSatisfied[y] && !_rowSatisfied[y]) PopScale.Play(_rowClues[y].Face, CluePopScale, CluePopDuration);
                 _rowSatisfied[y] = LastResult.RowSatisfied[y];
@@ -486,6 +517,7 @@ namespace TrainSudoku.XR
 
             _columnClues = new ClueSign[Level.Width];
             _columnSatisfied = new bool[Level.Width];
+            _columnExceeded = new bool[Level.Width];
             for (var x = 0; x < Level.Width; x++)
             {
                 var (wx, wz) = BoardLayout.ColumnClueAnchor(x, Level.Width, Level.Height);
@@ -494,6 +526,7 @@ namespace TrainSudoku.XR
 
             _rowClues = new ClueSign[Level.Height];
             _rowSatisfied = new bool[Level.Height];
+            _rowExceeded = new bool[Level.Height];
             for (var y = 0; y < Level.Height; y++)
             {
                 var (wx, wz) = BoardLayout.RowClueAnchor(y, Level.Width, Level.Height);

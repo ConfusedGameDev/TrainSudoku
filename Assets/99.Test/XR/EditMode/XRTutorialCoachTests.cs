@@ -9,6 +9,7 @@ namespace TrainSudoku.XR.Tests
     /// The XR tutorial coach (XR-PRD 7) on Ashgate, driven the way the game drives it: every grab and release goes
     /// through <see cref="PieceDrop"/> with the coach as its gate, and the coach observes each result with the board's
     /// overfull and line-satisfied state after it. The route is (0,1) NS, (0,2) NE, (1,2) SW, then (2,3) to (5,5).
+    /// Two rails are guided; after that the coach is silent until the player has stood idle for thirty seconds.
     /// </summary>
     public class XRTutorialCoachTests
     {
@@ -81,13 +82,15 @@ namespace TrainSudoku.XR.Tests
             Assert.AreEqual(locked, guide.Locked, guide.ToString());
         }
 
-        /// <summary>Rails 1 to 3, with the adjacency bounce on rail 2.</summary>
+        private DropResult Take(PieceKey key) => Observe(_drop.GrabFromTray(Hand.Right, key));
+
+        private DropResult Drop(int x, int y) => Observe(_drop.Release(Hand.Right, (x, y), false));
+
+        /// <summary>The two rails the coach walks the player through.</summary>
         private void LayTheGuidedRails()
         {
             Lay(PieceKey.NS, 0, 1);
-            Lay(PieceKey.EW, 0, 2);
             Lay(PieceKey.NE, 0, 2);
-            Lay(PieceKey.SW, 1, 2);
         }
 
         // ---- The opening
@@ -100,42 +103,29 @@ namespace TrainSudoku.XR.Tests
         }
 
         [Test]
-        public void TheSecondRailAsksForAPieceThatDoesNotJoinAndItFliesBack()
+        public void TheSecondRailIsShownTheSameWay()
         {
             Lay(PieceKey.NS, 0, 1);
-            AssertGuide(XRGuideKind.Adjacency, 0, 2, PieceKey.EW, true);
-            Assert.AreEqual(XRTutorialKeys.Adjacency, _coach.Key);
-            Assert.AreEqual(GhostTint.Illegal, HoverWith(PieceKey.EW, 0, 2), "the ghost goes red over the target");
-
-            var result = Lay(PieceKey.EW, 0, 2);
-            Assert.AreEqual(DropOutcome.Returned, result.Outcome);
-            Assert.IsTrue(result.IllegalDrop, "the rules sent it back, so the error cue plays");
-            Assert.IsFalse(result.Steered);
-
             AssertGuide(XRGuideKind.Lay, 0, 2, PieceKey.NE, true);
-            Assert.AreEqual(XRTutorialKeys.AdjacencyDone, _coach.Key);
+            Assert.AreEqual(XRTutorialKeys.LayNext, _coach.Key, "row 1 turned green, but the clue line waits for the player's own rails");
         }
 
         [Test]
-        public void LayingTheRightPieceDuringTheAdjacencyLessonSkipsIt()
+        public void AfterTwoRailsTheRingGoesAndTheBoardIsThePlayers()
         {
-            Lay(PieceKey.NS, 0, 1);
-            var result = Lay(PieceKey.NE, 0, 2);
-            Assert.AreEqual(DropOutcome.Placed, result.Outcome);
-            AssertGuide(XRGuideKind.Lay, 1, 2, PieceKey.SW, true);
-            Assert.AreNotEqual(XRTutorialKeys.AdjacencyDone, _coach.Key);
+            LayTheGuidedRails();
+            Assert.IsFalse(_coach.Guide.Active, _coach.Guide.ToString());
+            Assert.AreEqual(XRTutorialKeys.Unlocked, _coach.Key);
+            Assert.IsTrue(_coach.Admits(3, 3, PieceKey.EW));
         }
 
         [Test]
-        public void TheSlotIsLitForTheFirstThreeRailsOnly()
+        public void TheHandOverLineGoesWithTheNextAction()
         {
-            Lay(PieceKey.NS, 0, 1);
-            Lay(PieceKey.EW, 0, 2);
-            Assert.IsTrue(_coach.Guide.Slot.HasValue, "rail 2");
-            Lay(PieceKey.NE, 0, 2);
-            Assert.IsTrue(_coach.Guide.Slot.HasValue, "rail 3");
-            Lay(PieceKey.SW, 1, 2);
-            Assert.IsFalse(_coach.Guide.Slot.HasValue, "from rail 4 the player finds the piece");
+            LayTheGuidedRails();
+            Take(PieceKey.SW);
+            Assert.IsNull(_coach.Key);
+            Assert.IsFalse(_coach.Guide.Active);
         }
 
         // ---- The lock
@@ -181,132 +171,150 @@ namespace TrainSudoku.XR.Tests
             Assert.AreEqual(XRTutorialKeys.NoteFixed, _coach.Key);
         }
 
-        // ---- The staged overfill and the erase lesson
-
         [Test]
-        public void AfterThreeRailsTheMistakeCellIsLitAloneOffTheRoute()
-        {
-            LayTheGuidedRails();
-            AssertGuide(XRGuideKind.Mistake, 1, 1, null, true);
-            Assert.AreEqual(XRTutorialKeys.Mistake, _coach.Key);
-            Assert.AreEqual(1, Legality.LegalKeys(_board, 1, 1).Count, "one piece fits, so the player can find it");
-        }
-
-        [Test]
-        public void LayingTheMistakeOverfillsALineThenErasingAndThrowingItUnlocks()
-        {
-            LayTheGuidedRails();
-            var key = Legality.LegalKeys(_board, 1, 1)[0];
-            Lay(key, 1, 1);
-            Assert.IsTrue(Overfull(), "the clue turns red");
-            AssertGuide(XRGuideKind.Erase, 1, 1, null, true);
-            Assert.AreEqual(XRTutorialKeys.Erase, _coach.Key, "the erase line, not the overfull note");
-
-            Assert.AreEqual(DropOutcome.Lifted, Lift(1, 1).Outcome);
-            Assert.AreEqual(XRGuideKind.Discard, _coach.Guide.Kind);
-            Assert.AreEqual(XRTutorialKeys.Discard, _coach.Key);
-
-            Throw();
-            AssertGuide(XRGuideKind.Lay, 2, 3, null, false);
-            Assert.AreEqual(XRTutorialKeys.Unlocked, _coach.Key);
-        }
-
-        [Test]
-        public void ARailOnTheMistakeCellCannotBeCoveredWhileItWaitsToBeLifted()
-        {
-            LayTheGuidedRails();
-            Lay(Legality.LegalKeys(_board, 1, 1)[0], 1, 1);
-            Assert.IsTrue(Lay(PieceKey.EW, 2, 3).Steered);
-            Assert.AreEqual(XRGuideKind.Erase, _coach.Guide.Kind);
-        }
-
-        [Test]
-        public void LiftingARailUnpromptedSkipsTheDetour()
+        public void LiftingARailUnpromptedOpensTheBoardEarly()
         {
             Lay(PieceKey.NS, 0, 1);
             Lift(0, 1);
-            Assert.IsFalse(_coach.Guide.Locked);
-            Assert.AreNotEqual(XRGuideKind.Discard, _coach.Guide.Kind, "only the mistake rail is asked to be thrown away");
-            Assert.AreEqual(DropOutcome.Placed, Observe(_drop.Release(Hand.Right, (0, 1), false)).Outcome);
+            Assert.IsFalse(_coach.Guide.Active);
+            Assert.AreEqual(DropOutcome.Placed, Drop(0, 1).Outcome);
         }
+
+        [Test]
+        public void TheClockDoesNotRunWhileTheOpeningIsLocked()
+        {
+            Assert.IsFalse(_coach.Tick(XRTutorialCoach.IdleSeconds * 4));
+            AssertGuide(XRGuideKind.Lay, 0, 1, PieceKey.NS, true);
+            Assert.AreEqual(XRTutorialKeys.LayFirst, _coach.Key);
+        }
+
+        // ---- On their own
 
         [Test]
         public void OnceUnlockedNothingIsSteered()
         {
-            Lay(PieceKey.NS, 0, 1);
-            Lift(0, 1);
-            Throw();
+            LayTheGuidedRails();
             Assert.IsFalse(Lay(PieceKey.EW, 2, 2).Steered);
             Assert.IsFalse(_board.IsEmpty(2, 2));
         }
 
         [Test]
-        public void AnOverfullLineOutsideTheLessonGetsTheOverfullNote()
+        public void AnOverfullLineGetsTheOverfullNote()
         {
-            Lay(PieceKey.NS, 0, 1);
-            Lift(0, 1);
-            Throw();
+            LayTheGuidedRails();
             // Row 0 asks for one rail and already holds the fixed SW: a second overfills it.
             Lay(PieceKey.EW, 2, 0);
             Assert.IsTrue(Overfull());
             Assert.AreEqual(XRTutorialKeys.NoteOverfull, _coach.Key);
+            Assert.IsFalse(_coach.Guide.Active, "a note, not a ring");
         }
 
-        // ---- The rest of the walk
+        // ---- The idle hint
 
         [Test]
-        public void TheClueLineWaitsForTheLessonsAndShowsOnce()
-        {
-            // Row 1 asks for one rail and turns green with the first, but the adjacency lesson and its answer outrank it.
-            Lay(PieceKey.NS, 0, 1);
-            Assert.AreEqual(XRTutorialKeys.Adjacency, _coach.Key);
-            Lay(PieceKey.EW, 0, 2);
-            Assert.AreEqual(XRTutorialKeys.AdjacencyDone, _coach.Key);
-            Lay(PieceKey.NE, 0, 2);
-            Assert.AreEqual(XRTutorialKeys.Clue, _coach.Key);
-            Lay(PieceKey.SW, 1, 2);
-            Assert.AreEqual(XRTutorialKeys.Mistake, _coach.Key);
-        }
-
-        [Test]
-        public void FollowingTheGuideToTheEndWinsTheBoard()
+        public void NothingIsPointedAtUntilThirtySecondsHavePassed()
         {
             LayTheGuidedRails();
-            Lay(Legality.LegalKeys(_board, 1, 1)[0], 1, 1);
-            Lift(1, 1);
-            Throw();
+            Assert.IsFalse(_coach.Tick(XRTutorialCoach.IdleSeconds - 0.1));
+            Assert.IsFalse(_coach.Guide.Active);
 
-            Assert.IsTrue(Solver.TrySolve(_level, out var solution));
-            for (var guard = 0; guard < 40 && _coach.Guide.Active; guard++)
+            Assert.IsTrue(_coach.Tick(0.2), "the hint has just come up");
+            AssertGuide(XRGuideKind.Lay, 1, 2, PieceKey.SW, false);
+            Assert.AreEqual(XRTutorialKeys.Next, _coach.Key);
+            Assert.IsTrue(_coach.Admits(3, 3, PieceKey.EW), "a hint points, it does not lock");
+            Assert.IsFalse(_coach.Tick(XRTutorialCoach.IdleSeconds), "already showing");
+        }
+
+        [Test]
+        public void AnyGrabOrReleaseStartsTheClockAgain()
+        {
+            LayTheGuidedRails();
+            Assert.IsFalse(_coach.Tick(20));
+            Take(PieceKey.EW);
+            Assert.IsFalse(_coach.Tick(20), "the twenty seconds before the grab no longer count");
+            Assert.IsTrue(_coach.Tick(10));
+        }
+
+        [Test]
+        public void TheHintStaysUntilTheBoardChangesThenWaitsAgain()
+        {
+            LayTheGuidedRails();
+            Assert.IsTrue(_coach.Tick(XRTutorialCoach.IdleSeconds));
+
+            Take(PieceKey.SW);
+            AssertGuide(XRGuideKind.Lay, 1, 2, PieceKey.SW, false);
+
+            Assert.AreEqual(DropOutcome.Placed, Drop(1, 2).Outcome);
+            Assert.IsFalse(_coach.Guide.Active, "the rail is down: the ring goes");
+
+            Assert.IsFalse(_coach.Tick(XRTutorialCoach.IdleSeconds - 1));
+            Assert.IsTrue(_coach.Tick(1));
+            Assert.AreEqual((2, 3), (_coach.Guide.X, _coach.Guide.Y));
+        }
+
+        [Test]
+        public void ARailThatIsNotOnTheLineIsPointedAtFirst()
+        {
+            LayTheGuidedRails();
+            Lay(PieceKey.EW, 2, 0);
+            Assert.IsTrue(_coach.Tick(XRTutorialCoach.IdleSeconds));
+            AssertGuide(XRGuideKind.Erase, 2, 0, null, false);
+            Assert.AreEqual(XRTutorialKeys.HintLift, _coach.Key, "the hint replaces the note that stood unanswered");
+
+            Assert.AreEqual(DropOutcome.Lifted, Lift(2, 0).Outcome);
+            Assert.IsFalse(_coach.Guide.Active);
+            Throw();
+            Assert.IsTrue(_coach.Tick(XRTutorialCoach.IdleSeconds));
+            AssertGuide(XRGuideKind.Lay, 1, 2, PieceKey.SW, false);
+        }
+
+        [Test]
+        public void FollowingTheHintsToTheEndWinsTheBoardAndTheClueLineShowsOnce()
+        {
+            LayTheGuidedRails();
+            var clueLines = 0;
+            for (var guard = 0; guard < 40 && !WinChecker.Evaluate(_board).IsWin; guard++)
             {
+                Assert.IsTrue(_coach.Tick(XRTutorialCoach.IdleSeconds));
                 var guide = _coach.Guide;
-                Assert.AreEqual(XRGuideKind.Lay, guide.Kind);
-                Assert.IsTrue(solution[guide.X, guide.Y] is Piece piece);
-                Assert.AreEqual(DropOutcome.Placed, Lay(((Piece)solution[guide.X, guide.Y]).Key, guide.X, guide.Y).Outcome);
+                Assert.AreEqual(XRGuideKind.Lay, guide.Kind, guide.ToString());
+                Assert.IsTrue(guide.Slot.HasValue);
+                Assert.AreEqual(DropOutcome.Placed, Lay(guide.Slot.Value, guide.X, guide.Y).Outcome);
+                if (_coach.Key == XRTutorialKeys.Clue) clueLines++;
             }
 
             Assert.IsTrue(WinChecker.Evaluate(_board).IsWin);
+            Assert.AreEqual(1, clueLines);
             _coach.Complete();
             Assert.IsFalse(_coach.Guide.Active);
             Assert.IsNull(_coach.Key);
+            Assert.IsFalse(_coach.Tick(XRTutorialCoach.IdleSeconds));
         }
 
+        // ---- Coming back, and not teaching
+
         [Test]
-        public void AHalfBuiltBoardComesBackUnlocked()
+        public void AHalfBuiltBoardComesBackOpenAndQuietButStillHints()
         {
             Assert.IsTrue(_board.TryPlace(0, 1, PieceKey.NS));
             _coach.Begin(_level, _board, true);
-            AssertGuide(XRGuideKind.Lay, 0, 2, null, false);
+            Assert.IsFalse(_coach.Guide.Active);
+            Assert.IsNull(_coach.Key);
             Assert.IsTrue(_coach.Admits(3, 3, PieceKey.EW));
+
+            Assert.IsTrue(_coach.Tick(XRTutorialCoach.IdleSeconds));
+            AssertGuide(XRGuideKind.Lay, 0, 2, PieceKey.NE, false);
         }
 
         [Test]
-        public void ALevelThatDoesNotTeachIsSilentAndAdmitsEverything()
+        public void ALevelThatDoesNotTeachIsSilentAdmitsEverythingAndNeverHints()
         {
             _coach.Begin(_level, _board, false);
             Assert.IsFalse(_coach.IsActive);
             Assert.IsNull(_coach.Key);
             Assert.IsTrue(_coach.Admits(2, 2, PieceKey.EW));
+            Assert.IsFalse(_coach.Tick(XRTutorialCoach.IdleSeconds * 10));
+            Assert.IsFalse(_coach.Guide.Active);
         }
 
         [Test]
@@ -318,6 +326,37 @@ namespace TrainSudoku.XR.Tests
             _coach.Begin(level, board, true);
             Assert.IsFalse(_coach.IsActive);
             Assert.IsTrue(_coach.Admits(2, 2, PieceKey.EW));
+            Assert.IsFalse(_coach.Tick(XRTutorialCoach.IdleSeconds));
+        }
+
+        [Test]
+        public void TheShippedTutorialStationIsTwoRailsThenHintsToTheEnd()
+        {
+            _level = XRTestBoards.KettleburnLevel();
+            _board = new Board(_level);
+            _drop = new PieceDrop(_board);
+            _coach.Begin(_level, _board, true);
+            _drop.Gate = _coach.Admits;
+            var start = WinChecker.Evaluate(_board);
+            _rows = start.RowSatisfied.ToArray();
+            _columns = start.ColumnSatisfied.ToArray();
+
+            AssertGuide(XRGuideKind.Lay, 1, 1, PieceKey.EW, true);
+            Lay(PieceKey.EW, 1, 1);
+            AssertGuide(XRGuideKind.Lay, 2, 1, PieceKey.EW, true);
+            Lay(PieceKey.EW, 2, 1);
+            Assert.IsFalse(_coach.Guide.Active);
+
+            for (var guard = 0; guard < 10 && !WinChecker.Evaluate(_board).IsWin; guard++)
+            {
+                Assert.IsTrue(_coach.Tick(XRTutorialCoach.IdleSeconds));
+                var guide = _coach.Guide;
+                Assert.AreEqual(XRGuideKind.Lay, guide.Kind, guide.ToString());
+                Assert.AreEqual(DropOutcome.Placed, Lay(guide.Slot.Value, guide.X, guide.Y).Outcome);
+            }
+
+            Assert.IsTrue(WinChecker.Evaluate(_board).IsWin);
+            Assert.AreEqual(7, _board.PieceCount - _level.FixedPieces.Count);
         }
 
         private GhostTint HoverWith(PieceKey key, int x, int y)

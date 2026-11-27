@@ -40,4 +40,4 @@ MonoBehaviour:
   starTimes:
   - 180
   - 300
-  isTutorial: 1
+  isTutorial: 0

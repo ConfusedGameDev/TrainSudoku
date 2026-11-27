@@ -60,6 +60,11 @@ namespace TrainSudoku.XR
         /// and 22 degrees off square, under-size on impact, and a damped rattle to rest 4 degrees off square.
         /// </summary>
         private const float StampDelay = 0.3f;
+
+        /// <summary>The arrival's stars pop one after another, as on the web edition, and the stamp comes down after the last.</summary>
+        private const float StarInterval = 0.12f;
+        private const float StarSeconds = 0.2f;
+        private const float StarPop = 1.25f;
         private const float StampPressSeconds = 0.26f;
         private const float StampFrom = 2.4f;
         private const float StampHit = 0.88f;
@@ -85,6 +90,16 @@ namespace TrainSudoku.XR
         private VisualElement _stamp;
         private float _stampAt;
         private bool _stampHeard;
+
+        /// <summary>The arrival's three stars while they pop, how many were earned and have been heard, and when the first starts.</summary>
+        private readonly List<VisualElement> _stars = new List<VisualElement>();
+        private int _starsEarned;
+        private int _starsHeard;
+        private float _starsAt;
+
+        /// <summary>Pip on the view on show, and her speech bubble on the station view; null where there is none.</summary>
+        private XRPip _pip;
+        private Label _bubble;
 
         public static XRSignboard Create(Transform boardRoot, XRSignageAssets assets)
         {
@@ -132,7 +147,9 @@ namespace TrainSudoku.XR
         /// <summary>Turns about the vertical to face the player, so the sign reads from any edge, and leans the card back to the eyes.</summary>
         private void LateUpdate()
         {
+            PopStars();
             PressStamp();
+            if (_pip != null) _pip.Tick(Time.unscaledTime);
             var head = Camera.main;
             if (head == null || transform.parent == null) return;
             var up = transform.parent.up;
@@ -171,17 +188,20 @@ namespace TrainSudoku.XR
             row.style.flexGrow = 1;
 
             var mark = new VisualElement();
-            Size(mark, 230f, 230f);
-            Round(mark, 115f);
-            mark.style.marginRight = 44f;
+            Size(mark, 200f, 200f);
+            Round(mark, 100f);
+            mark.style.marginRight = 40f;
             if (_assets != null && _assets.Mark != null) mark.style.backgroundImage = _assets.Mark;
             row.Add(mark);
 
             var words = new VisualElement();
             row.Add(words);
             // Proper nouns of the masthead: never in a string table (the phone's rule, kept).
-            words.Add(Text("TSUGI", 200f, true, XRPalette.Ink, 10f));
-            words.Add(Text("NEXT STATION", 60f, true, XRPalette.InkDim, 12f));
+            words.Add(Text("TSUGI", 190f, true, XRPalette.Ink, 10f));
+            words.Add(Text("NEXT STATION", 56f, true, XRPalette.InkDim, 12f));
+            // Pip beckons the player on, as on the web edition's concourse.
+            row.Add(Spacer());
+            row.Add(Pip(290f, XRPipMood.Wave));
 
             var strip = Led(card);
             strip.Add(Text(XRText.Get(XRKeys.MastheadNetwork), 64f, true, XRPalette.Led, 6f));
@@ -197,13 +217,17 @@ namespace TrainSudoku.XR
             var row = Row(card);
             row.style.alignItems = Align.Center;
             row.style.flexGrow = 1;
-            row.Add(Badge(line, 180f));
+            row.Add(Badge(line, 170f));
 
             var words = new VisualElement();
-            words.style.marginLeft = 40f;
+            words.style.marginLeft = 36f;
             row.Add(words);
-            words.Add(Text(line != null ? line.DisplayName.ToUpperInvariant() : "", 118f, true, XRPalette.Ink, 4f));
+            // The longest line names run to thirteen letters: they shrink to leave Pip her corner.
+            var name = line != null ? line.DisplayName.ToUpperInvariant() : "";
+            words.Add(Text(name, 118f * Mathf.Min(1f, 10f / Mathf.Max(1, name.Length)), true, XRPalette.Ink, 4f));
             words.Add(Text(XRText.Get(XRKeys.LineMapTitle), 56f, true, XRPalette.InkDim, 10f));
+            row.Add(Spacer());
+            row.Add(Pip(250f, XRPipMood.Idle));
 
             var strip = Led(card);
             strip.Add(Text(XRText.Get(XRKeys.LineMapCleared, cleared, stations), 64f, true, XRPalette.Led, 6f));
@@ -217,30 +241,52 @@ namespace TrainSudoku.XR
         public void ShowStation(LevelDefinition station, LineDefinition line, int stationIndex)
         {
             var card = Begin();
-            StationHead(card, line, stationIndex);
+            var head = StationHead(card, line, stationIndex);
+            head.Add(Spacer());
+
+            // The stars still there to beat, beside the station's code.
+            var times = station != null ? station.StarTimes : null;
+            if (times != null && times.Count >= 2 && times[0] > 0)
+                for (var stars = 3; stars >= 2; stars--)
+                {
+                    var target = Row(head);
+                    target.style.alignItems = Align.Center;
+                    target.style.marginLeft = 44f;
+                    for (var i = 0; i < stars; i++) target.Add(new XRStarGlyph(46f, XRPalette.Star));
+                    Put(target, Text(ProgressTracker.FormatTime(times[3 - stars]), 56f, true, XRPalette.Ink, 2f)).style.marginLeft = 14f;
+                    _targets.Add((stars, target));
+                }
 
             var strip = Led(card);
-            strip.style.flexGrow = 1;
-            strip.style.marginTop = 24f;
+            strip.style.marginTop = 20f;
             strip.Add(Text(station != null ? station.DisplayName.ToUpperInvariant() : "", 92f, true, XRPalette.Led, 4f));
             strip.Add(Spacer());
             _clock = Text("00:00", 150f, true, XRPalette.Led, 4f);
             strip.Add(_clock);
 
-            var times = station != null ? station.StarTimes : null;
-            if (times == null || times.Count < 2 || times[0] <= 0) return;
-            var targets = Row(card);
-            targets.style.marginTop = 22f;
-            targets.style.justifyContent = Justify.Center;
-            for (var stars = 3; stars >= 2; stars--)
-            {
-                var target = Row(targets);
-                target.style.alignItems = Align.Center;
-                target.style.marginLeft = target.style.marginRight = 36f;
-                for (var i = 0; i < stars; i++) target.Add(new XRStarGlyph(54f, XRPalette.Warn));
-                Put(target, Text(ProgressTracker.FormatTime(times[3 - stars]), 60f, true, XRPalette.Ink, 2f)).style.marginLeft = 16f;
-                _targets.Add((stars, target));
-            }
+            // Pip watches the board from under the clock and says what she sees (SetPip).
+            var corner = Row(card);
+            corner.style.marginTop = StyleKeyword.Auto;
+            corner.style.alignItems = Align.FlexEnd;
+            corner.Add(Pip(190f, XRPipMood.Idle));
+            _bubble = Bubble(_assets, "", 56f);
+            _bubble.style.marginLeft = 14f;
+            _bubble.style.marginBottom = 64f;
+            _bubble.style.visibility = Visibility.Hidden;
+            corner.Add(_bubble);
+        }
+
+        /// <summary>
+        /// Pip's mood on the view on show and, on the station view, what she says; null or empty words put the bubble
+        /// away. A view drawn afresh starts with a quiet Pip, so the shell says it again after every redraw.
+        /// </summary>
+        public void SetPip(XRPipMood mood, string words)
+        {
+            if (_pip != null) _pip.SetMood(mood);
+            if (_bubble == null) return;
+            var say = !string.IsNullOrEmpty(words);
+            if (say) _bubble.text = words;
+            _bubble.style.visibility = say ? Visibility.Visible : Visibility.Hidden;
         }
 
         /// <summary>Pause (6.2): the station, "Paused" and the stopped clock on the LED strip, and the way back into play.</summary>
@@ -257,14 +303,21 @@ namespace TrainSudoku.XR
             head.Add(Button(XRText.Get(XRKeys.PauseResume), resume, true));
 
             var strip = Led(card);
-            strip.style.flexGrow = 1;
-            strip.style.marginTop = 24f;
+            strip.style.marginTop = 20f;
             strip.Add(Text(XRText.Get(XRKeys.PauseTitle), 120f, true, XRPalette.Led, 12f));
             strip.Add(Spacer());
             _clock = Text("00:00", 150f, true, XRPalette.Led, 4f);
             strip.Add(_clock);
 
-            Put(card, Text(XRText.Get(XRKeys.PauseHint), 42f, false, XRPalette.InkDim)).style.marginTop = 18f;
+            // Pip dozes through the pause, as on the web edition's signal stop.
+            var corner = Row(card);
+            corner.style.marginTop = StyleKeyword.Auto;
+            corner.style.alignItems = Align.Center;
+            corner.Add(Pip(170f, XRPipMood.Sleep));
+            var hint = Put(corner, Text(XRText.Get(XRKeys.PauseHint), 42f, false, XRPalette.InkDim));
+            hint.style.whiteSpace = WhiteSpace.Normal;
+            hint.style.flexShrink = 1;
+            hint.style.marginLeft = 28f;
         }
 
         /// <summary>
@@ -283,12 +336,14 @@ namespace TrainSudoku.XR
 
             var words = Put(card, Text(body, 50f, false, XRPalette.Ink));
             words.style.whiteSpace = WhiteSpace.Normal;
-            words.style.marginTop = 30f;
+            words.style.marginTop = 24f;
             words.style.flexGrow = 1;
             words.style.unityTextAlign = TextAnchor.UpperLeft;
 
             var buttons = Row(card);
-            buttons.style.justifyContent = Justify.FlexEnd;
+            buttons.style.alignItems = Align.FlexEnd;
+            buttons.Add(Pip(140f, XRPipMood.Wave));
+            buttons.Add(Spacer());
             buttons.Add(Button(button, next, true));
         }
 
@@ -320,28 +375,40 @@ namespace TrainSudoku.XR
             words.style.marginLeft = 28f;
             head.Add(words);
             words.Add(Text(XRText.Get(XRKeys.ArrivalTitle), 46f, true, XRPalette.InkDim, 10f));
-            words.Add(Text(station != null ? station.DisplayName.ToUpperInvariant() : "", 96f, true, XRPalette.Ink, 3f));
+            words.Add(Text(station != null ? station.DisplayName.ToUpperInvariant() : "", 90f, true, XRPalette.Ink, 3f));
             head.Add(Spacer());
-
-            var stars = Row(head);
-            for (var i = 0; i < 3; i++) stars.Add(new XRStarGlyph(84f, i < result.Stars ? XRPalette.Warn : XRPalette.ClosedLight));
+            // Pip cheers the train in.
+            head.Add(Pip(170f, XRPipMood.Cheer));
 
             var strip = Led(card);
-            strip.style.marginTop = 22f;
+            strip.style.marginTop = 16f;
             strip.Add(Text(XRText.Get(XRKeys.ArrivalThisRun, ProgressTracker.FormatTime(result.Time)), 60f, true, XRPalette.Led, 4f));
             strip.Add(Spacer());
             strip.Add(Text(XRText.Get(XRKeys.ArrivalBest, ProgressTracker.FormatTime(result.BestTime)), 60f, true, XRPalette.Led, 4f));
 
-            // The verdict is stamped on beside the new-best flag, as on the phone's arrival.
+            // The stars pop in turn, then the verdict is stamped on beside them and the new-best flag.
             var verdict = Row(card);
             verdict.style.marginTop = 16f;
             verdict.style.alignItems = Align.Center;
+            for (var i = 0; i < 3; i++)
+            {
+                var star = new XRStarGlyph(80f, i < result.Stars ? XRPalette.Star : XRPalette.ClosedLight);
+                star.style.scale = new Scale(Vector3.zero);
+                verdict.Add(star);
+                _stars.Add(star);
+            }
+
+            _starsEarned = result.Stars;
+            _starsHeard = 0;
+            _starsAt = Time.unscaledTime + StampDelay;
+
             if (result.IsNewBest)
             {
                 var best = Text(XRText.Get(XRKeys.ArrivalNewBest), 44f, true, XRPalette.Ink, 8f);
                 best.style.backgroundColor = XRPalette.Warn;
-                best.style.paddingLeft = best.style.paddingRight = 16f;
-                Round(best, 10f);
+                best.style.marginLeft = 28f;
+                best.style.paddingLeft = best.style.paddingRight = 20f;
+                Round(best, 24f);
                 verdict.Add(best);
             }
 
@@ -379,7 +446,7 @@ namespace TrainSudoku.XR
             stamp.style.backgroundColor = XRPalette.Paper;
             stamp.style.borderTopWidth = stamp.style.borderBottomWidth = stamp.style.borderLeftWidth = stamp.style.borderRightWidth = 7f;
             stamp.style.borderTopColor = stamp.style.borderBottomColor = stamp.style.borderLeftColor = stamp.style.borderRightColor = ink;
-            Round(stamp, 12f);
+            Round(stamp, 18f);
             stamp.style.paddingTop = stamp.style.paddingBottom = 8f;
             stamp.style.paddingLeft = stamp.style.paddingRight = 34f;
             // Room for the tilted corners inside the card.
@@ -387,7 +454,8 @@ namespace TrainSudoku.XR
             stamp.Add(Text(text, 72f, true, ink, 8f));
             stamp.style.opacity = 0f;
             _stamp = stamp;
-            _stampAt = Time.unscaledTime + StampDelay;
+            // After the last star, so the beat reads rating, then verdict.
+            _stampAt = Time.unscaledTime + StampDelay + 3 * StarInterval + StarSeconds;
             _stampHeard = false;
             return stamp;
         }
@@ -422,6 +490,29 @@ namespace TrainSudoku.XR
             if (shake >= 1f) _stamp = null;
         }
 
+        /// <summary>Each star in from nothing, over-size at the middle of its pop; an earned one is heard as it lands.</summary>
+        private void PopStars()
+        {
+            if (_stars.Count == 0) return;
+            var elapsed = Time.unscaledTime - _starsAt;
+            var done = true;
+            for (var i = 0; i < _stars.Count; i++)
+            {
+                var pop = Mathf.Clamp01((elapsed - i * StarInterval) / StarSeconds);
+                done &= pop >= 1f;
+                var scale = pop <= 0f ? 0f : pop * (1f + (StarPop - 1f) * Mathf.Sin(pop * Mathf.PI));
+                _stars[i].style.scale = new Scale(new Vector3(scale, scale, 1f));
+                if (pop > 0f && i < _starsEarned && i >= _starsHeard)
+                {
+                    _starsHeard = i + 1;
+                    XRCuePlayer.Play(XRCue.Star, _panel != null ? _panel.position : transform.position);
+                }
+            }
+
+            // At rest: nothing more to do until the next arrival.
+            if (done) _stars.Clear();
+        }
+
         private static float EaseIn(float t) => t * t;
         private static float EaseOut(float t) => 1f - (1f - t) * (1f - t);
 
@@ -434,14 +525,20 @@ namespace TrainSudoku.XR
             _clock = null;
             _clockText = null;
             _stamp = null;
+            _stars.Clear();
+            _pip = null;
+            _bubble = null;
             _touch.Clear();
             _targets.Clear();
             _tier = -1;
 
             var root = _document.rootVisualElement;
             root.Clear();
-            return Card(root, 10f, 36f, 38f, 48f);
+            return Card(root, CardBorder, CardRadius, 30f, 44f, CardChunk);
         }
+
+        /// <summary>Pip on this view, kept so <see cref="LateUpdate"/> can move her.</summary>
+        private XRPip Pip(float size, XRPipMood mood) => _pip = new XRPip(_assets, size, mood);
 
         private Label Text(string text, float size, bool heading, Color colour, float letterSpacing = 0f) =>
             XRSignageUi.Text(_assets, text, size, heading, colour, letterSpacing);

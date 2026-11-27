@@ -83,11 +83,13 @@ namespace TrainSudoku.XR
             if (root == null) return;
             root.Clear();
             root.style.justifyContent = Justify.FlexEnd;
-            var card = Card(root, 8f, 28f, 22f, 30f);
+            var card = Card(root, 8f, 36f, 22f, 30f, 10f);
             card.style.flexGrow = 0;
             var label = XRSignageUi.Text(_assets, text, 46f, false, XRPalette.Ink);
             label.style.whiteSpace = WhiteSpace.Normal;
             card.Add(label);
+            // The tail points down at the cell the line is about, as the web edition's coach card does.
+            root.Add(new XRTailGlyph(56f, 30f, XRPalette.Ink));
         }
 
         private void LateUpdate()

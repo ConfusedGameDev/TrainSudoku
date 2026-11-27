@@ -20,7 +20,7 @@ namespace TrainSudoku.XR.Tests
             ". . . . . . 0\n";
 
         /// <summary>
-        /// Ashgate, the tutorial station (<c>Assets/03.Data/Levels/simple.asset</c>), copied as text so the coach tests
+        /// Ashgate, the tutorial station until 2026-11-27 and still the coach tests' board (<c>Assets/03.Data/Levels/simple.asset</c>), copied as text so the coach tests
         /// stay engine-free. Fixed SW at (0,0), NE at (1,3), NW at (3,4) and SE at (5,4); S west of row 0, E east of row 4.
         /// </summary>
         private const string AshgateText =
@@ -34,6 +34,23 @@ namespace TrainSudoku.XR.Tests
             ". . . . . . 5\n";
 
         public static LevelData AshgateLevel() => LevelText.Parse(AshgateText);
+
+        /// <summary>
+        /// Kettleburn, the tutorial station since 2026-11-27 (<c>Assets/03.Data/Levels/Corner.asset</c>): along row 1,
+        /// one corner, down column 4. Fixed EW at (0,1) and NS at (4,5); S west of row 1, E south of column 4.
+        /// </summary>
+        private const string KettleburnText =
+            "name: Kettleburn\n" +
+            "  1 1 1 1 5 0\n" +
+            ". . . . . . 0\n" +
+            "S EW . . . . . 5\n" +
+            ". . . . . . 1\n" +
+            ". . . . . . 1\n" +
+            ". . . . . . 1\n" +
+            ". . . . NS . 1\n" +
+            "  . . . . E .\n";
+
+        public static LevelData KettleburnLevel() => LevelText.Parse(KettleburnText);
 
         /// <summary>
         /// 3x3 board, entrance west of (0,1), exit east of (2,1), all clues zero (legality ignores clues). On the empty

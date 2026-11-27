@@ -32,5 +32,6 @@ MonoBehaviour:
     side: 2
     index: 4
   starTimes:
-  - 27
-  - 54
+  - 60
+  - 120
+  isTutorial: 1

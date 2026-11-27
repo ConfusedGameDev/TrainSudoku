@@ -5,8 +5,8 @@ using UnityEngine;
 namespace TrainSudoku.XR
 {
     /// <summary>
-    /// The tutorial's rings (XR-PRD 7): one round the cell the coach is pointing at, and, for the first three rails, one
-    /// round the tray slot to take the piece from. They are their own objects, never a tile material: the grab hover
+    /// The tutorial's rings (XR-PRD 7): one round the cell the coach is pointing at, and, when it names a piece, one
+    /// round the tray slot to take that piece from. They are their own objects, never a tile material: the grab hover
     /// swaps the slab materials under a hand, and would wipe a highlight kept there.
     /// </summary>
     public sealed class XRTutorialMarks : MonoBehaviour
@@ -59,8 +59,8 @@ namespace TrainSudoku.XR
             {
                 var (x, z) = BoardLayout.CellCenter(guide.X, guide.Y, _display.Level.Width, _display.Level.Height);
                 _cellRing.localPosition = new Vector3((float)x, RingLift, (float)z);
-                // The two lessons in getting it wrong ring in red; laying the route rings in ink.
-                var wrong = guide.Kind == XRGuideKind.Mistake || guide.Kind == XRGuideKind.Erase || guide.Kind == XRGuideKind.Discard;
+                // A rail to lift off rings in red; laying the route rings in ink.
+                var wrong = guide.Kind == XRGuideKind.Erase;
                 _cellRenderer.sharedMaterial = XRBoardMaterials.Solid(wrong ? XRPalette.Stop : XRPalette.Ink);
             }
 

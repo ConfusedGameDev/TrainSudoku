@@ -9,14 +9,8 @@ namespace TrainSudoku.XR.Rules
         None,
         /// <summary>Lay the next rail of the solved route here.</summary>
         Lay,
-        /// <summary>Staged mistake 1: drop a piece that does not join the rail beside it, and watch it fly back.</summary>
-        Adjacency,
-        /// <summary>Staged mistake 2: lay a rail that pushes a line past its clue.</summary>
-        Mistake,
-        /// <summary>The clue has turned red: lift the rail just laid.</summary>
+        /// <summary>A hint: the rail on this cell is not part of the route, lift it off.</summary>
         Erase,
-        /// <summary>The lifted rail is in the hand: throw it, or let it go off the board.</summary>
-        Discard,
     }
 
     /// <summary>Where the XR tutorial is pointing, and whether the board is still locked to it.</summary>
@@ -26,10 +20,10 @@ namespace TrainSudoku.XR.Rules
         public int X { get; }
         public int Y { get; }
 
-        /// <summary>The tray slot to light beside the cell, or null for the cell alone (from the fourth rail on).</summary>
+        /// <summary>The tray slot to light beside the cell, or null for the cell alone.</summary>
         public PieceKey? Slot { get; }
 
-        /// <summary>Until the erase lesson is done, a drop anywhere else is steered back with a note.</summary>
+        /// <summary>For the two opening rails, a drop anywhere else is steered back with a note.</summary>
         public bool Locked { get; }
 
         public bool Active => Kind != XRGuideKind.None;
@@ -49,33 +43,35 @@ namespace TrainSudoku.XR.Rules
     }
 
     /// <summary>
-    /// The XR tutorial (XR-PRD 7): the phone's walkthrough over the solved path, rewritten for grab-and-drop. The
+    /// The XR tutorial (XR-PRD 7): two rails shown, then the board is the player's, with a hint when they stall. The
     /// phone's <see cref="TutorialCoach"/> is built on taps, sides and long-press, so XR has its own (X22) over the same
     /// shared <see cref="Solver"/>, <see cref="PathFinder"/> and <see cref="Legality"/>.
     /// </summary>
     /// <remarks>
     /// The script, all read off the board rather than written against Ashgate:
     /// <list type="number">
-    /// <item>Rails 1 to 3 light both the tray slot and the cell.</item>
-    /// <item>On rail 2 the lit slot is a key that is <i>illegal</i> there: the ghost goes red and the piece flies back,
-    /// which teaches the adjacency rule. Then the right slot lights.</item>
-    /// <item>After three rails, the cell alone lights: an off-path cell where the one piece that fits overfills a line.
-    /// The player finds that piece, watches the clue turn red, lifts the rail and throws it away.</item>
-    /// <item>The board is then the player's. The ring keeps pointing along the route, but nothing is refused.</item>
+    /// <item>Rails 1 and 2 light both the tray slot and the cell, and the board is <b>locked</b> to them:
+    /// <see cref="Admits"/> is the <see cref="PieceDrop.Gate"/>, so a legal drop anywhere else comes back
+    /// <see cref="DropResult.Steered"/> with a note rather than the error cue.</item>
+    /// <item>Then the ring goes and the player is on their own. Nothing is refused.</item>
+    /// <item>After <see cref="IdleSeconds"/> with no grab or release, <see cref="Tick"/> raises a <b>hint</b>: a rail
+    /// that is not the solution's is ringed to be lifted; otherwise the next empty cell of the route is ringed with its
+    /// tray slot lit. The hint stays until the board changes, and then the clock starts again.</item>
     /// </list>
-    /// Until then the coach is <b>locked</b>: <see cref="Admits"/> is the <see cref="PieceDrop.Gate"/>, so a legal drop
-    /// anywhere else comes back <see cref="DropResult.Steered"/> with a note rather than the error cue.
+    /// The hint is the one exception to "no hints" (X15), and it exists only here: a coach that is not teaching never
+    /// ticks.
     /// </remarks>
     public sealed class XRTutorialCoach
     {
-        /// <summary>Rails laid before the overfill mistake is staged: long enough for laying to feel routine first.</summary>
-        public const int GuidedRails = 3;
+        /// <summary>Rails the player is walked through before the board is handed over.</summary>
+        public const int GuidedRails = 2;
 
-        /// <summary>The rail (0-based count of rails already laid) that stages the adjacency mistake.</summary>
-        public const int AdjacencyRail = 1;
+        /// <summary>How long the player may go without a grab or a release before the coach points at the next move.</summary>
+        public const double IdleSeconds = 30.0;
 
         private LevelData _level;
         private Board _board;
+        private Board _solution;
         private readonly List<(int X, int Y)> _order = new List<(int X, int Y)>();
         private readonly List<PieceKey> _keys = new List<PieceKey>();
 
@@ -84,29 +80,25 @@ namespace TrainSudoku.XR.Rules
         private int _placements;
         private bool _unlocked;
 
-        private bool _adjacencyDone;
-        private bool _adjacencyBounced;
-        private bool _saidAdjacencyDone;
-        private PieceKey _adjacencyKey;
+        /// <summary>The "you have it" line is owed: set on unlocking, dropped by the player's next action.</summary>
+        private bool _unlockedDue;
 
-        private bool _mistaking;
-        private bool _erasing;
-        private bool _discarding;
-        private (int X, int Y) _mistakeCell;
+        private double _idle;
+        private bool _hinting;
 
         private bool _clueDue;
         private bool _saidClue;
         private bool _saidLay;
-        private bool _saidUnlocked;
         private string _note;
 
         public XRTutorialGuide Guide { get; private set; }
 
         /// <summary>The localisation key of the line to print, or null when there is nothing to say.</summary>
+        /// <remarks>A line can stand without a ring: <see cref="Guide"/> may be inactive while this is set.</remarks>
         public string Key { get; private set; }
 
         /// <summary>Whether this level is teaching at all.</summary>
-        public bool IsActive => _active && Guide.Active;
+        public bool IsActive => _active && !_won;
 
         /// <summary>Starts (or restarts) the script. Called on every load, Retry included.</summary>
         /// <param name="active">Whether this level teaches at all (<c>LevelDefinition.IsTutorial</c>).</param>
@@ -115,13 +107,14 @@ namespace TrainSudoku.XR.Rules
         {
             _level = level;
             _board = board;
+            _solution = null;
             _order.Clear();
             _keys.Clear();
-            _active = _won = _unlocked = false;
+            _active = _won = _unlocked = _unlockedDue = false;
             _placements = 0;
-            _adjacencyDone = _adjacencyBounced = _saidAdjacencyDone = false;
-            _mistaking = _erasing = _discarding = false;
-            _clueDue = _saidClue = _saidLay = _saidUnlocked = false;
+            _idle = 0.0;
+            _hinting = false;
+            _clueDue = _saidClue = _saidLay = false;
             _note = null;
 
             if (active && level != null && board != null && Solver.TrySolve(level, out var solution)
@@ -136,10 +129,11 @@ namespace TrainSudoku.XR.Rules
                 }
 
                 _active = _order.Count > 0;
+                _solution = solution;
             }
 
-            // A board resumed half-built has had its lessons: re-locking it would punish coming back.
-            if (_active && board.PieceCount > level.FixedPieces.Count) Unlock();
+            // A board resumed half-built has had its lessons: it comes back open, and without the line that ends them.
+            if (_active && board.PieceCount > level.FixedPieces.Count) _unlocked = true;
 
             Refresh();
         }
@@ -152,22 +146,29 @@ namespace TrainSudoku.XR.Rules
         {
             if (!_active || _won || _unlocked) return true;
             var guide = Guide;
-            if (!guide.Active || x != guide.X || y != guide.Y) return false;
+            return guide.Kind == XRGuideKind.Lay && x == guide.X && y == guide.Y && key == SolvedKey(x, y);
+        }
 
-            switch (guide.Kind)
-            {
-                case XRGuideKind.Lay:
-                    return key == SolvedKey(x, y);
-                case XRGuideKind.Adjacency:
-                    // The wrong key is wanted: the rules, not the gate, send it back. The right one is fine too.
-                    return key == _adjacencyKey || key == SolvedKey(x, y);
-                case XRGuideKind.Mistake:
-                    // Only one key fits there; any other is refused by the rules with a red ghost, which is a lesson too.
-                    return true;
-                default:
-                    // Erase: the rail on the cell is to be lifted, not covered.
-                    return false;
-            }
+        /// <summary>
+        /// Runs the idle clock. Call it only while the board is in play, so a pause or a briefing does not count.
+        /// </summary>
+        /// <returns>True when a hint has just come up, so the caller redraws the ring and the line.</returns>
+        public bool Tick(double seconds)
+        {
+            if (!_active || _won || !_unlocked || _hinting || seconds <= 0.0) return false;
+            _idle += seconds;
+            if (_idle < IdleSeconds) return false;
+
+            _idle = 0.0;
+            _hinting = true;
+            // The hint is the newest thing to say: it replaces a correction that has stood unanswered this long.
+            _note = null;
+            _unlockedDue = false;
+            Refresh();
+            if (Guide.Active) return true;
+
+            _hinting = false;   // nothing to point at
+            return false;
         }
 
         /// <summary>Takes one grab or release, with the board as it now is.</summary>
@@ -177,9 +178,12 @@ namespace TrainSudoku.XR.Rules
         {
             if (!_active || _won) return;
 
-            // Anything the player does acknowledges the last correction.
+            // Anything the player does acknowledges the last correction, and is not standing idle.
             _note = null;
+            _idle = 0.0;
             var guide = Guide;
+            var wasOpen = _unlocked;
+            _unlockedDue = false;
 
             switch (result.Outcome)
             {
@@ -188,57 +192,35 @@ namespace TrainSudoku.XR.Rules
                     break;
 
                 case DropOutcome.Lifted:
-                    if (!_unlocked)
-                    {
-                        // The mistake rail, lifted as asked: next it goes in the bin. Any other lift unprompted means
-                        // the player has found erasing alone, and the detour has nothing left to teach.
-                        _discarding = _erasing;
-                        Unlock();
-                    }
-
+                    _hinting = false;
+                    // A rail lifted unprompted: the player has found their own way round the board already.
+                    if (!_unlocked) Unlock();
                     break;
 
                 case DropOutcome.Placed:
                 case DropOutcome.Replaced:
                 case DropOutcome.Moved:
-                    _discarding = false;
+                    _hinting = false;
                     if (result.Outcome != DropOutcome.Moved) _placements++;
                     if (_saidClue) _clueDue = false;
-
-                    if (_mistaking && result.Cell == _mistakeCell)
-                    {
-                        _mistaking = false;
-                        _erasing = true;
-                    }
-
-                    if (guide.Kind == XRGuideKind.Adjacency) _adjacencyDone = true;
+                    if (!_unlocked && _placements >= GuidedRails) Unlock();
                     break;
 
                 case DropOutcome.Returned:
-                    _discarding = false;
-                    if (guide.Kind == XRGuideKind.Adjacency && result.IllegalDrop && result.Cell == (guide.X, guide.Y))
-                    {
-                        _adjacencyDone = true;
-                        _adjacencyBounced = true;
-                    }
-                    else if (result.Steered)
+                    if (result.Steered)
                     {
                         var atTarget = result.Cell == (guide.X, guide.Y);
                         _note = atTarget && guide.Slot.HasValue ? XRTutorialKeys.NoteWrongPiece : XRTutorialKeys.NoteSteered;
                     }
 
                     break;
-
-                case DropOutcome.Puffed:
-                case DropOutcome.Thrown:
-                    _discarding = false;
-                    break;
             }
 
-            if (lineSatisfied && !_saidClue) _clueDue = true;
+            // Worth one line, but only once the player is laying rails of their own choosing.
+            if (lineSatisfied && wasOpen && !_saidClue) _clueDue = true;
 
-            // A line over its clue outranks every other correction, except during the erase lesson, which says it already.
-            if (overfull && !_erasing && !_discarding) _note = XRTutorialKeys.NoteOverfull;
+            // A line over its clue outranks every other correction.
+            if (overfull) _note = XRTutorialKeys.NoteOverfull;
 
             Refresh();
         }
@@ -253,9 +235,8 @@ namespace TrainSudoku.XR.Rules
 
         private void Unlock()
         {
-            _mistaking = false;
-            _erasing = false;
             _unlocked = true;
+            _unlockedDue = true;
         }
 
         private PieceKey SolvedKey(int x, int y)
@@ -273,53 +254,20 @@ namespace TrainSudoku.XR.Rules
             return -1;
         }
 
-        /// <summary>
-        /// Somewhere to lay a rail that is definitely wrong: an empty cell off the solved path where exactly one key is
-        /// legal (so the player can find it), and where laying it pushes a row or column past its clue, so they
-        /// <i>see</i> the mistake turn red. Nearest to the last rail laid wins. A port of the phone coach's search.
-        /// </summary>
-        private bool TryFindMistake(out (int X, int Y) cell)
+        /// <summary>A rail the player laid that the solution does not have there: the thing in the way of finishing.</summary>
+        private bool TryFindWrongRail(out (int X, int Y) cell)
         {
-            cell = default;
-            var from = _order[System.Math.Max(0, System.Math.Min(_placements, _order.Count) - 1)];
-            var best = int.MaxValue;
             for (var y = 0; y < _board.Height; y++)
             for (var x = 0; x < _board.Width; x++)
             {
-                if (!_board.IsEmpty(x, y)) continue;
-                if (_order.Contains((x, y))) continue;
-                if (_board.RowCount(y) < _level.RowClues[y] && _board.ColumnCount(x) < _level.ColumnClues[x]) continue;
-                if (Legality.LegalKeys(_board, x, y).Count != 1) continue;
-
-                var distance = System.Math.Abs(x - from.X) + System.Math.Abs(y - from.Y);
-                if (distance >= best) continue;
-                best = distance;
+                if (!(_board[x, y] is Piece laid)) continue;
+                if (_level.TryGetFixedPiece(x, y, out _)) continue;
+                if (_solution[x, y] is Piece solved && solved.Key == laid.Key) continue;
                 cell = (x, y);
-            }
-
-            return best < int.MaxValue;
-        }
-
-        /// <summary>The first key, in <see cref="PieceKey"/> order, that is illegal on (x, y); false when every key fits.</summary>
-        private bool TryFindIllegalKey(int x, int y, out PieceKey key)
-        {
-            var legal = Legality.LegalKeys(_board, x, y);
-            for (var k = PieceKey.NS; k <= PieceKey.SE; k++)
-            {
-                if (Contains(legal, k)) continue;
-                key = k;
                 return true;
             }
 
-            key = default;
-            return false;
-        }
-
-        private static bool Contains(IReadOnlyList<PieceKey> keys, PieceKey key)
-        {
-            for (var i = 0; i < keys.Count; i++)
-                if (keys[i] == key)
-                    return true;
+            cell = default;
             return false;
         }
 
@@ -334,65 +282,36 @@ namespace TrainSudoku.XR.Rules
         {
             if (!_active || _won) return XRTutorialGuide.None;
 
-            if (_discarding) return new XRTutorialGuide(XRGuideKind.Discard, _mistakeCell.X, _mistakeCell.Y, null, false);
-            if (_erasing) return new XRTutorialGuide(XRGuideKind.Erase, _mistakeCell.X, _mistakeCell.Y, null, true);
-            if (_mistaking) return new XRTutorialGuide(XRGuideKind.Mistake, _mistakeCell.X, _mistakeCell.Y, null, true);
-
-            if (!_unlocked && _placements >= GuidedRails)
+            if (_unlocked)
             {
-                if (TryFindMistake(out _mistakeCell))
-                {
-                    _mistaking = true;
-                    return new XRTutorialGuide(XRGuideKind.Mistake, _mistakeCell.X, _mistakeCell.Y, null, true);
-                }
-
-                // Nowhere on this board to stage one: better to hand the board over than to stall on a lesson.
-                Unlock();
+                if (!_hinting) return XRTutorialGuide.None;
+                // What is wrong comes off before anything more goes on: the next rail may not even fit beside it.
+                if (TryFindWrongRail(out var wrong)) return new XRTutorialGuide(XRGuideKind.Erase, wrong.X, wrong.Y, null, false);
+                var next = NextIndex();
+                return next < 0
+                    ? XRTutorialGuide.None
+                    : new XRTutorialGuide(XRGuideKind.Lay, _order[next].X, _order[next].Y, _keys[next], false);
             }
 
             var index = NextIndex();
-            if (index < 0) return XRTutorialGuide.None;
-            var (x, y) = _order[index];
-
-            if (_unlocked) return new XRTutorialGuide(XRGuideKind.Lay, x, y, null, false);
-
-            if (_placements == AdjacencyRail && !_adjacencyDone)
-            {
-                if (TryFindIllegalKey(x, y, out _adjacencyKey))
-                    return new XRTutorialGuide(XRGuideKind.Adjacency, x, y, _adjacencyKey, true);
-                _adjacencyDone = true;   // every key fits here, so there is no rule to show off
-            }
-
-            return new XRTutorialGuide(XRGuideKind.Lay, x, y, _keys[index], true);
+            return index < 0
+                ? XRTutorialGuide.None
+                : new XRTutorialGuide(XRGuideKind.Lay, _order[index].X, _order[index].Y, _keys[index], true);
         }
 
         private string ResolveKey()
         {
-            if (!Guide.Active) return null;
-
-            switch (Guide.Kind)
-            {
-                case XRGuideKind.Adjacency: return XRTutorialKeys.Adjacency;
-                case XRGuideKind.Mistake: return XRTutorialKeys.Mistake;
-                case XRGuideKind.Erase: return XRTutorialKeys.Erase;
-                case XRGuideKind.Discard: return XRTutorialKeys.Discard;
-            }
-
-            if (_adjacencyBounced && !_saidAdjacencyDone)
-            {
-                _saidAdjacencyDone = true;
-                return XRTutorialKeys.AdjacencyDone;
-            }
-
-            if (_clueDue && !_saidClue) return XRTutorialKeys.Clue;
+            if (!_active || _won) return null;
 
             if (_unlocked)
             {
-                if (_saidUnlocked) return XRTutorialKeys.Next;
-                _saidUnlocked = true;
-                return XRTutorialKeys.Unlocked;
+                if (Guide.Kind == XRGuideKind.Erase) return XRTutorialKeys.HintLift;
+                if (Guide.Kind == XRGuideKind.Lay) return XRTutorialKeys.Next;
+                if (_unlockedDue) return XRTutorialKeys.Unlocked;
+                return _clueDue && !_saidClue ? XRTutorialKeys.Clue : null;
             }
 
+            if (!Guide.Active) return null;
             if (_saidLay) return XRTutorialKeys.LayNext;
             _saidLay = true;
             return XRTutorialKeys.LayFirst;
@@ -404,14 +323,10 @@ namespace TrainSudoku.XR.Rules
     {
         public const string LayFirst = "xr.tutorial.lay_first";
         public const string LayNext = "xr.tutorial.lay_next";
-        public const string Adjacency = "xr.tutorial.adjacency";
-        public const string AdjacencyDone = "xr.tutorial.adjacency_done";
         public const string Clue = "xr.tutorial.clue";
-        public const string Mistake = "xr.tutorial.mistake";
-        public const string Erase = "xr.tutorial.erase";
-        public const string Discard = "xr.tutorial.discard";
         public const string Unlocked = "xr.tutorial.unlocked";
         public const string Next = "xr.tutorial.next";
+        public const string HintLift = "xr.tutorial.hint_lift";
         public const string NoteSteered = "xr.tutorial.note_steered";
         public const string NoteWrongPiece = "xr.tutorial.note_wrong_piece";
         public const string NoteFixed = "xr.tutorial.note_fixed";

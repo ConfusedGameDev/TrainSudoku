@@ -186,32 +186,12 @@ MonoBehaviour:
     m_Localized: "Ensuite : la pi\xE8ce \xE9clair\xE9e, sur le cercle."
     m_Metadata:
       m_Items: []
-  - m_Id: 3504017448
-    m_Localized: "Essaie maintenant la pi\xE8ce \xE9clair\xE9e ici. Elle ne rejoint pas la voie d'\xE0 c\xF4t\xE9. Regarde l'aper\xE7u."
-    m_Metadata:
-      m_Items: []
-  - m_Id: 3504017449
-    m_Localized: "Elle est revenue : une voie pos\xE9e \xE0 c\xF4t\xE9 d'une autre doit la rejoindre. Maintenant, celle qui est \xE9clair\xE9e."
-    m_Metadata:
-      m_Items: []
   - m_Id: 3504017450
     m_Localized: Chaque nombre compte les voies. Cette ligne a maintenant exactement celles qu'elle demande.
     m_Metadata:
       m_Items: []
-  - m_Id: 3504017451
-    m_Localized: "Pose-en une au mauvais endroit, expr\xE8s. Trouve la pi\xE8ce qui va dans cette case."
-    m_Metadata:
-      m_Items: []
-  - m_Id: 3504017452
-    m_Localized: "Ce nombre est pass\xE9 au rouge : trop de voies sur sa ligne. Pince la voie pour la retirer."
-    m_Metadata:
-      m_Items: []
-  - m_Id: 3504017453
-    m_Localized: "Jette-la, ou l\xE2che-la hors du plateau."
-    m_Metadata:
-      m_Items: []
   - m_Id: 3504017454
-    m_Localized: Tu as compris. Suis le cercle jusqu'au terminus.
+    m_Localized: "Tu as compris. Le reste de la ligne est \xE0 toi."
     m_Metadata:
       m_Items: []
   - m_Id: 3504017455
@@ -239,7 +219,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 3504017461
-    m_Localized: "Ashgate n'a pas encore de chemin de fer. Pose une pi\xE8ce de voie par case pour relier le tunnel S au tunnel E."
+    m_Localized: "Cette gare n'a pas encore de chemin de fer. Pose une pi\xE8ce de voie par case pour relier le tunnel S au tunnel E."
     m_Metadata:
       m_Items: []
   - m_Id: 3504017462
@@ -300,6 +280,30 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 318851151237127
     m_Localized: COMPRIS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443580411904
+    m_Localized: "Tout le monde \xE0 bord ! Pose les voies."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046720
+    m_Localized: "Ligne {0} compl\xE8te !"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046721
+    m_Localized: "Colonne {0} compl\xE8te !"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046722
+    m_Localized: Trop de voies sur la ligne {0} !
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046723
+    m_Localized: Trop de voies sur la colonne {0} !
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20659413681610752
+    m_Localized: Cette voie n'est pas sur la ligne. Pince-la pour la retirer.
     m_Metadata:
       m_Items: []
   references:

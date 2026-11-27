@@ -183,28 +183,8 @@ MonoBehaviour:
     m_Key: xr.tutorial.lay_next
     m_Metadata:
       m_Items: []
-  - m_Id: 3504017448
-    m_Key: xr.tutorial.adjacency
-    m_Metadata:
-      m_Items: []
-  - m_Id: 3504017449
-    m_Key: xr.tutorial.adjacency_done
-    m_Metadata:
-      m_Items: []
   - m_Id: 3504017450
     m_Key: xr.tutorial.clue
-    m_Metadata:
-      m_Items: []
-  - m_Id: 3504017451
-    m_Key: xr.tutorial.mistake
-    m_Metadata:
-      m_Items: []
-  - m_Id: 3504017452
-    m_Key: xr.tutorial.erase
-    m_Metadata:
-      m_Items: []
-  - m_Id: 3504017453
-    m_Key: xr.tutorial.discard
     m_Metadata:
       m_Items: []
   - m_Id: 3504017454
@@ -297,6 +277,30 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 318851151237127
     m_Key: xr.move.done
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443580411904
+    m_Key: xr.pip.start
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046720
+    m_Key: xr.pip.row_clear
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046721
+    m_Key: xr.pip.col_clear
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046722
+    m_Key: xr.pip.row_over
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046723
+    m_Key: xr.pip.col_over
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20659413681610752
+    m_Key: xr.tutorial.hint_lift
     m_Metadata:
       m_Items: []
   m_Metadata:

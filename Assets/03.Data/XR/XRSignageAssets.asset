@@ -17,3 +17,10 @@ MonoBehaviour:
   bodyFont: {fileID: 11400000, guid: 0b36389b3c14846cabfe243055bb5aa2, type: 2}
   mark: {fileID: 2800000, guid: 690f4da59a87a44efb81d35ecfd19599, type: 3}
   japaneseFont: {fileID: 11400000, guid: 9f1fe7bc72b6d86429496d42ec66c78b, type: 2}
+  pipIdle: {fileID: 2800000, guid: ec4ef04b603f1184d9f2e2b614aee7c6, type: 3}
+  pipCheer: {fileID: 2800000, guid: 37944ae3cecd6e04aaf1343cfbdfbc71, type: 3}
+  pipWorry: {fileID: 2800000, guid: b57b2dc1644c5ce4ca07e84f739de6b6, type: 3}
+  pipSleep: {fileID: 2800000, guid: 8f5f20e586c0d69478971f0edecde991, type: 3}
+  pipWaveBase: {fileID: 2800000, guid: 1e5af6d86fcb64f439b38b4b85dcfcdf, type: 3}
+  pipPaw: {fileID: 2800000, guid: 4956fbe2dd5b64f418cb23fd72789f1c, type: 3}
+  pipPawPivot: {x: 0.1984, y: 0.8095}

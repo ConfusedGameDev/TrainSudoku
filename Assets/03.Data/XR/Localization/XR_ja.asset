@@ -186,32 +186,12 @@ MonoBehaviour:
     m_Localized: "\u6B21\u306F \u5149\u3063\u3066\u3044\u308B \u7DDA\u8DEF\u3092 \u8F2A\u306E \u4E0A\u3078\u3002"
     m_Metadata:
       m_Items: []
-  - m_Id: 3504017448
-    m_Localized: "\u4ECA\u5EA6\u306F \u5149\u3063\u3066\u3044\u308B \u7DDA\u8DEF\u3092 \u3053\u3053\u306B \u7F6E\u3044\u3066 \u307F\u307E\u3057\u3087\u3046\u3002\u96A3\u306E \u7DDA\u8DEF\u3068 \u3064\u306A\u304C\u308A\u307E\u305B\u3093\u3002\u5F71\u306E \u8272\u306B \u6CE8\u76EE\u3002"
-    m_Metadata:
-      m_Items: []
-  - m_Id: 3504017449
-    m_Localized: "\u623B\u3063\u3066 \u304D\u307E\u3057\u305F\u3002\u7DDA\u8DEF\u306E \u96A3\u306B \u7F6E\u304F \u7DDA\u8DEF\u306F\u3001\u5FC5\u305A \u3064\u306A\u304C\u308B \u5411\u304D\u306B \u3057\u307E\u3059\u3002\u6B21\u306F \u5149\u3063\u3066\u3044\u308B \u7DDA\u8DEF\u3092\u3002"
-    m_Metadata:
-      m_Items: []
   - m_Id: 3504017450
     m_Localized: "\u6570\u5B57\u306F \u7DDA\u8DEF\u306E \u672C\u6570\u3067\u3059\u3002\u3053\u306E \u5217\u306F \u3061\u3087\u3046\u3069 \u305D\u306E\u6570\u306B \u306A\u308A\u307E\u3057\u305F\u3002"
     m_Metadata:
       m_Items: []
-  - m_Id: 3504017451
-    m_Localized: "\u308F\u3056\u3068 \u9593\u9055\u3048\u3066 \u307F\u307E\u3057\u3087\u3046\u3002\u3053\u306E \u30DE\u30B9\u306B \u5408\u3046 \u7DDA\u8DEF\u3092 \u63A2\u3057\u3066 \u7F6E\u304D\u307E\u3059\u3002"
-    m_Metadata:
-      m_Items: []
-  - m_Id: 3504017452
-    m_Localized: "\u6570\u5B57\u304C \u8D64\u306B \u306A\u308A\u307E\u3057\u305F\u3002\u7DDA\u8DEF\u304C \u591A\u3059\u304E\u307E\u3059\u3002\u7DDA\u8DEF\u3092 \u3064\u307E\u3093\u3067 \u6301\u3061\u4E0A\u3052\u307E\u3057\u3087\u3046\u3002"
-    m_Metadata:
-      m_Items: []
-  - m_Id: 3504017453
-    m_Localized: "\u6295\u3052\u6368\u3066\u308B\u304B\u3001\u76E4\u306E \u5916\u3067 \u96E2\u3057\u307E\u3057\u3087\u3046\u3002"
-    m_Metadata:
-      m_Items: []
   - m_Id: 3504017454
-    m_Localized: "\u305D\u306E\u8ABF\u5B50\u3067\u3059\u3002\u8F2A\u306E \u793A\u3059\u5148\u3092 \u305F\u3069\u3063\u3066 \u7D42\u70B9\u307E\u3067\u3002"
+    m_Localized: "\u305D\u306E\u8ABF\u5B50\u3067\u3059\u3002\u3053\u3053\u304B\u3089 \u5148\u306F \u304A\u307E\u304B\u305B \u3057\u307E\u3059\u3002"
     m_Metadata:
       m_Items: []
   - m_Id: 3504017455
@@ -239,7 +219,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 3504017461
-    m_Localized: "Ashgate \u306B\u306F \u307E\u3060 \u7DDA\u8DEF\u304C \u3042\u308A\u307E\u305B\u3093\u3002\u4E00\u30DE\u30B9\u306B \u4E00\u3064\u305A\u3064 \u7F6E\u304D\u3001S \u306E \u30C8\u30F3\u30CD\u30EB\u304B\u3089 E \u306E \u30C8\u30F3\u30CD\u30EB\u307E\u3067 \u3064\u306A\u304E\u307E\u3059\u3002"
+    m_Localized: "\u3053\u306E \u99C5\u306B\u306F \u307E\u3060 \u7DDA\u8DEF\u304C \u3042\u308A\u307E\u305B\u3093\u3002\u4E00\u30DE\u30B9\u306B \u4E00\u3064\u305A\u3064 \u7F6E\u304D\u3001S \u306E \u30C8\u30F3\u30CD\u30EB\u304B\u3089 E \u306E \u30C8\u30F3\u30CD\u30EB\u307E\u3067 \u3064\u306A\u304E\u307E\u3059\u3002"
     m_Metadata:
       m_Items: []
   - m_Id: 3504017462
@@ -300,6 +280,30 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 318851151237127
     m_Localized: "\u308F\u304B\u3063\u305F"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443580411904
+    m_Localized: "\u51FA\u767A\u9032\u884C! \u7DDA\u8DEF\u3092 \u3064\u306A\u3054\u3046\u3002"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046720
+    m_Localized: "{0}\u884C \u5B8C\u4E86!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046721
+    m_Localized: "{0}\u5217 \u5B8C\u4E86!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046722
+    m_Localized: "{0}\u884C\u306F \u591A\u3059\u304E!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20603443702046723
+    m_Localized: "{0}\u5217\u306F \u591A\u3059\u304E!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 20659413681610752
+    m_Localized: "\u3053\u306E \u7DDA\u8DEF\u306F \u8DEF\u7DDA\u306B \u5165\u308A\u307E\u305B\u3093\u3002\u3064\u307E\u3093\u3067 \u6301\u3061\u4E0A\u3052\u307E\u3057\u3087\u3046\u3002"
     m_Metadata:
       m_Items: []
   references:
